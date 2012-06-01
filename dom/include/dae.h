@@ -44,14 +44,14 @@
 #include <dae/daeSIDResolver.h>
 
 // needed for backward compatibility
-#ifdef COLLADA_DOM_SUPPORT141
-namespace ColladaDOM141 {
+#ifdef COLLADA_DOM_SUPPORT150
+namespace ColladaDOM150 {
 class domCOLLADA;
 typedef daeSmartRef<domCOLLADA> domCOLLADARef;
 }
 #endif
-#ifdef COLLADA_DOM_SUPPORT150
-namespace ColladaDOM150 {
+#ifdef COLLADA_DOM_SUPPORT141
+namespace ColladaDOM141 {
 class domCOLLADA;
 typedef daeSmartRef<domCOLLADA> domCOLLADARef;
 }

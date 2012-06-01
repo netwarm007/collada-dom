@@ -51,4 +51,26 @@ typedef daeChar daeFixedName[512];
 #include <dae/daeArray.h>
 #include <dae/daeArrayTypes.h>
 
+#if defined(COLLADA_DOM_SUPPORT150)
+namespace ColladaDOM150 {}
+#endif
+#if defined(COLLADA_DOM_SUPPORT141)
+namespace ColladaDOM141 {}
+#endif
+
+#if defined(COLLADA_DOM_USING_150)
+using namespace ColladaDOM150;
+#elif defined(COLLADA_DOM_USING_141)
+using namespace ColladaDOM141;
+#elif !defined(COLLADA_DOM_NAMESPACE)
+
+// find the highest version namespace
+#if defined(COLLADA_DOM_SUPPORT150)
+using namespace ColladaDOM150;
+#elif defined(COLLADA_DOM_SUPPORT141)
+using namespace ColladaDOM141;
+#endif
+
+#endif
+
 #endif //__DAE_TYPES_H__
