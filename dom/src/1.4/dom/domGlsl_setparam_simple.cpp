@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domGlsl_setparam_simple.h>
+#include <1.4/dom/domGlsl_setparam_simple.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domGlsl_setparam_simple::create(DAE& dae)
 {
@@ -72,3 +74,4 @@ domGlsl_setparam_simple::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

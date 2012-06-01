@@ -1,12 +1,14 @@
-#ifndef __domGles_texcombiner_command_rgb_h__
-#define __domGles_texcombiner_command_rgb_h__
+#ifndef __dom150Gles_texcombiner_command_rgb_h__
+#define __dom150Gles_texcombiner_command_rgb_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGles_texcombiner_argument_rgb.h>
+#include <1.5/dom/domGles_texcombiner_argument_rgb.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Defines the RGB portion of a texture_pipeline command. This is a combiner-mode
@@ -87,4 +89,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

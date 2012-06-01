@@ -6,16 +6,18 @@
 *
 */ 
 
-#ifndef __domFx_newparam_common_h__
-#define __domFx_newparam_common_h__
+#ifndef __dom141Fx_newparam_common_h__
+#define __dom141Fx_newparam_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_basic_type_common.h>
-#include <dom/domFx_annotate_common.h>
+#include <1.4/dom/domFx_basic_type_common.h>
+#include <1.4/dom/domFx_annotate_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * This element creates a new, named param object in the FX Runtime, assigns
@@ -276,4 +278,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

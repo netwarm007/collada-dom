@@ -1,19 +1,21 @@
-#ifndef __domCurve_h__
-#define __domCurve_h__
+#ifndef __dom150Curve_h__
+#define __dom150Curve_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domLine.h>
-#include <dom/domCircle.h>
-#include <dom/domEllipse.h>
-#include <dom/domParabola.h>
-#include <dom/domHyperbola.h>
-#include <dom/domNurbs.h>
-#include <dom/domOrient.h>
-#include <dom/domOrigin.h>
+#include <1.5/dom/domLine.h>
+#include <1.5/dom/domCircle.h>
+#include <1.5/dom/domEllipse.h>
+#include <1.5/dom/domParabola.h>
+#include <1.5/dom/domHyperbola.h>
+#include <1.5/dom/domNurbs.h>
+#include <1.5/dom/domOrient.h>
+#include <1.5/dom/domOrigin.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * A curveType defines the attributes of a curve element.     With rotate
@@ -167,4 +169,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

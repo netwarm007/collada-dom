@@ -1,4 +1,6 @@
-#include <dom/domConstants.h>
+#include <1.5/dom/domConstants.h>
+
+namespace ColladaDOM150 {
 
 DLLSPEC daeString COLLADA_VERSION = "1.5.0";
 DLLSPEC daeString COLLADA_NAMESPACE = "http://www.collada.org/2008/03/COLLADASchema";
@@ -1205,3 +1207,5 @@ DLLSPEC daeString COLLADA_ELEMENT_SCENE = "scene";
 DLLSPEC daeString COLLADA_ELEMENT_INSTANCE_PHYSICS_SCENE = "instance_physics_scene";
 DLLSPEC daeString COLLADA_ELEMENT_INSTANCE_VISUAL_SCENE = "instance_visual_scene";
 DLLSPEC daeString COLLADA_ELEMENT_INSTANCE_KINEMATICS_SCENE = "instance_kinematics_scene";
+
+} // ColladaDOM150

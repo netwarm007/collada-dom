@@ -1,14 +1,16 @@
-#ifndef __domTranslate_h__
-#define __domTranslate_h__
+#ifndef __dom150Translate_h__
+#define __dom150Translate_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domTargetable_float3.h>
+#include <1.5/dom/domTargetable_float3.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
-#include <dom/domTargetable_float3.h>
+#include <1.5/dom/domTargetable_float3.h>
 /**
  * The translate element contains a mathematical vector that represents the
  * distance along the  X, Y and Z-axes.
@@ -51,4 +53,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

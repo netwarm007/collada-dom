@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domInstance_rigid_constraint_h__
-#define __domInstance_rigid_constraint_h__
+#ifndef __dom141Instance_rigid_constraint_h__
+#define __dom141Instance_rigid_constraint_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * This element allows instancing a rigid_constraint within an instance_physics_model.
@@ -121,4 +123,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

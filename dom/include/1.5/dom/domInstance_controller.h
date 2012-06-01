@@ -1,13 +1,15 @@
-#ifndef __domInstance_controller_h__
-#define __domInstance_controller_h__
+#ifndef __dom150Instance_controller_h__
+#define __dom150Instance_controller_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domBind_material.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domBind_material.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The instance_controller element declares the instantiation of a COLLADA
@@ -228,4 +230,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

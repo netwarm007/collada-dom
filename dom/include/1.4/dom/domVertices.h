@@ -6,16 +6,18 @@
 *
 */ 
 
-#ifndef __domVertices_h__
-#define __domVertices_h__
+#ifndef __dom141Vertices_h__
+#define __dom141Vertices_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
-#include <dom/domInputLocal.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domInputLocal.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The vertices element declares the attributes and identity of mesh-vertices.
@@ -126,4 +128,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

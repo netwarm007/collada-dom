@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFx_sampler_states.h>
+#include <1.5/dom/domFx_sampler_states.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domFx_sampler_states::create(DAE& dae)
 {
@@ -509,3 +511,4 @@ domFx_sampler_states::domMax_anisotropy::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

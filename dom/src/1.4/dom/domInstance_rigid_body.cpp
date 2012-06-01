@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domInstance_rigid_body.h>
+#include <1.4/dom/domInstance_rigid_body.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domInstance_rigid_body::create(DAE& dae)
 {
@@ -575,3 +577,4 @@ domInstance_rigid_body::domTechnique_common::domShape::domHollow::registerElemen
 	return meta;
 }
 
+} // ColladaDOM141

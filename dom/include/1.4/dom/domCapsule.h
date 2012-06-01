@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domCapsule_h__
-#define __domCapsule_h__
+#ifndef __dom141Capsule_h__
+#define __dom141Capsule_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A capsule primitive that is centered on and aligned with the local Y axis.
@@ -222,4 +224,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

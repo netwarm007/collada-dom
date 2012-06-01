@@ -1,15 +1,17 @@
-#ifndef __domInstance_articulated_system_h__
-#define __domInstance_articulated_system_h__
+#ifndef __dom150Instance_articulated_system_h__
+#define __dom150Instance_articulated_system_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domKinematics_bind.h>
-#include <dom/domKinematics_setparam.h>
-#include <dom/domKinematics_newparam.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domKinematics_bind.h>
+#include <1.5/dom/domKinematics_setparam.h>
+#include <1.5/dom/domKinematics_newparam.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domInstance_articulated_system : public daeElement
 {
@@ -141,4 +143,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

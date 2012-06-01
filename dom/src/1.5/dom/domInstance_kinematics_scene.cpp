@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domInstance_kinematics_scene.h>
+#include <1.5/dom/domInstance_kinematics_scene.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domInstance_kinematics_scene::create(DAE& dae)
 {
@@ -111,3 +113,4 @@ domInstance_kinematics_scene::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

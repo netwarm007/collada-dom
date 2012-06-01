@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFx_sampler2D_common.h>
+#include <1.4/dom/domFx_sampler2D_common.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domFx_sampler2D_common::create(DAE& dae)
 {
@@ -432,3 +434,4 @@ domFx_sampler2D_common::domMipmap_bias::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

@@ -1,7 +1,10 @@
-#ifndef __DOM_ELEMENTS_H__
-#define __DOM_ELEMENTS_H__
+#ifndef __DOM150_ELEMENTS_H__
+#define __DOM150_ELEMENTS_H__
 
-#include <dom/domTypes.h>
+#include <1.5/dom/domTypes.h>
+
+class DAE;
+namespace ColladaDOM150 {
 
 class domInput_global;
 
@@ -1168,6 +1171,7 @@ class domCOLLADA;
 typedef daeSmartRef<domCOLLADA> domCOLLADARef;
 typedef daeTArray<domCOLLADARef> domCOLLADA_Array;
 
+} // ColladaDOM150
 
 #endif //__DOM_ELEMENTS_H__
 

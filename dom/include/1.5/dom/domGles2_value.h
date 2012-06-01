@@ -1,16 +1,18 @@
-#ifndef __domGles2_value_h__
-#define __domGles2_value_h__
+#ifndef __dom150Gles2_value_h__
+#define __dom150Gles2_value_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFx_sampler2D.h>
-#include <dom/domFx_sampler3D.h>
-#include <dom/domFx_samplerCUBE.h>
-#include <dom/domFx_samplerDEPTH.h>
-#include <dom/domGles2_value.h>
+#include <1.5/dom/domFx_sampler2D.h>
+#include <1.5/dom/domFx_sampler3D.h>
+#include <1.5/dom/domFx_samplerCUBE.h>
+#include <1.5/dom/domFx_samplerDEPTH.h>
+#include <1.5/dom/domGles2_value.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * New parameters may choose to type themselves by value, providing a default.
@@ -270,20 +272,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat of the value.
+		 * @return a ColladaDOM150::domFloat of the value.
 		 */
-		::domFloat& getValue() { return _value; }
+		ColladaDOM150::domFloat& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat value of the text data of this element. 
+		 * The ColladaDOM150::domFloat value of the text data of this element. 
 		 */
-		::domFloat _value;
+		ColladaDOM150::domFloat _value;
 	protected:
 		/**
 		 * Constructor
@@ -676,20 +678,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domInt of the value.
+		 * @return a ColladaDOM150::domInt of the value.
 		 */
-		::domInt& getValue() { return _value; }
+		ColladaDOM150::domInt& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domInt& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domInt& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domInt value of the text data of this element. 
+		 * The ColladaDOM150::domInt value of the text data of this element. 
 		 */
-		::domInt _value;
+		ColladaDOM150::domInt _value;
 	protected:
 		/**
 		 * Constructor
@@ -1369,4 +1371,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

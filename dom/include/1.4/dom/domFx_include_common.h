@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domFx_include_common_h__
-#define __domFx_include_common_h__
+#ifndef __dom141Fx_include_common_h__
+#define __dom141Fx_include_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The include element is used to import source code or precompiled binary
@@ -157,4 +159,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

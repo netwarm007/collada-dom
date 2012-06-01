@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domSwept_surface.h>
+#include <1.5/dom/domSwept_surface.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domSwept_surface::create(DAE& dae)
 {
@@ -194,3 +196,4 @@ domSwept_surface::domAxis::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

@@ -1,13 +1,15 @@
-#ifndef __domSurface_curves_h__
-#define __domSurface_curves_h__
+#ifndef __dom150Surface_curves_h__
+#define __dom150Surface_curves_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCurve.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domCurve.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * This element holds all the pcurves that are needed for the geometrical
@@ -75,4 +77,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

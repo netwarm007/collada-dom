@@ -1,7 +1,10 @@
-#ifndef __DOM_CONSTANTS_H__
-#define __DOM_CONSTANTS_H__
+#ifndef __DOM150_CONSTANTS_H__
+#define __DOM150_CONSTANTS_H__
 
 #include <dae/daeDomTypes.h>
+
+class DAE;
+namespace ColladaDOM150 {
 
 extern DLLSPEC daeString COLLADA_VERSION;
 extern DLLSPEC daeString COLLADA_NAMESPACE;
@@ -1207,6 +1210,8 @@ extern DLLSPEC daeString COLLADA_ELEMENT_SCENE;
 extern DLLSPEC daeString COLLADA_ELEMENT_INSTANCE_PHYSICS_SCENE;
 extern DLLSPEC daeString COLLADA_ELEMENT_INSTANCE_VISUAL_SCENE;
 extern DLLSPEC daeString COLLADA_ELEMENT_INSTANCE_KINEMATICS_SCENE;
+
+} // ColladaDOM150
 
 #endif //__DOM_CONSTANTS_H__
 

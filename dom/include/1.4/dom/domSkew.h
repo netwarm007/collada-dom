@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domSkew_h__
-#define __domSkew_h__
+#ifndef __dom141Skew_h__
+#define __dom141Skew_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The skew element contains an angle and two mathematical vectors that represent
@@ -96,4 +98,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

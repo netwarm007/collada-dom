@@ -6,17 +6,19 @@
 *
 */ 
 
-#ifndef __domMorph_h__
-#define __domMorph_h__
+#ifndef __dom141Morph_h__
+#define __dom141Morph_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domSource.h>
-#include <dom/domExtra.h>
-#include <dom/domInputLocal.h>
+#include <1.4/dom/domSource.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domInputLocal.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The morph element describes the data required to blend between sets of
@@ -221,4 +223,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

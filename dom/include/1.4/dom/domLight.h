@@ -6,19 +6,21 @@
 *
 */ 
 
-#ifndef __domLight_h__
-#define __domLight_h__
+#ifndef __dom141Light_h__
+#define __dom141Light_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
-#include <dom/domTargetableFloat3.h>
-#include <dom/domTargetableFloat.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domTechnique.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domTargetableFloat3.h>
+#include <1.4/dom/domTargetableFloat.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The light element declares a light source that illuminates the scene. Light
@@ -612,4 +614,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,12 +1,14 @@
-#ifndef __domAsset_h__
-#define __domAsset_h__
+#ifndef __dom150Asset_h__
+#define __dom150Asset_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The asset element defines asset management information regarding its parent
@@ -1389,20 +1391,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domUp_axis of the value.
+		 * @return a ColladaDOM150::domUp_axis of the value.
 		 */
-		::domUp_axis& getValue() { return _value; }
+		ColladaDOM150::domUp_axis& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domUp_axis& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domUp_axis& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domUp_axis value of the text data of this element. 
+		 * The ColladaDOM150::domUp_axis value of the text data of this element. 
 		 */
-		::domUp_axis _value;
+		ColladaDOM150::domUp_axis _value;
 	protected:
 		/**
 		 * Constructor
@@ -1583,4 +1585,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

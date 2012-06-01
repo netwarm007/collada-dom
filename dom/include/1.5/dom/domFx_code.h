@@ -1,11 +1,13 @@
-#ifndef __domFx_code_h__
-#define __domFx_code_h__
+#ifndef __dom150Fx_code_h__
+#define __dom150Fx_code_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The fx_code_common type allows you to specify an inline block of source
@@ -83,4 +85,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

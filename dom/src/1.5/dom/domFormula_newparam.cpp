@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFormula_newparam.h>
+#include <1.5/dom/domFormula_newparam.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domFormula_newparam::create(DAE& dae)
 {
@@ -223,3 +225,4 @@ domFormula_newparam::domBool::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

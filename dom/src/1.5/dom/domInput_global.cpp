@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domInput_global.h>
+#include <1.5/dom/domInput_global.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domInput_global::create(DAE& dae)
 {
@@ -59,3 +61,4 @@ domInput_global::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

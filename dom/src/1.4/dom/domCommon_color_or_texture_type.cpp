@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCommon_color_or_texture_type.h>
+#include <1.4/dom/domCommon_color_or_texture_type.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domCommon_color_or_texture_type::create(DAE& dae)
 {
@@ -219,3 +221,4 @@ domCommon_color_or_texture_type::domTexture::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

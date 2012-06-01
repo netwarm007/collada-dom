@@ -1,12 +1,14 @@
-#ifndef __domInstance_formula_h__
-#define __domInstance_formula_h__
+#ifndef __dom150Instance_formula_h__
+#define __dom150Instance_formula_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFormula_setparam.h>
+#include <1.5/dom/domFormula_setparam.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domInstance_formula : public daeElement
 {
@@ -105,4 +107,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

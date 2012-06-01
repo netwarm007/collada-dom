@@ -6,19 +6,21 @@
 *
 */ 
 
-#ifndef __domPhysics_model_h__
-#define __domPhysics_model_h__
+#ifndef __dom141Physics_model_h__
+#define __dom141Physics_model_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domRigid_body.h>
-#include <dom/domRigid_constraint.h>
-#include <dom/domInstance_physics_model.h>
-#include <dom/domExtra.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domRigid_body.h>
+#include <1.4/dom/domRigid_constraint.h>
+#include <1.4/dom/domInstance_physics_model.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * This element allows for building complex combinations of rigid-bodies and
@@ -166,4 +168,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

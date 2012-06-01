@@ -1,11 +1,13 @@
-#ifndef __domInt_array_h__
-#define __domInt_array_h__
+#ifndef __dom150Int_array_h__
+#define __dom150Int_array_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The int_array element declares the storage for a homogenous array of integer
@@ -149,4 +151,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domRigid_constraint.h>
+#include <1.4/dom/domRigid_constraint.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domRigid_constraint::create(DAE& dae)
 {
@@ -666,3 +668,4 @@ domRigid_constraint::domTechnique_common::domSpring::domLinear::registerElement(
 	return meta;
 }
 
+} // ColladaDOM141

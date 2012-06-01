@@ -1,12 +1,14 @@
-#ifndef __domCommon_bool_or_param_h__
-#define __domCommon_bool_or_param_h__
+#ifndef __dom150Common_bool_or_param_h__
+#define __dom150Common_bool_or_param_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCommon_param.h>
+#include <1.5/dom/domCommon_param.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domCommon_bool_or_param : public daeElement
 {
@@ -144,4 +146,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

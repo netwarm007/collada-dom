@@ -1,15 +1,17 @@
-#ifndef __domSkin_h__
-#define __domSkin_h__
+#ifndef __dom150Skin_h__
+#define __dom150Skin_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domSource.h>
-#include <dom/domInput_local.h>
-#include <dom/domExtra.h>
-#include <dom/domInput_local_offset.h>
+#include <1.5/dom/domSource.h>
+#include <1.5/dom/domInput_local.h>
+#include <1.5/dom/domExtra.h>
+#include <1.5/dom/domInput_local_offset.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The skin element contains vertex and primitive information sufficient to
@@ -528,4 +530,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

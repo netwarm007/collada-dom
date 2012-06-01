@@ -1,12 +1,14 @@
-#ifndef __domGlsl_array_h__
-#define __domGlsl_array_h__
+#ifndef __dom150Glsl_array_h__
+#define __dom150Glsl_array_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGlsl_value.h>
+#include <1.5/dom/domGlsl_value.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The glsl_newarray_type element is used to creates a parameter of a one-dimensional
@@ -78,4 +80,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -1,12 +1,14 @@
-#ifndef __domKinematics_setparam_h__
-#define __domKinematics_setparam_h__
+#ifndef __dom150Kinematics_setparam_h__
+#define __dom150Kinematics_setparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domKinematics_connect_param.h>
+#include <1.5/dom/domKinematics_connect_param.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domKinematics_setparam : public daeElement
 {
@@ -31,20 +33,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat of the value.
+		 * @return a ColladaDOM150::domFloat of the value.
 		 */
-		::domFloat& getValue() { return _value; }
+		ColladaDOM150::domFloat& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat value of the text data of this element. 
+		 * The ColladaDOM150::domFloat value of the text data of this element. 
 		 */
-		::domFloat _value;
+		ColladaDOM150::domFloat _value;
 	protected:
 		/**
 		 * Constructor
@@ -89,20 +91,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domInt of the value.
+		 * @return a ColladaDOM150::domInt of the value.
 		 */
-		::domInt& getValue() { return _value; }
+		ColladaDOM150::domInt& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domInt& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domInt& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domInt value of the text data of this element. 
+		 * The ColladaDOM150::domInt value of the text data of this element. 
 		 */
-		::domInt _value;
+		ColladaDOM150::domInt _value;
 	protected:
 		/**
 		 * Constructor
@@ -349,4 +351,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

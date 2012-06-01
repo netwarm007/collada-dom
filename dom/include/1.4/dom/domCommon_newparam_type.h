@@ -6,16 +6,18 @@
 *
 */ 
 
-#ifndef __domCommon_newparam_type_h__
-#define __domCommon_newparam_type_h__
+#ifndef __dom141Common_newparam_type_h__
+#define __dom141Common_newparam_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_surface_common.h>
-#include <dom/domFx_sampler2D_common.h>
+#include <1.4/dom/domFx_surface_common.h>
+#include <1.4/dom/domFx_sampler2D_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domCommon_newparam_type_complexType 
 {
@@ -92,21 +94,21 @@ public:
 
 	protected:  // Value
 		/**
-		 * The ::domFloat value of the text data of this element. 
+		 * The ColladaDOM141::domFloat value of the text data of this element. 
 		 */
-		::domFloat _value;
+		ColladaDOM141::domFloat _value;
 
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat of the value.
+		 * @return a ColladaDOM141::domFloat of the value.
 		 */
-		::domFloat getValue() const { return _value; }
+		ColladaDOM141::domFloat getValue() const { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( ::domFloat val ) { _value = val; }
+		void setValue( ColladaDOM141::domFloat val ) { _value = val; }
 
 	protected:
 		/**
@@ -150,26 +152,26 @@ public:
 
 	protected:  // Value
 		/**
-		 * The ::domFloat2 value of the text data of this element. 
+		 * The ColladaDOM141::domFloat2 value of the text data of this element. 
 		 */
-		::domFloat2 _value;
+		ColladaDOM141::domFloat2 _value;
 
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the _value array.
-		 * @return Returns a ::domFloat2 reference of the _value array.
+		 * @return Returns a ColladaDOM141::domFloat2 reference of the _value array.
 		 */
-		::domFloat2 &getValue() { return _value; }
+		ColladaDOM141::domFloat2 &getValue() { return _value; }
 		/**
 		 * Gets the _value array.
-		 * @return Returns a constant ::domFloat2 reference of the _value array.
+		 * @return Returns a constant ColladaDOM141::domFloat2 reference of the _value array.
 		 */
-		const ::domFloat2 &getValue() const { return _value; }
+		const ColladaDOM141::domFloat2 &getValue() const { return _value; }
 		/**
 		 * Sets the _value array.
 		 * @param val The new value for the _value array.
 		 */
-		void setValue( const ::domFloat2 &val ) { _value = val; }
+		void setValue( const ColladaDOM141::domFloat2 &val ) { _value = val; }
 
 	protected:
 		/**
@@ -213,26 +215,26 @@ public:
 
 	protected:  // Value
 		/**
-		 * The ::domFloat3 value of the text data of this element. 
+		 * The ColladaDOM141::domFloat3 value of the text data of this element. 
 		 */
-		::domFloat3 _value;
+		ColladaDOM141::domFloat3 _value;
 
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the _value array.
-		 * @return Returns a ::domFloat3 reference of the _value array.
+		 * @return Returns a ColladaDOM141::domFloat3 reference of the _value array.
 		 */
-		::domFloat3 &getValue() { return _value; }
+		ColladaDOM141::domFloat3 &getValue() { return _value; }
 		/**
 		 * Gets the _value array.
-		 * @return Returns a constant ::domFloat3 reference of the _value array.
+		 * @return Returns a constant ColladaDOM141::domFloat3 reference of the _value array.
 		 */
-		const ::domFloat3 &getValue() const { return _value; }
+		const ColladaDOM141::domFloat3 &getValue() const { return _value; }
 		/**
 		 * Sets the _value array.
 		 * @param val The new value for the _value array.
 		 */
-		void setValue( const ::domFloat3 &val ) { _value = val; }
+		void setValue( const ColladaDOM141::domFloat3 &val ) { _value = val; }
 
 	protected:
 		/**
@@ -276,26 +278,26 @@ public:
 
 	protected:  // Value
 		/**
-		 * The ::domFloat4 value of the text data of this element. 
+		 * The ColladaDOM141::domFloat4 value of the text data of this element. 
 		 */
-		::domFloat4 _value;
+		ColladaDOM141::domFloat4 _value;
 
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the _value array.
-		 * @return Returns a ::domFloat4 reference of the _value array.
+		 * @return Returns a ColladaDOM141::domFloat4 reference of the _value array.
 		 */
-		::domFloat4 &getValue() { return _value; }
+		ColladaDOM141::domFloat4 &getValue() { return _value; }
 		/**
 		 * Gets the _value array.
-		 * @return Returns a constant ::domFloat4 reference of the _value array.
+		 * @return Returns a constant ColladaDOM141::domFloat4 reference of the _value array.
 		 */
-		const ::domFloat4 &getValue() const { return _value; }
+		const ColladaDOM141::domFloat4 &getValue() const { return _value; }
 		/**
 		 * Sets the _value array.
 		 * @param val The new value for the _value array.
 		 */
-		void setValue( const ::domFloat4 &val ) { _value = val; }
+		void setValue( const ColladaDOM141::domFloat4 &val ) { _value = val; }
 
 	protected:
 		/**
@@ -481,4 +483,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

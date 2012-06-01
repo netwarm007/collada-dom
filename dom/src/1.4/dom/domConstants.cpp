@@ -1,12 +1,14 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/ 
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
 
-#include <dom/domConstants.h>
+#include <1.4/dom/domConstants.h>
+
+namespace ColladaDOM141 {
 
 DLLSPEC daeString COLLADA_VERSION = "1.4.1";
 DLLSPEC daeString COLLADA_NAMESPACE = "http://www.collada.org/2005/11/COLLADASchema";
@@ -1081,3 +1083,5 @@ DLLSPEC daeString COLLADA_ELEMENT_DAMPING = "damping";
 DLLSPEC daeString COLLADA_ELEMENT_TARGET_VALUE = "target_value";
 DLLSPEC daeString COLLADA_ELEMENT_RIGID_BODY = "rigid_body";
 DLLSPEC daeString COLLADA_ELEMENT_RIGID_CONSTRAINT = "rigid_constraint";
+
+} // ColladaDOM141

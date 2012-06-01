@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domGles_basic_type_common.h>
+#include <1.4/dom/domGles_basic_type_common.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domGles_basic_type_common::create(DAE& dae)
 {
@@ -1295,3 +1297,4 @@ domGles_basic_type_common::domEnum::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

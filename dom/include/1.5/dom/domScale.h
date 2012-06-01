@@ -1,14 +1,16 @@
-#ifndef __domScale_h__
-#define __domScale_h__
+#ifndef __dom150Scale_h__
+#define __dom150Scale_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domTargetable_float3.h>
+#include <1.5/dom/domTargetable_float3.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
-#include <dom/domTargetable_float3.h>
+#include <1.5/dom/domTargetable_float3.h>
 /**
  * The scale element contains a mathematical vector that represents the relative
  * proportions of the  X, Y and Z axes of a coordinated system.
@@ -51,4 +53,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

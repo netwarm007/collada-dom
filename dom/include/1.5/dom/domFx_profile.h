@@ -1,17 +1,19 @@
-#ifndef __domFx_profile_h__
-#define __domFx_profile_h__
+#ifndef __dom150Fx_profile_h__
+#define __dom150Fx_profile_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domProfile_common.h>
-#include <dom/domProfile_bridge.h>
-#include <dom/domProfile_gles2.h>
-#include <dom/domProfile_glsl.h>
-#include <dom/domProfile_cg.h>
-#include <dom/domProfile_gles.h>
+#include <1.5/dom/domProfile_common.h>
+#include <1.5/dom/domProfile_bridge.h>
+#include <1.5/dom/domProfile_gles2.h>
+#include <1.5/dom/domProfile_glsl.h>
+#include <1.5/dom/domProfile_cg.h>
+#include <1.5/dom/domProfile_gles.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * A group that  specifies the allowable COLLADA FX profiles.
@@ -116,4 +118,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

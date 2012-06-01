@@ -6,22 +6,24 @@
 *
 */ 
 
-#ifndef __domProfile_GLES_h__
-#define __domProfile_GLES_h__
+#ifndef __dom141Profile_GLES_h__
+#define __dom141Profile_GLES_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_profile_abstract.h>
-#include <dom/domAsset.h>
-#include <dom/domImage.h>
-#include <dom/domExtra.h>
-#include <dom/domGles_newparam.h>
-#include <dom/domFx_annotate_common.h>
-#include <dom/domGles_basic_type_common.h>
-#include <dom/domGles_pipeline_settings.h>
+#include <1.4/dom/domFx_profile_abstract.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domImage.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domGles_newparam.h>
+#include <1.4/dom/domFx_annotate_common.h>
+#include <1.4/dom/domGles_basic_type_common.h>
+#include <1.4/dom/domGles_pipeline_settings.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Opens a block of GLES platform-specific data types and technique declarations.
@@ -1015,4 +1017,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

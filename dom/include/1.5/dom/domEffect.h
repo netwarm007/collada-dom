@@ -1,16 +1,18 @@
-#ifndef __domEffect_h__
-#define __domEffect_h__
+#ifndef __dom150Effect_h__
+#define __dom150Effect_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFx_profile.h>
-#include <dom/domAsset.h>
-#include <dom/domFx_annotate.h>
-#include <dom/domFx_newparam.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domFx_profile.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domFx_annotate.h>
+#include <1.5/dom/domFx_newparam.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * A self contained description of a shader effect.
@@ -153,4 +155,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

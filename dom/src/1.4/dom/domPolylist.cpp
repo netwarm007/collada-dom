@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domPolylist.h>
+#include <1.4/dom/domPolylist.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domPolylist::create(DAE& dae)
 {
@@ -142,3 +144,4 @@ domPolylist::domVcount::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

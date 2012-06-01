@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domGles_texture_unit_h__
-#define __domGles_texture_unit_h__
+#ifndef __dom141Gles_texture_unit_h__
+#define __dom141Gles_texture_unit_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domGles_texture_unit_complexType 
 {
@@ -308,4 +310,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

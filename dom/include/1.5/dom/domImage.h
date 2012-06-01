@@ -1,15 +1,17 @@
-#ifndef __domImage_h__
-#define __domImage_h__
+#ifndef __dom150Image_h__
+#define __dom150Image_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domImage_source.h>
-#include <dom/domImage_mips.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domImage_source.h>
+#include <1.5/dom/domImage_mips.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domImage : public daeElement
 {
@@ -2127,4 +2129,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

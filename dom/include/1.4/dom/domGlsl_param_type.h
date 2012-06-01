@@ -6,21 +6,23 @@
 *
 */ 
 
-#ifndef __domGlsl_param_type_h__
-#define __domGlsl_param_type_h__
+#ifndef __dom141Glsl_param_type_h__
+#define __dom141Glsl_param_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domGlsl_surface_type.h>
-#include <dom/domGl_sampler1D.h>
-#include <dom/domGl_sampler2D.h>
-#include <dom/domGl_sampler3D.h>
-#include <dom/domGl_samplerCUBE.h>
-#include <dom/domGl_samplerRECT.h>
-#include <dom/domGl_samplerDEPTH.h>
+#include <1.4/dom/domGlsl_surface_type.h>
+#include <1.4/dom/domGl_sampler1D.h>
+#include <1.4/dom/domGl_sampler2D.h>
+#include <1.4/dom/domGl_sampler3D.h>
+#include <1.4/dom/domGl_samplerCUBE.h>
+#include <1.4/dom/domGl_samplerRECT.h>
+#include <1.4/dom/domGl_samplerDEPTH.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A group that specifies the allowable types for GLSL profile parameters.
@@ -1217,4 +1219,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,11 +1,13 @@
-#ifndef __domFormula_technique_h__
-#define __domFormula_technique_h__
+#ifndef __dom150Formula_technique_h__
+#define __dom150Formula_technique_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 class domFormula_technique : public daeElement
 {
@@ -53,4 +55,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

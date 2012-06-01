@@ -6,17 +6,19 @@
 *
 */ 
 
-#ifndef __domTristrips_h__
-#define __domTristrips_h__
+#ifndef __dom141Tristrips_h__
+#define __dom141Tristrips_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domP.h>
-#include <dom/domExtra.h>
-#include <dom/domInputLocalOffset.h>
+#include <1.4/dom/domP.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domInputLocalOffset.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The tristrips element provides the information needed to bind vertex attributes
@@ -157,4 +159,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

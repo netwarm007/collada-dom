@@ -1,17 +1,19 @@
-#ifndef __domRigid_constraint_h__
-#define __domRigid_constraint_h__
+#ifndef __dom150Rigid_constraint_h__
+#define __dom150Rigid_constraint_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domTranslate.h>
-#include <dom/domRotate.h>
-#include <dom/domExtra.h>
-#include <dom/domTargetable_float3.h>
-#include <dom/domTargetable_float.h>
-#include <dom/domTechnique.h>
+#include <1.5/dom/domTranslate.h>
+#include <1.5/dom/domRotate.h>
+#include <1.5/dom/domExtra.h>
+#include <1.5/dom/domTargetable_float3.h>
+#include <1.5/dom/domTargetable_float.h>
+#include <1.5/dom/domTechnique.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * This element allows for connecting components, such as rigid_body into
@@ -1090,4 +1092,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

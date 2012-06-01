@@ -1,11 +1,13 @@
-#ifndef __domInput_local_offset_h__
-#define __domInput_local_offset_h__
+#ifndef __dom150Input_local_offset_h__
+#define __dom150Input_local_offset_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The input_local_offset_type element is used to represent indexed inputs
@@ -116,4 +118,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

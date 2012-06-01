@@ -28,6 +28,8 @@
 #include <dae/daeErrorHandler.h>
 #include <dae/daeMetaElementAttribute.h>
 
+#include <limits>
+#include <iomanip>
 using namespace std;
 
 
@@ -433,6 +435,9 @@ void daeLIBXMLPlugin::writeElement( daeElement* element )
 void daeLIBXMLPlugin::writeAttribute( daeMetaAttribute* attr, daeElement* element)
 {
     ostringstream buffer;
+#ifdef COLLADA_DOM_DAEFLOAT_IS64
+    buffer << std::setprecision(std::numeric_limits<PLATFORM_FLOAT64>::digits10+1); // set the default precision to daeFloat digit
+#endif
     attr->memoryToString(element, buffer);
     string str = buffer.str();
 
@@ -461,6 +466,9 @@ void daeLIBXMLPlugin::writeAttribute( daeMetaAttribute* attr, daeElement* elemen
 void daeLIBXMLPlugin::writeValue(daeElement* element) {
     if (daeMetaAttribute* attr = element->getMeta()->getValueAttribute()) {
         ostringstream buffer;
+#ifdef COLLADA_DOM_DAEFLOAT_IS64
+        buffer << std::setprecision(std::numeric_limits<PLATFORM_FLOAT64>::digits10+1); // set the default precision to daeFloat digit
+#endif
         attr->memoryToString(element, buffer);
         string s = buffer.str();
         if (!s.empty()) {

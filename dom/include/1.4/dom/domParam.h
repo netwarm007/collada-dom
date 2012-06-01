@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domParam_h__
-#define __domParam_h__
+#ifndef __dom141Param_h__
+#define __dom141Param_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The param element declares parametric information regarding its parent
@@ -138,4 +140,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

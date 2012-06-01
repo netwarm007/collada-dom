@@ -1,18 +1,20 @@
-#ifndef __domProfile_cg_h__
-#define __domProfile_cg_h__
+#ifndef __dom150Profile_cg_h__
+#define __dom150Profile_cg_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domFx_code.h>
-#include <dom/domFx_include.h>
-#include <dom/domCg_newparam.h>
-#include <dom/domFx_annotate.h>
-#include <dom/domCg_pass.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domFx_code.h>
+#include <1.5/dom/domFx_include.h>
+#include <1.5/dom/domCg_newparam.h>
+#include <1.5/dom/domFx_annotate.h>
+#include <1.5/dom/domCg_pass.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Opens a block of CG platform-specific data types and technique declarations.
@@ -314,4 +316,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

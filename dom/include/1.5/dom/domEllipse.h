@@ -1,12 +1,14 @@
-#ifndef __domEllipse_h__
-#define __domEllipse_h__
+#ifndef __dom150Ellipse_h__
+#define __dom150Ellipse_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Describes an ellipse in 3D space. An ellipse is defined     by its major
@@ -149,4 +151,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

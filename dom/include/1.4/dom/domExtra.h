@@ -6,16 +6,18 @@
 *
 */ 
 
-#ifndef __domExtra_h__
-#define __domExtra_h__
+#ifndef __dom141Extra_h__
+#define __dom141Extra_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domTechnique.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domTechnique.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The extra element declares additional information regarding its parent
@@ -135,4 +137,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

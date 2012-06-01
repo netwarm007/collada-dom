@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domSphere_h__
-#define __domSphere_h__
+#ifndef __dom141Sphere_h__
+#define __dom141Sphere_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A centered sphere primitive.
@@ -144,4 +146,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

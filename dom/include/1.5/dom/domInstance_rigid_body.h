@@ -1,25 +1,27 @@
-#ifndef __domInstance_rigid_body_h__
-#define __domInstance_rigid_body_h__
+#ifndef __dom150Instance_rigid_body_h__
+#define __dom150Instance_rigid_body_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domTargetable_float.h>
-#include <dom/domTranslate.h>
-#include <dom/domRotate.h>
-#include <dom/domTargetable_float3.h>
-#include <dom/domInstance_physics_material.h>
-#include <dom/domPhysics_material.h>
-#include <dom/domInstance_geometry.h>
-#include <dom/domPlane.h>
-#include <dom/domBox.h>
-#include <dom/domSphere.h>
-#include <dom/domCylinder.h>
-#include <dom/domCapsule.h>
-#include <dom/domExtra.h>
-#include <dom/domTechnique.h>
+#include <1.5/dom/domTargetable_float.h>
+#include <1.5/dom/domTranslate.h>
+#include <1.5/dom/domRotate.h>
+#include <1.5/dom/domTargetable_float3.h>
+#include <1.5/dom/domInstance_physics_material.h>
+#include <1.5/dom/domPhysics_material.h>
+#include <1.5/dom/domInstance_geometry.h>
+#include <1.5/dom/domPlane.h>
+#include <1.5/dom/domBox.h>
+#include <1.5/dom/domSphere.h>
+#include <1.5/dom/domCylinder.h>
+#include <1.5/dom/domCapsule.h>
+#include <1.5/dom/domExtra.h>
+#include <1.5/dom/domTechnique.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * This element allows instancing a rigid_body within an instance_physics_model.
@@ -859,4 +861,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

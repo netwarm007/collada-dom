@@ -1,35 +1,37 @@
-#ifndef __domCOLLADA_h__
-#define __domCOLLADA_h__
+#ifndef __dom150COLLADA_h__
+#define __dom150COLLADA_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domLibrary_animations.h>
-#include <dom/domLibrary_animation_clips.h>
-#include <dom/domLibrary_cameras.h>
-#include <dom/domLibrary_controllers.h>
-#include <dom/domLibrary_geometries.h>
-#include <dom/domLibrary_effects.h>
-#include <dom/domLibrary_force_fields.h>
-#include <dom/domLibrary_images.h>
-#include <dom/domLibrary_lights.h>
-#include <dom/domLibrary_materials.h>
-#include <dom/domLibrary_nodes.h>
-#include <dom/domLibrary_physics_materials.h>
-#include <dom/domLibrary_physics_models.h>
-#include <dom/domLibrary_physics_scenes.h>
-#include <dom/domLibrary_visual_scenes.h>
-#include <dom/domLibrary_joints.h>
-#include <dom/domLibrary_kinematics_models.h>
-#include <dom/domLibrary_articulated_systems.h>
-#include <dom/domLibrary_kinematics_scenes.h>
-#include <dom/domLibrary_formulas.h>
-#include <dom/domInstance_with_extra.h>
-#include <dom/domInstance_kinematics_scene.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domLibrary_animations.h>
+#include <1.5/dom/domLibrary_animation_clips.h>
+#include <1.5/dom/domLibrary_cameras.h>
+#include <1.5/dom/domLibrary_controllers.h>
+#include <1.5/dom/domLibrary_geometries.h>
+#include <1.5/dom/domLibrary_effects.h>
+#include <1.5/dom/domLibrary_force_fields.h>
+#include <1.5/dom/domLibrary_images.h>
+#include <1.5/dom/domLibrary_lights.h>
+#include <1.5/dom/domLibrary_materials.h>
+#include <1.5/dom/domLibrary_nodes.h>
+#include <1.5/dom/domLibrary_physics_materials.h>
+#include <1.5/dom/domLibrary_physics_models.h>
+#include <1.5/dom/domLibrary_physics_scenes.h>
+#include <1.5/dom/domLibrary_visual_scenes.h>
+#include <1.5/dom/domLibrary_joints.h>
+#include <1.5/dom/domLibrary_kinematics_models.h>
+#include <1.5/dom/domLibrary_articulated_systems.h>
+#include <1.5/dom/domLibrary_kinematics_scenes.h>
+#include <1.5/dom/domLibrary_formulas.h>
+#include <1.5/dom/domInstance_with_extra.h>
+#include <1.5/dom/domInstance_kinematics_scene.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The COLLADA element declares the root of the document that comprises some
@@ -583,4 +585,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

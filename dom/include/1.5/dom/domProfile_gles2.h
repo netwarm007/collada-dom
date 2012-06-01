@@ -1,18 +1,20 @@
-#ifndef __domProfile_gles2_h__
-#define __domProfile_gles2_h__
+#ifndef __dom150Profile_gles2_h__
+#define __dom150Profile_gles2_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domFx_include.h>
-#include <dom/domFx_code.h>
-#include <dom/domGles2_newparam.h>
-#include <dom/domFx_annotate.h>
-#include <dom/domGles2_pass.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domFx_include.h>
+#include <1.5/dom/domFx_code.h>
+#include <1.5/dom/domGles2_newparam.h>
+#include <1.5/dom/domFx_annotate.h>
+#include <1.5/dom/domGles2_pass.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * FX for OpenGL ES 2.0
@@ -371,4 +373,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

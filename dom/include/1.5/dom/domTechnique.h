@@ -1,11 +1,13 @@
-#ifndef __domTechnique_h__
-#define __domTechnique_h__
+#ifndef __dom150Technique_h__
+#define __dom150Technique_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The technique element declares the information used to process some portion
@@ -93,4 +95,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

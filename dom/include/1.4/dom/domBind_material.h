@@ -6,18 +6,20 @@
 *
 */ 
 
-#ifndef __domBind_material_h__
-#define __domBind_material_h__
+#ifndef __dom141Bind_material_h__
+#define __dom141Bind_material_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domParam.h>
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
-#include <dom/domInstance_material.h>
+#include <1.4/dom/domParam.h>
+#include <1.4/dom/domTechnique.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domInstance_material.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Bind a specific material to a piece of geometry, binding varying and uniform
@@ -182,4 +184,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

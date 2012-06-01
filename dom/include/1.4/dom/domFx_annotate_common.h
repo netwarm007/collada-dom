@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domFx_annotate_common_h__
-#define __domFx_annotate_common_h__
+#ifndef __dom141Fx_annotate_common_h__
+#define __dom141Fx_annotate_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_annotate_type_common.h>
+#include <1.4/dom/domFx_annotate_type_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domFx_annotate_common_complexType 
 {
@@ -107,4 +109,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

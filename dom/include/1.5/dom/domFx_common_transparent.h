@@ -1,12 +1,14 @@
-#ifndef __domFx_common_transparent_h__
-#define __domFx_common_transparent_h__
+#ifndef __dom150Fx_common_transparent_h__
+#define __dom150Fx_common_transparent_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFx_common_color_or_texture.h>
+#include <1.5/dom/domFx_common_color_or_texture.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domFx_common_transparent : public domFx_common_color_or_texture
 {
@@ -59,4 +61,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

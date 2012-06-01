@@ -6,17 +6,19 @@
 *
 */ 
 
-#ifndef __domLibrary_animation_clips_h__
-#define __domLibrary_animation_clips_h__
+#ifndef __dom141Library_animation_clips_h__
+#define __dom141Library_animation_clips_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domAnimation_clip.h>
-#include <dom/domExtra.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domAnimation_clip.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The library_animation_clips element declares a module of animation_clip
@@ -134,4 +136,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

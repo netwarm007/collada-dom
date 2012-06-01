@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domVisual_scene.h>
+#include <1.4/dom/domVisual_scene.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domVisual_scene::create(DAE& dae)
 {
@@ -238,3 +240,4 @@ domVisual_scene::domEvaluate_scene::domRender::domLayer::registerElement(DAE& da
 	return meta;
 }
 
+} // ColladaDOM141

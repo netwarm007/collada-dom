@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domBool_array_h__
-#define __domBool_array_h__
+#ifndef __dom141Bool_array_h__
+#define __dom141Bool_array_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The bool_array element declares the storage for a homogenous array of boolean
@@ -129,4 +131,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

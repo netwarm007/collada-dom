@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domGlsl_setarray_type.h>
+#include <1.4/dom/domGlsl_setarray_type.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domGlsl_setarray_type::create(DAE& dae)
 {
@@ -76,3 +78,4 @@ domGlsl_setarray_type::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

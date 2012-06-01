@@ -1,21 +1,23 @@
-#ifndef __domGles2_pass_h__
-#define __domGles2_pass_h__
+#ifndef __dom150Gles2_pass_h__
+#define __dom150Gles2_pass_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFx_annotate.h>
-#include <dom/domGles2_pipeline_settings.h>
-#include <dom/domGles2_program.h>
-#include <dom/domFx_colortarget.h>
-#include <dom/domFx_depthtarget.h>
-#include <dom/domFx_stenciltarget.h>
-#include <dom/domFx_clearcolor.h>
-#include <dom/domFx_clearstencil.h>
-#include <dom/domFx_cleardepth.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domFx_annotate.h>
+#include <1.5/dom/domGles2_pipeline_settings.h>
+#include <1.5/dom/domGles2_program.h>
+#include <1.5/dom/domFx_colortarget.h>
+#include <1.5/dom/domFx_depthtarget.h>
+#include <1.5/dom/domFx_stenciltarget.h>
+#include <1.5/dom/domFx_clearcolor.h>
+#include <1.5/dom/domFx_clearstencil.h>
+#include <1.5/dom/domFx_cleardepth.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Set up pipeline state and shaders for rendering
@@ -400,4 +402,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

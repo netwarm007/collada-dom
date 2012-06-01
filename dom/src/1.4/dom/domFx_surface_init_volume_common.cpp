@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFx_surface_init_volume_common.h>
+#include <1.4/dom/domFx_surface_init_volume_common.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domFx_surface_init_volume_common::create(DAE& dae)
 {
@@ -142,3 +144,4 @@ domFx_surface_init_volume_common::domPrimary::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

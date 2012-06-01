@@ -1,14 +1,16 @@
-#ifndef __domForce_field_h__
-#define __domForce_field_h__
+#ifndef __dom150Force_field_h__
+#define __dom150Force_field_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domTechnique.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * A general container for force-fields. At the moment, it only has techniques
@@ -126,4 +128,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

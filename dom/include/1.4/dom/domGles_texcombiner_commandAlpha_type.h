@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domGles_texcombiner_commandAlpha_type_h__
-#define __domGles_texcombiner_commandAlpha_type_h__
+#ifndef __dom141Gles_texcombiner_commandAlpha_type_h__
+#define __dom141Gles_texcombiner_commandAlpha_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domGles_texcombiner_argumentAlpha_type.h>
+#include <1.4/dom/domGles_texcombiner_argumentAlpha_type.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domGles_texcombiner_commandAlpha_type_complexType 
 {
@@ -135,4 +137,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

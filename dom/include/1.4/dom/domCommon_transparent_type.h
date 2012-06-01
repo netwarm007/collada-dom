@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domCommon_transparent_type_h__
-#define __domCommon_transparent_type_h__
+#ifndef __dom141Common_transparent_type_h__
+#define __dom141Common_transparent_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domCommon_color_or_texture_type.h>
+#include <1.4/dom/domCommon_color_or_texture_type.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domCommon_transparent_type_complexType  : public domCommon_color_or_texture_type_complexType
 {
@@ -100,4 +102,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

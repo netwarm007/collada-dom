@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domGl_samplerDEPTH_h__
-#define __domGl_samplerDEPTH_h__
+#ifndef __dom141Gl_samplerDEPTH_h__
+#define __dom141Gl_samplerDEPTH_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_samplerDEPTH_common.h>
+#include <1.4/dom/domFx_samplerDEPTH_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A depth texture sampler for the GLSL profile.
@@ -75,4 +77,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

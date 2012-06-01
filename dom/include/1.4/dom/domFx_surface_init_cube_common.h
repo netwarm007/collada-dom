@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domFx_surface_init_cube_common_h__
-#define __domFx_surface_init_cube_common_h__
+#ifndef __dom141Fx_surface_init_cube_common_h__
+#define __dom141Fx_surface_init_cube_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 class domFx_surface_init_cube_common_complexType 
 {
@@ -406,4 +408,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

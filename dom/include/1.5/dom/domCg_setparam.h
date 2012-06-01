@@ -1,12 +1,14 @@
-#ifndef __domCg_setparam_h__
-#define __domCg_setparam_h__
+#ifndef __dom150Cg_setparam_h__
+#define __dom150Cg_setparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCg_param.h>
+#include <1.5/dom/domCg_param.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Assigns a new value to a previously defined parameter.
@@ -69,4 +71,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

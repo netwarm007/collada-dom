@@ -1,13 +1,15 @@
-#ifndef __domGles_sampler_h__
-#define __domGles_sampler_h__
+#ifndef __dom150Gles_sampler_h__
+#define __dom150Gles_sampler_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGles_sampler_states.h>
-#include <dom/domInstance_image.h>
+#include <1.5/dom/domGles_sampler_states.h>
+#include <1.5/dom/domInstance_image.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Sampling state that can be sharable between samplers because there is often
@@ -127,4 +129,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

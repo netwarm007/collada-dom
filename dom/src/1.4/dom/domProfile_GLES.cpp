@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domProfile_GLES.h>
+#include <1.4/dom/domProfile_GLES.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domProfile_GLES::create(DAE& dae)
 {
@@ -645,3 +647,4 @@ domProfile_GLES::domTechnique::domPass::domDraw::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

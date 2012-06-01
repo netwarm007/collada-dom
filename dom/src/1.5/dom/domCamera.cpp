@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCamera.h>
+#include <1.5/dom/domCamera.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domCamera::create(DAE& dae)
 {
@@ -437,3 +439,4 @@ domCamera::domImager::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

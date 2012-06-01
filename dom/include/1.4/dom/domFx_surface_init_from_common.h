@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domFx_surface_init_from_common_h__
-#define __domFx_surface_init_from_common_h__
+#ifndef __dom141Fx_surface_init_from_common_h__
+#define __dom141Fx_surface_init_from_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * This element is an IDREF which specifies the image to use to initialize
@@ -170,4 +172,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,14 +1,16 @@
-#ifndef __domLink_h__
-#define __domLink_h__
+#ifndef __dom150Link_h__
+#define __dom150Link_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domRotate.h>
-#include <dom/domTranslate.h>
-#include <dom/domLink.h>
+#include <1.5/dom/domRotate.h>
+#include <1.5/dom/domTranslate.h>
+#include <1.5/dom/domLink.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domLink : public daeElement
 {
@@ -471,4 +473,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

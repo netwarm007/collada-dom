@@ -1,15 +1,17 @@
-#ifndef __domMotion_axis_info_h__
-#define __domMotion_axis_info_h__
+#ifndef __dom150Motion_axis_info_h__
+#define __dom150Motion_axis_info_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domKinematics_bind.h>
-#include <dom/domKinematics_newparam.h>
-#include <dom/domKinematics_setparam.h>
-#include <dom/domCommon_float_or_param.h>
+#include <1.5/dom/domKinematics_bind.h>
+#include <1.5/dom/domKinematics_newparam.h>
+#include <1.5/dom/domKinematics_setparam.h>
+#include <1.5/dom/domCommon_float_or_param.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domMotion_axis_info : public daeElement
 {
@@ -144,4 +146,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domLibrary_animation_clips.h>
+#include <1.4/dom/domLibrary_animation_clips.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domLibrary_animation_clips::create(DAE& dae)
 {
@@ -88,3 +90,4 @@ domLibrary_animation_clips::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

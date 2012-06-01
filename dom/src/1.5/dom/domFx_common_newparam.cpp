@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFx_common_newparam.h>
+#include <1.5/dom/domFx_common_newparam.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domFx_common_newparam::create(DAE& dae)
 {
@@ -278,3 +280,4 @@ domFx_common_newparam::domFloat4::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

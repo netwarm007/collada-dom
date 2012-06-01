@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domGles_sampler_states.h>
+#include <1.5/dom/domGles_sampler_states.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domGles_sampler_states::create(DAE& dae)
 {
@@ -341,3 +343,4 @@ domGles_sampler_states::domMip_bias::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

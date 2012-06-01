@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domSkew.h>
+#include <1.4/dom/domSkew.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domSkew::create(DAE& dae)
 {
@@ -62,3 +64,4 @@ domSkew::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

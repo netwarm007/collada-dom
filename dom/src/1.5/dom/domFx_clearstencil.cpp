@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFx_clearstencil.h>
+#include <1.5/dom/domFx_clearstencil.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domFx_clearstencil::create(DAE& dae)
 {
@@ -56,3 +58,4 @@ domFx_clearstencil::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

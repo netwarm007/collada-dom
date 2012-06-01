@@ -6,18 +6,20 @@
 *
 */ 
 
-#ifndef __domVisual_scene_h__
-#define __domVisual_scene_h__
+#ifndef __dom141Visual_scene_h__
+#define __dom141Visual_scene_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domNode.h>
-#include <dom/domExtra.h>
-#include <dom/domInstance_effect.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domNode.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domInstance_effect.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The visual_scene element declares the base of the visual_scene hierarchy
@@ -399,4 +401,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

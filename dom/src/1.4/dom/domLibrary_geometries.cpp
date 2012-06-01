@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domLibrary_geometries.h>
+#include <1.4/dom/domLibrary_geometries.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domLibrary_geometries::create(DAE& dae)
 {
@@ -88,3 +90,4 @@ domLibrary_geometries::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

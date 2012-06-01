@@ -6,16 +6,18 @@
 *
 */ 
 
-#ifndef __domInstance_controller_h__
-#define __domInstance_controller_h__
+#ifndef __dom141Instance_controller_h__
+#define __dom141Instance_controller_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domBind_material.h>
-#include <dom/domExtra.h>
+#include <1.4/dom/domBind_material.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The instance_controller element declares the instantiation of a COLLADA
@@ -236,4 +238,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

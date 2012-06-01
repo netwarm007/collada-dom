@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domGles_texcombiner_command_alpha.h>
+#include <1.5/dom/domGles_texcombiner_command_alpha.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domGles_texcombiner_command_alpha::create(DAE& dae)
 {
@@ -69,3 +71,4 @@ domGles_texcombiner_command_alpha::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

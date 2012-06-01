@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domInstance_geometry.h>
+#include <1.5/dom/domInstance_geometry.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domInstance_geometry::create(DAE& dae)
 {
@@ -87,3 +89,4 @@ domInstance_geometry::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

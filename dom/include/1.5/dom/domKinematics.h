@@ -1,15 +1,17 @@
-#ifndef __domKinematics_h__
-#define __domKinematics_h__
+#ifndef __dom150Kinematics_h__
+#define __dom150Kinematics_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domInstance_kinematics_model.h>
-#include <dom/domKinematics_technique.h>
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domInstance_kinematics_model.h>
+#include <1.5/dom/domKinematics_technique.h>
+#include <1.5/dom/domTechnique.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domKinematics : public daeElement
 {
@@ -89,4 +91,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

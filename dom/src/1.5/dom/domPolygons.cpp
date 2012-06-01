@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domPolygons.h>
+#include <1.5/dom/domPolygons.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domPolygons::create(DAE& dae)
 {
@@ -189,3 +191,4 @@ domPolygons::domPh::domH::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

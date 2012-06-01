@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domLibrary_physics_materials.h>
+#include <1.4/dom/domLibrary_physics_materials.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domLibrary_physics_materials::create(DAE& dae)
 {
@@ -88,3 +90,4 @@ domLibrary_physics_materials::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

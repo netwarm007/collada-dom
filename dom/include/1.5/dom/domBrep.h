@@ -1,23 +1,25 @@
-#ifndef __domBrep_h__
-#define __domBrep_h__
+#ifndef __dom150Brep_h__
+#define __dom150Brep_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCurves.h>
-#include <dom/domSurface_curves.h>
-#include <dom/domSurfaces.h>
-#include <dom/domSource.h>
-#include <dom/domVertices.h>
-#include <dom/domEdges.h>
-#include <dom/domWires.h>
-#include <dom/domFaces.h>
-#include <dom/domPcurves.h>
-#include <dom/domShells.h>
-#include <dom/domSolids.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domCurves.h>
+#include <1.5/dom/domSurface_curves.h>
+#include <1.5/dom/domSurfaces.h>
+#include <1.5/dom/domSource.h>
+#include <1.5/dom/domVertices.h>
+#include <1.5/dom/domEdges.h>
+#include <1.5/dom/domWires.h>
+#include <1.5/dom/domFaces.h>
+#include <1.5/dom/domPcurves.h>
+#include <1.5/dom/domShells.h>
+#include <1.5/dom/domSolids.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The brep element contains the complete topological     description of a
@@ -184,4 +186,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

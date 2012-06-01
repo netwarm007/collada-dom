@@ -6,16 +6,18 @@
 *
 */ 
 
-#ifndef __domInstance_effect_h__
-#define __domInstance_effect_h__
+#ifndef __dom141Instance_effect_h__
+#define __dom141Instance_effect_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
-#include <dom/domFx_basic_type_common.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domFx_basic_type_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The instance_effect element declares the instantiation of a COLLADA effect
@@ -324,4 +326,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

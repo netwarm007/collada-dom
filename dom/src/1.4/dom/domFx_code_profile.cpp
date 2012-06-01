@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFx_code_profile.h>
+#include <1.4/dom/domFx_code_profile.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domFx_code_profile::create(DAE& dae)
 {
@@ -63,3 +65,4 @@ domFx_code_profile::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

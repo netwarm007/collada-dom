@@ -6,19 +6,21 @@
 *
 */ 
 
-#ifndef __domCg_surface_type_h__
-#define __domCg_surface_type_h__
+#ifndef __dom141Cg_surface_type_h__
+#define __dom141Cg_surface_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_surface_common.h>
-#include <dom/domFx_annotate_common.h>
-#include <dom/domFx_code_profile.h>
-#include <dom/domFx_include_common.h>
-#include <dom/domCg_setparam_simple.h>
+#include <1.4/dom/domFx_surface_common.h>
+#include <1.4/dom/domFx_annotate_common.h>
+#include <1.4/dom/domFx_code_profile.h>
+#include <1.4/dom/domFx_include_common.h>
+#include <1.4/dom/domCg_setparam_simple.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Declares a resource that can be used both as the source for texture samples
@@ -309,4 +311,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

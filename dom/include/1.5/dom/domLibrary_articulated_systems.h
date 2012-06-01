@@ -1,14 +1,16 @@
-#ifndef __domLibrary_articulated_systems_h__
-#define __domLibrary_articulated_systems_h__
+#ifndef __dom150Library_articulated_systems_h__
+#define __dom150Library_articulated_systems_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domArticulated_system.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domArticulated_system.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domLibrary_articulated_systems : public daeElement
 {
@@ -104,4 +106,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

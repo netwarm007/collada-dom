@@ -1,15 +1,18 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/ 
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
 
-#ifndef __DOM_CONSTANTS_H__
-#define __DOM_CONSTANTS_H__
+#ifndef __DOM141_CONSTANTS_H__
+#define __DOM141_CONSTANTS_H__
 
 #include <dae/daeDomTypes.h>
+
+class DAE;
+namespace ColladaDOM141 {
 
 extern DLLSPEC daeString COLLADA_VERSION;
 extern DLLSPEC daeString COLLADA_NAMESPACE;
@@ -1083,6 +1086,8 @@ extern DLLSPEC daeString COLLADA_ELEMENT_DAMPING;
 extern DLLSPEC daeString COLLADA_ELEMENT_TARGET_VALUE;
 extern DLLSPEC daeString COLLADA_ELEMENT_RIGID_BODY;
 extern DLLSPEC daeString COLLADA_ELEMENT_RIGID_CONSTRAINT;
+
+} // ColladaDOM141
 
 #endif //__DOM_CONSTANTS_H__
 

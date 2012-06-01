@@ -6,18 +6,20 @@
 *
 */ 
 
-#ifndef __domCg_setparam_h__
-#define __domCg_setparam_h__
+#ifndef __dom141Cg_setparam_h__
+#define __dom141Cg_setparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domCg_param_type.h>
-#include <dom/domCg_setuser_type.h>
-#include <dom/domCg_setarray_type.h>
-#include <dom/domCg_connect_param.h>
+#include <1.4/dom/domCg_param_type.h>
+#include <1.4/dom/domCg_setuser_type.h>
+#include <1.4/dom/domCg_setarray_type.h>
+#include <1.4/dom/domCg_connect_param.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Assigns a new value to a previously defined parameter.
@@ -179,4 +181,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

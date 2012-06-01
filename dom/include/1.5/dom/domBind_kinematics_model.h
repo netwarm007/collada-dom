@@ -1,12 +1,14 @@
-#ifndef __domBind_kinematics_model_h__
-#define __domBind_kinematics_model_h__
+#ifndef __dom150Bind_kinematics_model_h__
+#define __dom150Bind_kinematics_model_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCommon_sidref_or_param.h>
+#include <1.5/dom/domCommon_sidref_or_param.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domBind_kinematics_model : public domCommon_sidref_or_param
 {
@@ -59,4 +61,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

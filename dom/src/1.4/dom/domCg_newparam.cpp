@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCg_newparam.h>
+#include <1.4/dom/domCg_newparam.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domCg_newparam::create(DAE& dae)
 {
@@ -178,3 +180,4 @@ domCg_newparam::domModifier::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

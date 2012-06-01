@@ -1,12 +1,14 @@
-#ifndef __domParabola_h__
-#define __domParabola_h__
+#ifndef __dom150Parabola_h__
+#define __dom150Parabola_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Describes a parabola in 3D space. A parabola is defined     by its focal
@@ -147,4 +149,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

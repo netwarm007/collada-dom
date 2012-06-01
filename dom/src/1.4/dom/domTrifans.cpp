@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domTrifans.h>
+#include <1.4/dom/domTrifans.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domTrifans::create(DAE& dae)
 {
@@ -100,3 +102,4 @@ domTrifans::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

@@ -1,14 +1,16 @@
-#ifndef __domFaces_h__
-#define __domFaces_h__
+#ifndef __dom150Faces_h__
+#define __dom150Faces_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domInput_local_offset.h>
-#include <dom/domP.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domInput_local_offset.h>
+#include <1.5/dom/domP.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * This element defines all the faces used in the brep     structure.
@@ -193,4 +195,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domCommon_float_or_param_type_h__
-#define __domCommon_float_or_param_type_h__
+#ifndef __dom141Common_float_or_param_type_h__
+#define __dom141Common_float_or_param_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 class domCommon_float_or_param_type_complexType 
 {
@@ -34,9 +36,9 @@ public:
 
 	protected:  // Value
 		/**
-		 * The ::domFloat value of the text data of this element. 
+		 * The ColladaDOM141::domFloat value of the text data of this element. 
 		 */
-		::domFloat _value;
+		ColladaDOM141::domFloat _value;
 
 	public:	//Accessors and Mutators
 		/**
@@ -52,14 +54,14 @@ public:
 
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat of the value.
+		 * @return a ColladaDOM141::domFloat of the value.
 		 */
-		::domFloat getValue() const { return _value; }
+		ColladaDOM141::domFloat getValue() const { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( ::domFloat val ) { _value = val; }
+		void setValue( ColladaDOM141::domFloat val ) { _value = val; }
 
 	protected:
 		/**
@@ -239,4 +241,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

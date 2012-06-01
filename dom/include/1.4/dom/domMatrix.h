@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domMatrix_h__
-#define __domMatrix_h__
+#ifndef __dom141Matrix_h__
+#define __dom141Matrix_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Matrix transformations embody mathematical changes to points within a coordinate
@@ -97,4 +99,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

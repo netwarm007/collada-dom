@@ -1,12 +1,14 @@
-#ifndef __domBox_h__
-#define __domBox_h__
+#ifndef __dom150Box_h__
+#define __dom150Box_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * An axis-aligned, centered box primitive.
@@ -136,4 +138,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

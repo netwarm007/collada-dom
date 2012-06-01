@@ -1,13 +1,15 @@
-#ifndef __domGlsl_newparam_h__
-#define __domGlsl_newparam_h__
+#ifndef __dom150Glsl_newparam_h__
+#define __dom150Glsl_newparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGlsl_value.h>
-#include <dom/domFx_annotate.h>
+#include <1.5/dom/domGlsl_value.h>
+#include <1.5/dom/domFx_annotate.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domGlsl_newparam : public daeElement
 {
@@ -208,4 +210,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

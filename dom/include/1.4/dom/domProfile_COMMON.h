@@ -6,22 +6,24 @@
 *
 */ 
 
-#ifndef __domProfile_COMMON_h__
-#define __domProfile_COMMON_h__
+#ifndef __dom141Profile_COMMON_h__
+#define __dom141Profile_COMMON_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_profile_abstract.h>
-#include <dom/domAsset.h>
-#include <dom/domImage.h>
-#include <dom/domExtra.h>
-#include <dom/domCommon_newparam_type.h>
-#include <dom/domCommon_color_or_texture_type.h>
-#include <dom/domCommon_float_or_param_type.h>
-#include <dom/domCommon_transparent_type.h>
+#include <1.4/dom/domFx_profile_abstract.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domImage.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domCommon_newparam_type.h>
+#include <1.4/dom/domCommon_color_or_texture_type.h>
+#include <1.4/dom/domCommon_float_or_param_type.h>
+#include <1.4/dom/domCommon_transparent_type.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Opens a block of COMMON platform-specific data types and technique declarations.
@@ -720,4 +722,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

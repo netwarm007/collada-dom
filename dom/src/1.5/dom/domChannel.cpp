@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domChannel.h>
+#include <1.5/dom/domChannel.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domChannel::create(DAE& dae)
 {
@@ -59,3 +61,4 @@ domChannel::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

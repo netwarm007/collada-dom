@@ -1,13 +1,15 @@
-#ifndef __domGles_newparam_h__
-#define __domGles_newparam_h__
+#ifndef __dom150Gles_newparam_h__
+#define __dom150Gles_newparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGles_param.h>
-#include <dom/domFx_annotate.h>
+#include <1.5/dom/domGles_param.h>
+#include <1.5/dom/domFx_annotate.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Create a new, named param object in the GLES Runtime, assign it a type,
@@ -235,4 +237,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

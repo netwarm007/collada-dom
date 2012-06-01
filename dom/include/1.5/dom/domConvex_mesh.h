@@ -1,21 +1,23 @@
-#ifndef __domConvex_mesh_h__
-#define __domConvex_mesh_h__
+#ifndef __dom150Convex_mesh_h__
+#define __dom150Convex_mesh_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domSource.h>
-#include <dom/domVertices.h>
-#include <dom/domLines.h>
-#include <dom/domLinestrips.h>
-#include <dom/domPolygons.h>
-#include <dom/domPolylist.h>
-#include <dom/domTriangles.h>
-#include <dom/domTrifans.h>
-#include <dom/domTristrips.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domSource.h>
+#include <1.5/dom/domVertices.h>
+#include <1.5/dom/domLines.h>
+#include <1.5/dom/domLinestrips.h>
+#include <1.5/dom/domPolygons.h>
+#include <1.5/dom/domPolylist.h>
+#include <1.5/dom/domTriangles.h>
+#include <1.5/dom/domTrifans.h>
+#include <1.5/dom/domTristrips.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The definition of the convex_mesh element is identical to the mesh element
@@ -223,4 +225,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

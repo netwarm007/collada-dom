@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domGl_sampler1D_h__
-#define __domGl_sampler1D_h__
+#ifndef __dom141Gl_sampler1D_h__
+#define __dom141Gl_sampler1D_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_sampler1D_common.h>
+#include <1.4/dom/domFx_sampler1D_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A one-dimensional texture sampler for the GLSL profile.
@@ -75,4 +77,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

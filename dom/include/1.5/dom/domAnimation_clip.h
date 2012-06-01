@@ -1,15 +1,17 @@
-#ifndef __domAnimation_clip_h__
-#define __domAnimation_clip_h__
+#ifndef __dom150Animation_clip_h__
+#define __dom150Animation_clip_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domInstance_with_extra.h>
-#include <dom/domInstance_formula.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domInstance_with_extra.h>
+#include <1.5/dom/domInstance_formula.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The animation_clip element defines a section of the animation curves to
@@ -175,4 +177,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

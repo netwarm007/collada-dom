@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCircle.h>
+#include <1.5/dom/domCircle.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domCircle::create(DAE& dae)
 {
@@ -88,3 +90,4 @@ domCircle::domRadius::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

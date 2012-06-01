@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domTapered_capsule.h>
+#include <1.4/dom/domTapered_capsule.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domTapered_capsule::create(DAE& dae)
 {
@@ -180,3 +182,4 @@ domTapered_capsule::domRadius2::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

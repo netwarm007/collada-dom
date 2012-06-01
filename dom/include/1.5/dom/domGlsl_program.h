@@ -1,13 +1,15 @@
-#ifndef __domGlsl_program_h__
-#define __domGlsl_program_h__
+#ifndef __dom150Glsl_program_h__
+#define __dom150Glsl_program_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGlsl_shader.h>
-#include <dom/domGlsl_value.h>
+#include <1.5/dom/domGlsl_shader.h>
+#include <1.5/dom/domGlsl_value.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * a program is one or more shaders linked together
@@ -427,4 +429,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -1,15 +1,17 @@
-#ifndef __domInstance_physics_model_h__
-#define __domInstance_physics_model_h__
+#ifndef __dom150Instance_physics_model_h__
+#define __dom150Instance_physics_model_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domInstance_force_field.h>
-#include <dom/domInstance_rigid_body.h>
-#include <dom/domInstance_rigid_constraint.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domInstance_force_field.h>
+#include <1.5/dom/domInstance_rigid_body.h>
+#include <1.5/dom/domInstance_rigid_constraint.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * This element allows instancing physics model within another physics model,
@@ -202,4 +204,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

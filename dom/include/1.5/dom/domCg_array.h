@@ -1,12 +1,14 @@
-#ifndef __domCg_array_h__
-#define __domCg_array_h__
+#ifndef __dom150Cg_array_h__
+#define __dom150Cg_array_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCg_param.h>
+#include <1.5/dom/domCg_param.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Creates a parameter of a one-dimensional array type.
@@ -98,4 +100,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

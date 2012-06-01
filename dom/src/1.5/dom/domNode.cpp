@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domNode.h>
+#include <1.5/dom/domNode.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domNode::create(DAE& dae)
 {
@@ -190,3 +192,4 @@ domNode::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

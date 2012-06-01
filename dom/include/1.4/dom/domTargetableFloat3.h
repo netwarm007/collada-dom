@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domTargetableFloat3_h__
-#define __domTargetableFloat3_h__
+#ifndef __dom141TargetableFloat3_h__
+#define __dom141TargetableFloat3_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The TargetableFloat3 type is used to represent elements which contain a
@@ -129,4 +131,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,11 +1,13 @@
-#ifndef __domLimits_sub_h__
-#define __domLimits_sub_h__
+#ifndef __dom150Limits_sub_h__
+#define __dom150Limits_sub_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 class domLimits_sub : public daeElement
 {
@@ -74,4 +76,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

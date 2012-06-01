@@ -6,20 +6,22 @@
 *
 */ 
 
-#ifndef __domEffect_h__
-#define __domEffect_h__
+#ifndef __dom141Effect_h__
+#define __dom141Effect_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domImage.h>
-#include <dom/domFx_profile_abstract.h>
-#include <dom/domExtra.h>
-#include <dom/domFx_annotate_common.h>
-#include <dom/domFx_newparam_common.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domImage.h>
+#include <1.4/dom/domFx_profile_abstract.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domFx_annotate_common.h>
+#include <1.4/dom/domFx_newparam_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A self contained description of a shader effect.
@@ -201,4 +203,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

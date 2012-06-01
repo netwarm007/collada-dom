@@ -1,11 +1,13 @@
-#ifndef __domInput_global_h__
-#define __domInput_global_h__
+#ifndef __dom150Input_global_h__
+#define __dom150Input_global_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The input_global_type element is used to represent inputs that can reference
@@ -92,4 +94,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

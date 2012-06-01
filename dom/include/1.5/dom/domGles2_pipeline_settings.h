@@ -1,11 +1,13 @@
-#ifndef __domGles2_pipeline_settings_h__
-#define __domGles2_pipeline_settings_h__
+#ifndef __dom150Gles2_pipeline_settings_h__
+#define __dom150Gles2_pipeline_settings_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * All of the pass state settings for OpenGL ES 2 API
@@ -4112,4 +4114,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

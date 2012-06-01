@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCg_setuser_type.h>
+#include <1.4/dom/domCg_setuser_type.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domCg_setuser_type::create(DAE& dae)
 {
@@ -112,3 +114,4 @@ domCg_setuser_type::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

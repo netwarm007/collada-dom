@@ -1,13 +1,15 @@
-#ifndef __domCg_newparam_h__
-#define __domCg_newparam_h__
+#ifndef __dom150Cg_newparam_h__
+#define __dom150Cg_newparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCg_param.h>
-#include <dom/domFx_annotate.h>
+#include <1.5/dom/domCg_param.h>
+#include <1.5/dom/domFx_annotate.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Create a new, named param object in the CG Runtime, assign it a type, an
@@ -230,4 +232,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

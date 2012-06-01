@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domGles_pipeline_settings_h__
-#define __domGles_pipeline_settings_h__
+#ifndef __dom141Gles_pipeline_settings_h__
+#define __dom141Gles_pipeline_settings_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domGles_texture_pipeline.h>
+#include <1.4/dom/domGles_texture_pipeline.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A group that contains the renderstates available for the GLES profile.
@@ -6307,4 +6309,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

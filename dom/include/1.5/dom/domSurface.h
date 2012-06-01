@@ -1,20 +1,22 @@
-#ifndef __domSurface_h__
-#define __domSurface_h__
+#ifndef __dom150Surface_h__
+#define __dom150Surface_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domPlane.h>
-#include <dom/domSphere.h>
-#include <dom/domTorus.h>
-#include <dom/domSwept_surface.h>
-#include <dom/domNurbs_surface.h>
-#include <dom/domCone.h>
-#include <dom/domExtra.h>
-#include <dom/domOrient.h>
-#include <dom/domOrigin.h>
+#include <1.5/dom/domPlane.h>
+#include <1.5/dom/domSphere.h>
+#include <1.5/dom/domTorus.h>
+#include <1.5/dom/domSwept_surface.h>
+#include <1.5/dom/domNurbs_surface.h>
+#include <1.5/dom/domCone.h>
+#include <1.5/dom/domExtra.h>
+#include <1.5/dom/domOrient.h>
+#include <1.5/dom/domOrigin.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * A surfaceType defines the attributes of a surface     element. With rotate
@@ -296,4 +298,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

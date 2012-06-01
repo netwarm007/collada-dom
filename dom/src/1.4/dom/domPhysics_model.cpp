@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domPhysics_model.h>
+#include <1.4/dom/domPhysics_model.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domPhysics_model::create(DAE& dae)
 {
@@ -100,3 +102,4 @@ domPhysics_model::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

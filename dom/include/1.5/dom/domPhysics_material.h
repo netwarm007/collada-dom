@@ -1,15 +1,17 @@
-#ifndef __domPhysics_material_h__
-#define __domPhysics_material_h__
+#ifndef __dom150Physics_material_h__
+#define __dom150Physics_material_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domTargetable_float.h>
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domTargetable_float.h>
+#include <1.5/dom/domTechnique.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * This element defines the physical properties of an object. It contains
@@ -216,4 +218,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

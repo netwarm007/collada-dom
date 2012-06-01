@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domInstance_light_h__
-#define __domInstance_light_h__
+#ifndef __dom141Instance_light_h__
+#define __dom141Instance_light_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domInstanceWithExtra.h>
+#include <1.4/dom/domInstanceWithExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The instance_light element declares the instantiation of a COLLADA light
@@ -99,4 +101,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

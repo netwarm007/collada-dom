@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domTapered_cylinder.h>
+#include <1.4/dom/domTapered_cylinder.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domTapered_cylinder::create(DAE& dae)
 {
@@ -180,3 +182,4 @@ domTapered_cylinder::domRadius2::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

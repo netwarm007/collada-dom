@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domFx_include_common.h>
+#include <1.4/dom/domFx_include_common.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domFx_include_common::create(DAE& dae)
 {
@@ -66,3 +68,4 @@ domFx_include_common::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

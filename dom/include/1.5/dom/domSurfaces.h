@@ -1,13 +1,15 @@
-#ifndef __domSurfaces_h__
-#define __domSurfaces_h__
+#ifndef __dom150Surfaces_h__
+#define __dom150Surfaces_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domSurface.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domSurface.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domSurfaces : public daeElement
 {
@@ -70,4 +72,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

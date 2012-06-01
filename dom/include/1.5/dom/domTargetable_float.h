@@ -1,11 +1,13 @@
-#ifndef __domTargetable_float_h__
-#define __domTargetable_float_h__
+#ifndef __dom150Targetable_float_h__
+#define __dom150Targetable_float_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The targetable_float_type element is used to represent elements which contain
@@ -83,4 +85,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

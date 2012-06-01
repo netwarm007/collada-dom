@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domIDREF_array_h__
-#define __domIDREF_array_h__
+#ifndef __dom141IDREF_array_h__
+#define __dom141IDREF_array_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The IDREF_array element declares the storage for a homogenous array of
@@ -129,4 +131,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -6,18 +6,20 @@
 *
 */ 
 
-#ifndef __domFx_surface_init_common_h__
-#define __domFx_surface_init_common_h__
+#ifndef __dom141Fx_surface_init_common_h__
+#define __dom141Fx_surface_init_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_surface_init_cube_common.h>
-#include <dom/domFx_surface_init_volume_common.h>
-#include <dom/domFx_surface_init_planar_common.h>
-#include <dom/domFx_surface_init_from_common.h>
+#include <1.4/dom/domFx_surface_init_cube_common.h>
+#include <1.4/dom/domFx_surface_init_volume_common.h>
+#include <1.4/dom/domFx_surface_init_planar_common.h>
+#include <1.4/dom/domFx_surface_init_from_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The common set of initalization options for surfaces.  Choose which is
@@ -251,4 +253,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -6,17 +6,19 @@
 *
 */ 
 
-#ifndef __domGles_texture_pipeline_h__
-#define __domGles_texture_pipeline_h__
+#ifndef __dom141Gles_texture_pipeline_h__
+#define __dom141Gles_texture_pipeline_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
-#include <dom/domGles_texcombiner_command_type.h>
-#include <dom/domGles_texenv_command_type.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domGles_texcombiner_command_type.h>
+#include <1.4/dom/domGles_texenv_command_type.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Defines a set of texturing commands that will be converted into multitexturing
@@ -182,4 +184,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,12 +1,14 @@
-#ifndef __domFx_sampler_states_h__
-#define __domFx_sampler_states_h__
+#ifndef __dom150Fx_sampler_states_h__
+#define __dom150Fx_sampler_states_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domFx_sampler_states : public daeElement
 {
@@ -815,4 +817,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCg_sampler3D.h>
+#include <1.4/dom/domCg_sampler3D.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domCg_sampler3D::create(DAE& dae)
 {
@@ -120,3 +122,4 @@ domCg_sampler3D::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

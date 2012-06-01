@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domFx_samplerDEPTH_common_h__
-#define __domFx_samplerDEPTH_common_h__
+#ifndef __dom141Fx_samplerDEPTH_common_h__
+#define __dom141Fx_samplerDEPTH_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A texture sampler for depth maps.
@@ -411,4 +413,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

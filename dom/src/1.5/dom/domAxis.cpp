@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domAxis.h>
+#include <1.5/dom/domAxis.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domAxis::create(DAE& dae)
 {
@@ -65,3 +67,4 @@ domAxis::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

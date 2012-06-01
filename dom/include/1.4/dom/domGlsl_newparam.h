@@ -6,17 +6,19 @@
 *
 */ 
 
-#ifndef __domGlsl_newparam_h__
-#define __domGlsl_newparam_h__
+#ifndef __dom141Glsl_newparam_h__
+#define __dom141Glsl_newparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domGlsl_param_type.h>
-#include <dom/domFx_annotate_common.h>
-#include <dom/domGlsl_newarray_type.h>
+#include <1.4/dom/domGlsl_param_type.h>
+#include <1.4/dom/domFx_annotate_common.h>
+#include <1.4/dom/domGlsl_newarray_type.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domGlsl_newparam_complexType 
 {
@@ -281,4 +283,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

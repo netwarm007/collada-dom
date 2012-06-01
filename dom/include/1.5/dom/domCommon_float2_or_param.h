@@ -1,12 +1,14 @@
-#ifndef __domCommon_float2_or_param_h__
-#define __domCommon_float2_or_param_h__
+#ifndef __dom150Common_float2_or_param_h__
+#define __dom150Common_float2_or_param_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCommon_param.h>
+#include <1.5/dom/domCommon_param.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domCommon_float2_or_param : public daeElement
 {
@@ -31,20 +33,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat2 of the value.
+		 * @return a ColladaDOM150::domFloat2 of the value.
 		 */
-		::domFloat2& getValue() { return _value; }
+		ColladaDOM150::domFloat2& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat2& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat2& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat2 value of the text data of this element. 
+		 * The ColladaDOM150::domFloat2 value of the text data of this element. 
 		 */
-		::domFloat2 _value;
+		ColladaDOM150::domFloat2 _value;
 	protected:
 		/**
 		 * Constructor
@@ -144,4 +146,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

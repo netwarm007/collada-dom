@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domLookat_h__
-#define __domLookat_h__
+#ifndef __dom141Lookat_h__
+#define __dom141Lookat_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The lookat element contains a position and orientation transformation suitable
@@ -98,4 +100,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

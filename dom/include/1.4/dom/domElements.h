@@ -1,15 +1,18 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/ 
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
 
-#ifndef __DOM_ELEMENTS_H__
-#define __DOM_ELEMENTS_H__
+#ifndef __DOM141_ELEMENTS_H__
+#define __DOM141_ELEMENTS_H__
 
-#include <dom/domTypes.h>
+#include <1.4/dom/domTypes.h>
+
+class DAE;
+namespace ColladaDOM141 {
 
 class domInputGlobal;
 
@@ -861,6 +864,7 @@ class domPhysics_model;
 typedef daeSmartRef<domPhysics_model> domPhysics_modelRef;
 typedef daeTArray<domPhysics_modelRef> domPhysics_model_Array;
 
+} // ColladaDOM141
 
 #endif //__DOM_ELEMENTS_H__
 

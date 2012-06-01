@@ -1,15 +1,17 @@
-#ifndef __domFormula_h__
-#define __domFormula_h__
+#ifndef __dom150Formula_h__
+#define __dom150Formula_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFormula_newparam.h>
-#include <dom/domCommon_float_or_param.h>
-#include <dom/domFormula_technique.h>
-#include <dom/domTechnique.h>
+#include <1.5/dom/domFormula_newparam.h>
+#include <1.5/dom/domCommon_float_or_param.h>
+#include <1.5/dom/domFormula_technique.h>
+#include <1.5/dom/domTechnique.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domFormula : public daeElement
 {
@@ -123,4 +125,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -1,12 +1,14 @@
-#ifndef __domGles_texcombiner_command_alpha_h__
-#define __domGles_texcombiner_command_alpha_h__
+#ifndef __dom150Gles_texcombiner_command_alpha_h__
+#define __dom150Gles_texcombiner_command_alpha_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGles_texcombiner_argument_alpha.h>
+#include <1.5/dom/domGles_texcombiner_argument_alpha.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domGles_texcombiner_command_alpha : public daeElement
 {
@@ -83,4 +85,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

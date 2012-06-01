@@ -1,15 +1,17 @@
-#ifndef __domCamera_h__
-#define __domCamera_h__
+#ifndef __dom150Camera_h__
+#define __dom150Camera_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domTargetable_float.h>
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domTargetable_float.h>
+#include <1.5/dom/domTechnique.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The camera element declares a view into the scene hierarchy or scene graph.
@@ -642,4 +644,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

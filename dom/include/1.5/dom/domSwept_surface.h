@@ -1,13 +1,15 @@
-#ifndef __domSwept_surface_h__
-#define __domSwept_surface_h__
+#ifndef __dom150Swept_surface_h__
+#define __dom150Swept_surface_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCurve.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domCurve.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Describes a surface of linear extrusion ("extruded     surface"), e.g.
@@ -299,4 +301,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

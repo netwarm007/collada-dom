@@ -6,19 +6,21 @@
 *
 */ 
 
-#ifndef __domGeometry_h__
-#define __domGeometry_h__
+#ifndef __dom141Geometry_h__
+#define __dom141Geometry_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domConvex_mesh.h>
-#include <dom/domMesh.h>
-#include <dom/domSpline.h>
-#include <dom/domExtra.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domConvex_mesh.h>
+#include <1.4/dom/domMesh.h>
+#include <1.4/dom/domSpline.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Geometry describes the visual shape and appearance of an object in the
@@ -172,4 +174,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

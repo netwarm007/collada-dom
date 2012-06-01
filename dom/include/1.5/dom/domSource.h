@@ -1,21 +1,23 @@
-#ifndef __domSource_h__
-#define __domSource_h__
+#ifndef __dom150Source_h__
+#define __dom150Source_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domToken_array.h>
-#include <dom/domIdref_array.h>
-#include <dom/domName_array.h>
-#include <dom/domBool_array.h>
-#include <dom/domFloat_array.h>
-#include <dom/domInt_array.h>
-#include <dom/domSidref_array.h>
-#include <dom/domAccessor.h>
-#include <dom/domTechnique.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domToken_array.h>
+#include <1.5/dom/domIdref_array.h>
+#include <1.5/dom/domName_array.h>
+#include <1.5/dom/domBool_array.h>
+#include <1.5/dom/domFloat_array.h>
+#include <1.5/dom/domInt_array.h>
+#include <1.5/dom/domSidref_array.h>
+#include <1.5/dom/domAccessor.h>
+#include <1.5/dom/domTechnique.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The source element declares a data repository that provides values according
@@ -273,4 +275,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

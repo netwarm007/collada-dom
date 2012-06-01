@@ -6,17 +6,19 @@
 *
 */ 
 
-#ifndef __domFx_surface_common_h__
-#define __domFx_surface_common_h__
+#ifndef __dom141Fx_surface_common_h__
+#define __dom141Fx_surface_common_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_surface_init_common.h>
-#include <dom/domExtra.h>
-#include <dom/domFx_surface_format_hint_common.h>
+#include <1.4/dom/domFx_surface_init_common.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domFx_surface_format_hint_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The fx_surface_common type is used to declare a resource that can be used
@@ -560,4 +562,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

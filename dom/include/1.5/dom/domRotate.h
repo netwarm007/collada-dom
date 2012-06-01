@@ -1,14 +1,16 @@
-#ifndef __domRotate_h__
-#define __domRotate_h__
+#ifndef __dom150Rotate_h__
+#define __dom150Rotate_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domTargetable_float4.h>
+#include <1.5/dom/domTargetable_float4.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
-#include <dom/domTargetable_float4.h>
+#include <1.5/dom/domTargetable_float4.h>
 /**
  * The rotate element contains an angle and a mathematical vector that represents
  * the axis of rotation.
@@ -51,4 +53,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

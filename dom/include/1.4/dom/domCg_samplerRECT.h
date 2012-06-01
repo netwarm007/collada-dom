@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domCg_samplerRECT_h__
-#define __domCg_samplerRECT_h__
+#ifndef __dom141Cg_samplerRECT_h__
+#define __dom141Cg_samplerRECT_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_samplerRECT_common.h>
+#include <1.4/dom/domFx_samplerRECT_common.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domCg_samplerRECT_complexType  : public domFx_samplerRECT_common_complexType
 {
@@ -72,4 +74,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

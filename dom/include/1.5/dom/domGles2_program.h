@@ -1,14 +1,16 @@
-#ifndef __domGles2_program_h__
-#define __domGles2_program_h__
+#ifndef __dom150Gles2_program_h__
+#define __dom150Gles2_program_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGles2_shader.h>
-#include <dom/domFx_target.h>
-#include <dom/domGles2_value.h>
+#include <1.5/dom/domGles2_shader.h>
+#include <1.5/dom/domFx_target.h>
+#include <1.5/dom/domGles2_value.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * a program is one or more shaders linked together
@@ -442,4 +444,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

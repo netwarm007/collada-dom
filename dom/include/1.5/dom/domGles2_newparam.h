@@ -1,13 +1,15 @@
-#ifndef __domGles2_newparam_h__
-#define __domGles2_newparam_h__
+#ifndef __dom150Gles2_newparam_h__
+#define __dom150Gles2_newparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domGles2_value.h>
-#include <dom/domFx_annotate.h>
+#include <1.5/dom/domGles2_value.h>
+#include <1.5/dom/domFx_annotate.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Declare a new parameter in the profile to be bound to the pipeline state
@@ -219,4 +221,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

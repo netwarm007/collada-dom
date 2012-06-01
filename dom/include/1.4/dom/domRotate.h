@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domRotate_h__
-#define __domRotate_h__
+#ifndef __dom141Rotate_h__
+#define __dom141Rotate_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The rotate element contains an angle and a mathematical vector that represents
@@ -96,4 +98,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

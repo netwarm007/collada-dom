@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domInputGlobal_h__
-#define __domInputGlobal_h__
+#ifndef __dom141InputGlobal_h__
+#define __dom141InputGlobal_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The InputGlobal type is used to represent inputs that can reference external
@@ -154,4 +156,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

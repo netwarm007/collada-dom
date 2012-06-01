@@ -1,14 +1,16 @@
-#ifndef __domFx_samplerCUBE_h__
-#define __domFx_samplerCUBE_h__
+#ifndef __dom150Fx_samplerCUBE_h__
+#define __dom150Fx_samplerCUBE_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFx_sampler.h>
+#include <1.5/dom/domFx_sampler.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
-#include <dom/domFx_sampler.h>
+#include <1.5/dom/domFx_sampler.h>
 /**
  * A texture sampler for cube maps.
  */
@@ -48,4 +50,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

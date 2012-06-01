@@ -1,22 +1,24 @@
-#ifndef __domProfile_gles_h__
-#define __domProfile_gles_h__
+#ifndef __dom150Profile_gles_h__
+#define __dom150Profile_gles_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domGles_newparam.h>
-#include <dom/domFx_annotate.h>
-#include <dom/domGles_pipeline_settings.h>
-#include <dom/domFx_colortarget.h>
-#include <dom/domFx_depthtarget.h>
-#include <dom/domFx_stenciltarget.h>
-#include <dom/domFx_clearcolor.h>
-#include <dom/domFx_cleardepth.h>
-#include <dom/domFx_clearstencil.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domGles_newparam.h>
+#include <1.5/dom/domFx_annotate.h>
+#include <1.5/dom/domGles_pipeline_settings.h>
+#include <1.5/dom/domFx_colortarget.h>
+#include <1.5/dom/domFx_depthtarget.h>
+#include <1.5/dom/domFx_stenciltarget.h>
+#include <1.5/dom/domFx_clearcolor.h>
+#include <1.5/dom/domFx_cleardepth.h>
+#include <1.5/dom/domFx_clearstencil.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Opens a block of GLES platform-specific data types and technique declarations.
@@ -595,4 +597,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

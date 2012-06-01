@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domCommon_color_or_texture_type_h__
-#define __domCommon_color_or_texture_type_h__
+#ifndef __dom141Common_color_or_texture_type_h__
+#define __dom141Common_color_or_texture_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domCommon_color_or_texture_type_complexType 
 {
@@ -325,4 +327,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -6,20 +6,22 @@
 *
 */ 
 
-#ifndef __domAnimation_h__
-#define __domAnimation_h__
+#ifndef __dom141Animation_h__
+#define __dom141Animation_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domSource.h>
-#include <dom/domSampler.h>
-#include <dom/domChannel.h>
-#include <dom/domAnimation.h>
-#include <dom/domExtra.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domSource.h>
+#include <1.4/dom/domSampler.h>
+#include <1.4/dom/domChannel.h>
+#include <1.4/dom/domAnimation.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The animation element categorizes the declaration of animation information.
@@ -209,4 +211,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,14 +1,16 @@
-#ifndef __domLibrary_physics_scenes_h__
-#define __domLibrary_physics_scenes_h__
+#ifndef __dom150Library_physics_scenes_h__
+#define __dom150Library_physics_scenes_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domPhysics_scene.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domPhysics_scene.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The library_physics_scenes element declares a module of physics_scene elements.
@@ -124,4 +126,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

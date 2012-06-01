@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domTapered_cylinder_h__
-#define __domTapered_cylinder_h__
+#ifndef __dom141Tapered_cylinder_h__
+#define __dom141Tapered_cylinder_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A tapered cylinder primitive that is centered on and aligned with the local
@@ -303,4 +305,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

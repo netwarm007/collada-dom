@@ -6,21 +6,23 @@
 *
 */ 
 
-#ifndef __domPhysics_scene_h__
-#define __domPhysics_scene_h__
+#ifndef __dom141Physics_scene_h__
+#define __dom141Physics_scene_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domInstance_force_field.h>
-#include <dom/domInstance_physics_model.h>
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
-#include <dom/domTargetableFloat3.h>
-#include <dom/domTargetableFloat.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domInstance_force_field.h>
+#include <1.4/dom/domInstance_physics_model.h>
+#include <1.4/dom/domTechnique.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domTargetableFloat3.h>
+#include <1.4/dom/domTargetableFloat.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 class domPhysics_scene : public daeElement
 {
@@ -240,4 +242,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

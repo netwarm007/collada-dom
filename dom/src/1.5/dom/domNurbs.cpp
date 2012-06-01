@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domNurbs.h>
+#include <1.5/dom/domNurbs.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domNurbs::create(DAE& dae)
 {
@@ -127,3 +129,4 @@ domNurbs::domControl_vertices::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

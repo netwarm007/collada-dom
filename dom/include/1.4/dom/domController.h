@@ -6,18 +6,20 @@
 *
 */ 
 
-#ifndef __domController_h__
-#define __domController_h__
+#ifndef __dom141Controller_h__
+#define __dom141Controller_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domSkin.h>
-#include <dom/domMorph.h>
-#include <dom/domExtra.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domSkin.h>
+#include <1.4/dom/domMorph.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The controller element categorizes the declaration of generic control information.
@@ -166,4 +168,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,13 +1,15 @@
-#ifndef __domExtra_h__
-#define __domExtra_h__
+#ifndef __dom150Extra_h__
+#define __dom150Extra_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domTechnique.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domTechnique.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The extra element declares additional information regarding its parent
@@ -127,4 +129,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

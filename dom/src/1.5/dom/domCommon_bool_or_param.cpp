@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCommon_bool_or_param.h>
+#include <1.5/dom/domCommon_bool_or_param.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domCommon_bool_or_param::create(DAE& dae)
 {
@@ -92,3 +94,4 @@ domCommon_bool_or_param::domBool::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

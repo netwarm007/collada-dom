@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domTranslate_h__
-#define __domTranslate_h__
+#ifndef __dom141Translate_h__
+#define __dom141Translate_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domTargetableFloat3.h>
+#include <1.4/dom/domTargetableFloat3.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The translate element contains a mathematical vector that represents the
@@ -67,4 +69,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

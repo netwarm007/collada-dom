@@ -1,12 +1,14 @@
-#ifndef __domCg_user_h__
-#define __domCg_user_h__
+#ifndef __dom150Cg_user_h__
+#define __dom150Cg_user_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domCg_setparam.h>
+#include <1.5/dom/domCg_setparam.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Creates an instance of a structured class.
@@ -93,4 +95,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

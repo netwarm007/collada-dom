@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domPcurves.h>
+#include <1.5/dom/domPcurves.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domPcurves::create(DAE& dae)
 {
@@ -136,3 +138,4 @@ domPcurves::domVcount::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

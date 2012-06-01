@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domConvex_mesh.h>
+#include <1.4/dom/domConvex_mesh.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domConvex_mesh::create(DAE& dae)
 {
@@ -129,3 +131,4 @@ domConvex_mesh::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

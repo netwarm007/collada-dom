@@ -1,11 +1,13 @@
-#ifndef __domFx_annotate_h__
-#define __domFx_annotate_h__
+#ifndef __dom150Fx_annotate_h__
+#define __dom150Fx_annotate_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * A group that specifies the allowable types for an annotation.
@@ -91,20 +93,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domBool2 of the value.
+		 * @return a ColladaDOM150::domBool2 of the value.
 		 */
-		::domBool2& getValue() { return _value; }
+		ColladaDOM150::domBool2& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domBool2& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domBool2& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domBool2 value of the text data of this element. 
+		 * The ColladaDOM150::domBool2 value of the text data of this element. 
 		 */
-		::domBool2 _value;
+		ColladaDOM150::domBool2 _value;
 	protected:
 		/**
 		 * Constructor
@@ -149,20 +151,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domBool3 of the value.
+		 * @return a ColladaDOM150::domBool3 of the value.
 		 */
-		::domBool3& getValue() { return _value; }
+		ColladaDOM150::domBool3& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domBool3& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domBool3& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domBool3 value of the text data of this element. 
+		 * The ColladaDOM150::domBool3 value of the text data of this element. 
 		 */
-		::domBool3 _value;
+		ColladaDOM150::domBool3 _value;
 	protected:
 		/**
 		 * Constructor
@@ -207,20 +209,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domBool4 of the value.
+		 * @return a ColladaDOM150::domBool4 of the value.
 		 */
-		::domBool4& getValue() { return _value; }
+		ColladaDOM150::domBool4& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domBool4& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domBool4& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domBool4 value of the text data of this element. 
+		 * The ColladaDOM150::domBool4 value of the text data of this element. 
 		 */
-		::domBool4 _value;
+		ColladaDOM150::domBool4 _value;
 	protected:
 		/**
 		 * Constructor
@@ -265,20 +267,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domInt of the value.
+		 * @return a ColladaDOM150::domInt of the value.
 		 */
-		::domInt& getValue() { return _value; }
+		ColladaDOM150::domInt& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domInt& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domInt& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domInt value of the text data of this element. 
+		 * The ColladaDOM150::domInt value of the text data of this element. 
 		 */
-		::domInt _value;
+		ColladaDOM150::domInt _value;
 	protected:
 		/**
 		 * Constructor
@@ -323,20 +325,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domInt2 of the value.
+		 * @return a ColladaDOM150::domInt2 of the value.
 		 */
-		::domInt2& getValue() { return _value; }
+		ColladaDOM150::domInt2& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domInt2& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domInt2& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domInt2 value of the text data of this element. 
+		 * The ColladaDOM150::domInt2 value of the text data of this element. 
 		 */
-		::domInt2 _value;
+		ColladaDOM150::domInt2 _value;
 	protected:
 		/**
 		 * Constructor
@@ -381,20 +383,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domInt3 of the value.
+		 * @return a ColladaDOM150::domInt3 of the value.
 		 */
-		::domInt3& getValue() { return _value; }
+		ColladaDOM150::domInt3& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domInt3& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domInt3& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domInt3 value of the text data of this element. 
+		 * The ColladaDOM150::domInt3 value of the text data of this element. 
 		 */
-		::domInt3 _value;
+		ColladaDOM150::domInt3 _value;
 	protected:
 		/**
 		 * Constructor
@@ -439,20 +441,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domInt4 of the value.
+		 * @return a ColladaDOM150::domInt4 of the value.
 		 */
-		::domInt4& getValue() { return _value; }
+		ColladaDOM150::domInt4& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domInt4& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domInt4& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domInt4 value of the text data of this element. 
+		 * The ColladaDOM150::domInt4 value of the text data of this element. 
 		 */
-		::domInt4 _value;
+		ColladaDOM150::domInt4 _value;
 	protected:
 		/**
 		 * Constructor
@@ -497,20 +499,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat of the value.
+		 * @return a ColladaDOM150::domFloat of the value.
 		 */
-		::domFloat& getValue() { return _value; }
+		ColladaDOM150::domFloat& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat value of the text data of this element. 
+		 * The ColladaDOM150::domFloat value of the text data of this element. 
 		 */
-		::domFloat _value;
+		ColladaDOM150::domFloat _value;
 	protected:
 		/**
 		 * Constructor
@@ -555,20 +557,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat2 of the value.
+		 * @return a ColladaDOM150::domFloat2 of the value.
 		 */
-		::domFloat2& getValue() { return _value; }
+		ColladaDOM150::domFloat2& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat2& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat2& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat2 value of the text data of this element. 
+		 * The ColladaDOM150::domFloat2 value of the text data of this element. 
 		 */
-		::domFloat2 _value;
+		ColladaDOM150::domFloat2 _value;
 	protected:
 		/**
 		 * Constructor
@@ -613,20 +615,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat3 of the value.
+		 * @return a ColladaDOM150::domFloat3 of the value.
 		 */
-		::domFloat3& getValue() { return _value; }
+		ColladaDOM150::domFloat3& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat3& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat3& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat3 value of the text data of this element. 
+		 * The ColladaDOM150::domFloat3 value of the text data of this element. 
 		 */
-		::domFloat3 _value;
+		ColladaDOM150::domFloat3 _value;
 	protected:
 		/**
 		 * Constructor
@@ -671,20 +673,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat4 of the value.
+		 * @return a ColladaDOM150::domFloat4 of the value.
 		 */
-		::domFloat4& getValue() { return _value; }
+		ColladaDOM150::domFloat4& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat4& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat4& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat4 value of the text data of this element. 
+		 * The ColladaDOM150::domFloat4 value of the text data of this element. 
 		 */
-		::domFloat4 _value;
+		ColladaDOM150::domFloat4 _value;
 	protected:
 		/**
 		 * Constructor
@@ -729,20 +731,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat2x2 of the value.
+		 * @return a ColladaDOM150::domFloat2x2 of the value.
 		 */
-		::domFloat2x2& getValue() { return _value; }
+		ColladaDOM150::domFloat2x2& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat2x2& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat2x2& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat2x2 value of the text data of this element. 
+		 * The ColladaDOM150::domFloat2x2 value of the text data of this element. 
 		 */
-		::domFloat2x2 _value;
+		ColladaDOM150::domFloat2x2 _value;
 	protected:
 		/**
 		 * Constructor
@@ -787,20 +789,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat3x3 of the value.
+		 * @return a ColladaDOM150::domFloat3x3 of the value.
 		 */
-		::domFloat3x3& getValue() { return _value; }
+		ColladaDOM150::domFloat3x3& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat3x3& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat3x3& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat3x3 value of the text data of this element. 
+		 * The ColladaDOM150::domFloat3x3 value of the text data of this element. 
 		 */
-		::domFloat3x3 _value;
+		ColladaDOM150::domFloat3x3 _value;
 	protected:
 		/**
 		 * Constructor
@@ -845,20 +847,20 @@ public:
 	public:	//Accessors and Mutators
 		/**
 		 * Gets the value of this element.
-		 * @return a ::domFloat4x4 of the value.
+		 * @return a ColladaDOM150::domFloat4x4 of the value.
 		 */
-		::domFloat4x4& getValue() { return _value; }
+		ColladaDOM150::domFloat4x4& getValue() { return _value; }
 		/**
 		 * Sets the _value of this element.
 		 * @param val The new value for this element.
 		 */
-		void setValue( const ::domFloat4x4& val ) { _value = val; }
+		void setValue( const ColladaDOM150::domFloat4x4& val ) { _value = val; }
 
 	protected:  // Value
 		/**
-		 * The ::domFloat4x4 value of the text data of this element. 
+		 * The ColladaDOM150::domFloat4x4 value of the text data of this element. 
 		 */
-		::domFloat4x4 _value;
+		ColladaDOM150::domFloat4x4 _value;
 	protected:
 		/**
 		 * Constructor
@@ -1100,4 +1102,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

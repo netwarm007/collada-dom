@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domIDREF_array.h>
+#include <1.4/dom/domIDREF_array.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domIDREF_array::create(DAE& dae)
 {
@@ -85,3 +87,4 @@ domIDREF_array::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

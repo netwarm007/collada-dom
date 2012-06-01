@@ -1,12 +1,14 @@
-#ifndef __domSampler_h__
-#define __domSampler_h__
+#ifndef __dom150Sampler_h__
+#define __dom150Sampler_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domInput_local.h>
+#include <1.5/dom/domInput_local.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The sampler element declares an N-dimensional function used for animation.
@@ -117,4 +119,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

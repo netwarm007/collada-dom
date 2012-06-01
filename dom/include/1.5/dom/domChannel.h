@@ -1,11 +1,13 @@
-#ifndef __domChannel_h__
-#define __domChannel_h__
+#ifndef __dom150Channel_h__
+#define __dom150Channel_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The channel element declares an output channel of an animation.
@@ -83,4 +85,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

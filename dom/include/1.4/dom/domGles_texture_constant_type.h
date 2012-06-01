@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domGles_texture_constant_type_h__
-#define __domGles_texture_constant_type_h__
+#ifndef __dom141Gles_texture_constant_type_h__
+#define __dom141Gles_texture_constant_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 class domGles_texture_constant_type_complexType 
 {
@@ -132,4 +134,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

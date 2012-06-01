@@ -1,13 +1,15 @@
-#ifndef __domAxis_constraint_h__
-#define __domAxis_constraint_h__
+#ifndef __dom150Axis_constraint_h__
+#define __dom150Axis_constraint_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAxis.h>
-#include <dom/domJoint_limits.h>
+#include <1.5/dom/domAxis.h>
+#include <1.5/dom/domJoint_limits.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domAxis_constraint : public daeElement
 {
@@ -73,4 +75,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

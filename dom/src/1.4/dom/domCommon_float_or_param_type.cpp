@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domCommon_float_or_param_type.h>
+#include <1.4/dom/domCommon_float_or_param_type.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domCommon_float_or_param_type::create(DAE& dae)
 {
@@ -150,3 +152,4 @@ domCommon_float_or_param_type::domParam::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

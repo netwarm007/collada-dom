@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domAccessor_h__
-#define __domAccessor_h__
+#ifndef __dom141Accessor_h__
+#define __dom141Accessor_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domParam.h>
+#include <1.4/dom/domParam.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The accessor element declares an access pattern to one of the array elements:
@@ -151,4 +153,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

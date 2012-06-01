@@ -6,18 +6,20 @@
 *
 */ 
 
-#ifndef __domCg_newparam_h__
-#define __domCg_newparam_h__
+#ifndef __dom141Cg_newparam_h__
+#define __dom141Cg_newparam_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domCg_param_type.h>
-#include <dom/domFx_annotate_common.h>
-#include <dom/domCg_setuser_type.h>
-#include <dom/domCg_newarray_type.h>
+#include <1.4/dom/domCg_param_type.h>
+#include <1.4/dom/domFx_annotate_common.h>
+#include <1.4/dom/domCg_setuser_type.h>
+#include <1.4/dom/domCg_newarray_type.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Create a new, named param object in the CG Runtime, assign it a type, an
@@ -310,4 +312,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

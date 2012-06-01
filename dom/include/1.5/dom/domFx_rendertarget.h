@@ -1,12 +1,14 @@
-#ifndef __domFx_rendertarget_h__
-#define __domFx_rendertarget_h__
+#ifndef __dom150Fx_rendertarget_h__
+#define __dom150Fx_rendertarget_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domInstance_image.h>
+#include <1.5/dom/domInstance_image.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domFx_rendertarget : public daeElement
 {
@@ -202,4 +204,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

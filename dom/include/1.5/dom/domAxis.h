@@ -1,11 +1,13 @@
-#ifndef __domAxis_h__
-#define __domAxis_h__
+#ifndef __dom150Axis_h__
+#define __dom150Axis_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 class domAxis : public daeElement
 {
@@ -86,4 +88,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

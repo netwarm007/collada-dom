@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domScale_h__
-#define __domScale_h__
+#ifndef __dom141Scale_h__
+#define __dom141Scale_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domTargetableFloat3.h>
+#include <1.4/dom/domTargetableFloat3.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The scale element contains a mathematical vector that represents the relative
@@ -67,4 +69,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

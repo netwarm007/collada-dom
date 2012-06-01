@@ -6,31 +6,33 @@
 *
 */ 
 
-#ifndef __domProfile_GLSL_h__
-#define __domProfile_GLSL_h__
+#ifndef __dom141Profile_GLSL_h__
+#define __dom141Profile_GLSL_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_profile_abstract.h>
-#include <dom/domAsset.h>
-#include <dom/domImage.h>
-#include <dom/domExtra.h>
-#include <dom/domFx_code_profile.h>
-#include <dom/domFx_include_common.h>
-#include <dom/domGlsl_newparam.h>
-#include <dom/domFx_annotate_common.h>
-#include <dom/domGlsl_setparam.h>
-#include <dom/domGl_pipeline_settings.h>
-#include <dom/domFx_colortarget_common.h>
-#include <dom/domFx_depthtarget_common.h>
-#include <dom/domFx_stenciltarget_common.h>
-#include <dom/domFx_clearcolor_common.h>
-#include <dom/domFx_cleardepth_common.h>
-#include <dom/domFx_clearstencil_common.h>
-#include <dom/domGlsl_param_type.h>
+#include <1.4/dom/domFx_profile_abstract.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domImage.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domFx_code_profile.h>
+#include <1.4/dom/domFx_include_common.h>
+#include <1.4/dom/domGlsl_newparam.h>
+#include <1.4/dom/domFx_annotate_common.h>
+#include <1.4/dom/domGlsl_setparam.h>
+#include <1.4/dom/domGl_pipeline_settings.h>
+#include <1.4/dom/domFx_colortarget_common.h>
+#include <1.4/dom/domFx_depthtarget_common.h>
+#include <1.4/dom/domFx_stenciltarget_common.h>
+#include <1.4/dom/domFx_clearcolor_common.h>
+#include <1.4/dom/domFx_cleardepth_common.h>
+#include <1.4/dom/domFx_clearstencil_common.h>
+#include <1.4/dom/domGlsl_param_type.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Opens a block of GLSL platform-specific data types and technique declarations.
@@ -1144,4 +1146,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

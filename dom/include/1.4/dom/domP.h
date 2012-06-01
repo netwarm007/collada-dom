@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domP_h__
-#define __domP_h__
+#ifndef __dom141P_h__
+#define __dom141P_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The p element represents primitive data for the primitive types (lines,
@@ -80,4 +82,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

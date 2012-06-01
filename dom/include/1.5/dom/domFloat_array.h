@@ -1,11 +1,13 @@
-#ifndef __domFloat_array_h__
-#define __domFloat_array_h__
+#ifndef __dom150Float_array_h__
+#define __dom150Float_array_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The float_array element declares the storage for a homogenous array of
@@ -150,4 +152,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

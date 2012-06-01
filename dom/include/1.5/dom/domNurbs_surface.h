@@ -1,14 +1,16 @@
-#ifndef __domNurbs_surface_h__
-#define __domNurbs_surface_h__
+#ifndef __dom150Nurbs_surface_h__
+#define __dom150Nurbs_surface_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domSource.h>
-#include <dom/domInput_local.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domSource.h>
+#include <1.5/dom/domInput_local.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domNurbs_surface : public daeElement
 {
@@ -208,4 +210,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

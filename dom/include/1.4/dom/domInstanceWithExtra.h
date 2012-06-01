@@ -6,15 +6,17 @@
 *
 */ 
 
-#ifndef __domInstanceWithExtra_h__
-#define __domInstanceWithExtra_h__
+#ifndef __dom141InstanceWithExtra_h__
+#define __dom141InstanceWithExtra_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domExtra.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * The InstanceWithExtra type is used for all generic instance elements. A
@@ -200,4 +202,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

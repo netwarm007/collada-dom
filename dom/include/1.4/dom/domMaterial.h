@@ -6,17 +6,19 @@
 *
 */ 
 
-#ifndef __domMaterial_h__
-#define __domMaterial_h__
+#ifndef __dom141Material_h__
+#define __dom141Material_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domInstance_effect.h>
-#include <dom/domExtra.h>
+#include <1.4/dom/domAsset.h>
+#include <1.4/dom/domInstance_effect.h>
+#include <1.4/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Materials describe the visual appearance of a geometric object.
@@ -127,4 +129,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

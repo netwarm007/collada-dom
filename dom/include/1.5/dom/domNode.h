@@ -1,25 +1,27 @@
-#ifndef __domNode_h__
-#define __domNode_h__
+#ifndef __dom150Node_h__
+#define __dom150Node_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domLookat.h>
-#include <dom/domMatrix.h>
-#include <dom/domRotate.h>
-#include <dom/domScale.h>
-#include <dom/domSkew.h>
-#include <dom/domTranslate.h>
-#include <dom/domInstance_camera.h>
-#include <dom/domInstance_controller.h>
-#include <dom/domInstance_geometry.h>
-#include <dom/domInstance_light.h>
-#include <dom/domInstance_node.h>
-#include <dom/domNode.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domLookat.h>
+#include <1.5/dom/domMatrix.h>
+#include <1.5/dom/domRotate.h>
+#include <1.5/dom/domScale.h>
+#include <1.5/dom/domSkew.h>
+#include <1.5/dom/domTranslate.h>
+#include <1.5/dom/domInstance_camera.h>
+#include <1.5/dom/domInstance_controller.h>
+#include <1.5/dom/domInstance_geometry.h>
+#include <1.5/dom/domInstance_light.h>
+#include <1.5/dom/domInstance_node.h>
+#include <1.5/dom/domNode.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Nodes embody the hierarchical relationship of elements in the scene.
@@ -368,4 +370,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -1,12 +1,14 @@
-#ifndef __domFx_stenciltarget_h__
-#define __domFx_stenciltarget_h__
+#ifndef __dom150Fx_stenciltarget_h__
+#define __dom150Fx_stenciltarget_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFx_rendertarget.h>
+#include <1.5/dom/domFx_rendertarget.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domFx_stenciltarget : public domFx_rendertarget
 {
@@ -44,4 +46,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

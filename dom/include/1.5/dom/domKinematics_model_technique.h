@@ -1,17 +1,19 @@
-#ifndef __domKinematics_model_technique_h__
-#define __domKinematics_model_technique_h__
+#ifndef __dom150Kinematics_model_technique_h__
+#define __dom150Kinematics_model_technique_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domKinematics_newparam.h>
-#include <dom/domInstance_joint.h>
-#include <dom/domJoint.h>
-#include <dom/domLink.h>
-#include <dom/domFormula.h>
-#include <dom/domInstance_formula.h>
+#include <1.5/dom/domKinematics_newparam.h>
+#include <1.5/dom/domInstance_joint.h>
+#include <1.5/dom/domJoint.h>
+#include <1.5/dom/domLink.h>
+#include <1.5/dom/domFormula.h>
+#include <1.5/dom/domInstance_formula.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 class domKinematics_model_technique : public daeElement
 {
@@ -143,4 +145,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

@@ -6,21 +6,23 @@
 *
 */ 
 
-#ifndef __domCg_param_type_h__
-#define __domCg_param_type_h__
+#ifndef __dom141Cg_param_type_h__
+#define __dom141Cg_param_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domCg_surface_type.h>
-#include <dom/domCg_sampler1D.h>
-#include <dom/domCg_sampler2D.h>
-#include <dom/domCg_sampler3D.h>
-#include <dom/domCg_samplerRECT.h>
-#include <dom/domCg_samplerCUBE.h>
-#include <dom/domCg_samplerDEPTH.h>
+#include <1.4/dom/domCg_surface_type.h>
+#include <1.4/dom/domCg_sampler1D.h>
+#include <1.4/dom/domCg_sampler2D.h>
+#include <1.4/dom/domCg_sampler3D.h>
+#include <1.4/dom/domCg_samplerRECT.h>
+#include <1.4/dom/domCg_samplerCUBE.h>
+#include <1.4/dom/domCg_samplerDEPTH.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A group that specifies the allowable types for CG profile parameters.
@@ -7456,4 +7458,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domProfile_gles.h>
+#include <1.5/dom/domProfile_gles.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domProfile_gles::create(DAE& dae)
 {
@@ -388,3 +390,4 @@ domProfile_gles::domTechnique::domPass::domEvaluate::domDraw::registerElement(DA
 	return meta;
 }
 
+} // ColladaDOM150

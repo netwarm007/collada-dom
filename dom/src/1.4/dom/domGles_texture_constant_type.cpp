@@ -8,7 +8,7 @@
 
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domGles_texture_constant_type.h>
+#include <1.4/dom/domGles_texture_constant_type.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -16,6 +16,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM141 {
 daeElementRef
 domGles_texture_constant_type::create(DAE& dae)
 {
@@ -66,3 +68,4 @@ domGles_texture_constant_type::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM141

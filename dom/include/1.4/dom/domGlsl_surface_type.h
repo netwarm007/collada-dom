@@ -6,19 +6,21 @@
 *
 */ 
 
-#ifndef __domGlsl_surface_type_h__
-#define __domGlsl_surface_type_h__
+#ifndef __dom141Glsl_surface_type_h__
+#define __dom141Glsl_surface_type_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domFx_surface_common.h>
-#include <dom/domFx_annotate_common.h>
-#include <dom/domFx_code_profile.h>
-#include <dom/domFx_include_common.h>
-#include <dom/domGlsl_setparam_simple.h>
+#include <1.4/dom/domFx_surface_common.h>
+#include <1.4/dom/domFx_annotate_common.h>
+#include <1.4/dom/domFx_code_profile.h>
+#include <1.4/dom/domFx_include_common.h>
+#include <1.4/dom/domGlsl_setparam_simple.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * A surface type for the GLSL profile. This surface inherits from the fx_surface_common
@@ -310,4 +312,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

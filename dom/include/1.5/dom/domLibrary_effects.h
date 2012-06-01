@@ -1,14 +1,16 @@
-#ifndef __domLibrary_effects_h__
-#define __domLibrary_effects_h__
+#ifndef __dom150Library_effects_h__
+#define __dom150Library_effects_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domAsset.h>
-#include <dom/domEffect.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domAsset.h>
+#include <1.5/dom/domEffect.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * The library_effects element declares a module of effect elements.
@@ -124,4 +126,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

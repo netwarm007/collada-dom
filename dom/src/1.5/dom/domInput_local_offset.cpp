@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domInput_local_offset.h>
+#include <1.5/dom/domInput_local_offset.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domInput_local_offset::create(DAE& dae)
 {
@@ -82,3 +84,4 @@ domInput_local_offset::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

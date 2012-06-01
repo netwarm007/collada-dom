@@ -1,13 +1,15 @@
-#ifndef __domGlsl_shader_h__
-#define __domGlsl_shader_h__
+#ifndef __dom150Glsl_shader_h__
+#define __dom150Glsl_shader_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.5/dom/domTypes.h>
+#include <1.5/dom/domElements.h>
 
-#include <dom/domFx_sources.h>
-#include <dom/domExtra.h>
+#include <1.5/dom/domFx_sources.h>
+#include <1.5/dom/domExtra.h>
+
 class DAE;
+namespace ColladaDOM150 {
 
 /**
  * Identify code fragments and bind their parameters to effect parameters
@@ -91,4 +93,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM150
 #endif

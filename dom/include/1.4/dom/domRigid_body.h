@@ -6,30 +6,32 @@
 *
 */ 
 
-#ifndef __domRigid_body_h__
-#define __domRigid_body_h__
+#ifndef __dom141Rigid_body_h__
+#define __dom141Rigid_body_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
 
-#include <dom/domTechnique.h>
-#include <dom/domExtra.h>
-#include <dom/domInstance_physics_material.h>
-#include <dom/domPhysics_material.h>
-#include <dom/domTargetableFloat.h>
-#include <dom/domTranslate.h>
-#include <dom/domRotate.h>
-#include <dom/domTargetableFloat3.h>
-#include <dom/domInstance_geometry.h>
-#include <dom/domPlane.h>
-#include <dom/domBox.h>
-#include <dom/domSphere.h>
-#include <dom/domCylinder.h>
-#include <dom/domTapered_cylinder.h>
-#include <dom/domCapsule.h>
-#include <dom/domTapered_capsule.h>
+#include <1.4/dom/domTechnique.h>
+#include <1.4/dom/domExtra.h>
+#include <1.4/dom/domInstance_physics_material.h>
+#include <1.4/dom/domPhysics_material.h>
+#include <1.4/dom/domTargetableFloat.h>
+#include <1.4/dom/domTranslate.h>
+#include <1.4/dom/domRotate.h>
+#include <1.4/dom/domTargetableFloat3.h>
+#include <1.4/dom/domInstance_geometry.h>
+#include <1.4/dom/domPlane.h>
+#include <1.4/dom/domBox.h>
+#include <1.4/dom/domSphere.h>
+#include <1.4/dom/domCylinder.h>
+#include <1.4/dom/domTapered_cylinder.h>
+#include <1.4/dom/domCapsule.h>
+#include <1.4/dom/domTapered_capsule.h>
+
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * This element allows for describing simulated bodies that do not deform.
@@ -784,4 +786,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif

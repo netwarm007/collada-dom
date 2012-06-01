@@ -1,6 +1,6 @@
 #include <dae.h>
 #include <dae/daeDom.h>
-#include <dom/domKinematics_technique.h>
+#include <1.5/dom/domKinematics_technique.h>
 #include <dae/daeMetaCMPolicy.h>
 #include <dae/daeMetaSequence.h>
 #include <dae/daeMetaChoice.h>
@@ -8,6 +8,8 @@
 #include <dae/daeMetaAny.h>
 #include <dae/daeMetaElementAttribute.h>
 
+
+namespace ColladaDOM150 {
 daeElementRef
 domKinematics_technique::create(DAE& dae)
 {
@@ -70,3 +72,4 @@ domKinematics_technique::registerElement(DAE& dae)
 	return meta;
 }
 
+} // ColladaDOM150

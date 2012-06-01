@@ -6,14 +6,16 @@
 *
 */ 
 
-#ifndef __domCg_connect_param_h__
-#define __domCg_connect_param_h__
+#ifndef __dom141Cg_connect_param_h__
+#define __dom141Cg_connect_param_h__
 
 #include <dae/daeDocument.h>
-#include <dom/domTypes.h>
-#include <dom/domElements.h>
+#include <1.4/dom/domTypes.h>
+#include <1.4/dom/domElements.h>
+
 
 class DAE;
+namespace ColladaDOM141 {
 
 /**
  * Creates a symbolic connection between two previously defined parameters.
@@ -102,4 +104,5 @@ public: // STATIC METHODS
 };
 
 
+} // ColladaDOM141
 #endif
