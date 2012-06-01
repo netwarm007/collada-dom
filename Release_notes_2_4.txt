@@ -7,7 +7,10 @@ COLLADA-DOM 2.4
 
 [New Features]
 
-- All dom classes are now in their own namespaces making it possible to use 1.4.1 and 1.5.0 simultaneously! namespaces are ColladaDOM141 and ColladaDOM150
+- All dom classes are now in their own namespaces making it possible to use 1.4.1 and 1.5.0 simultaneously! namespaces are ColladaDOM141 and ColladaDOM150::
+
+  dae=DAE(NULL,NULL,"1.4.1");
+  dae2=DAE(NULL,NULL,"1.5.0");
 
 - New dom namespaces are not automatically put into the global scope, meaning that domCOLLADA should not be converted to ColladaDOM141::domCOLLADA or ColladaDOM150::domCOLLAdA
 
