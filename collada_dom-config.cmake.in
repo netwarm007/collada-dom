@@ -11,7 +11,7 @@
 # COLLADA_DOM_INCLUDE_DIRS - include directories
 # COLLADA_DOM_LIBRARY_DIRS - link directories
 # COLLADA_DOM_LIBRARIES - libraries to link plugins with
-# COLLADA_DOM_Boost_VERSION - the boost version openrave was compiled with
+# COLLADA_DOM_Boost_VERSION - the boost version collada-dom was compiled with
 get_filename_component(_PREFIX "${CMAKE_CURRENT_LIST_FILE}" PATH)
 get_filename_component(_PREFIX "${_PREFIX}" PATH)
 get_filename_component(_PREFIX "${_PREFIX}" PATH)
@@ -38,34 +38,46 @@ if( WIN32 )
   # for visual studio linking, most of the time boost dlls will be used
   set( COLLADA_DOM_CXX_FLAGS "${COLLADA_DOM_CXX_FLAGS} -DBOOST_ALL_DYN_LINK -DBOOST_ALL_NO_LIB")
 endif()
-set( COLLADA_DOM_LINK_FLAGS "" )
-set( COLLADA_DOM_LIBRARY_DIRS "${COLLADA_DOM_ROOT_DIR}/lib@LIB_SUFFIX@")
-set( COLLADA_DOM_INCLUDE_DIRS "${COLLADA_DOM_ROOT_DIR}/@COLLADA_DOM_INCLUDE_INSTALL_DIR@")
-set( COLLADA_DOM_LIBRARIES collada-dom${COLLADA_DOM_LIBRARY_SUFFIX})
-set(OPT_COLLADA14 @OPT_COLLADA14@)
-set(OPT_COLLADA15 @OPT_COLLADA14@)
+set(COLLADA_DOM_LINK_FLAGS "" )
+set(COLLADA_DOM_LIBRARY_DIRS "${COLLADA_DOM_ROOT_DIR}/lib@LIB_SUFFIX@")
+set(COLLADA_DOM_LIBRARIES collada-dom${COLLADA_DOM_LIBRARY_SUFFIX})
+set(COLLADA_DOM_SUPPORT14 @OPT_COLLADA14@)
+set(COLLADA_DOM_SUPPORT15 @OPT_COLLADA15@)
 
-if( COLLADA_DOM_FIND_COMPONENTS STREQUAL "1.4" OR COLLADA_DOM_FIND_COMPONENTS STREQUAL "1.4.1" )
-  if( NOT OPT_COLLADA14 )
-      message(SEND_ERROR "Not compiled with collada ${COLLADA_DOM_FIND_COMPONENTS} support")
-  endif()
-#  set( COLLADA_DOM_INCLUDE_DIRS ${COLLADA_DOM_INCLUDE_DIRS} "${COLLADA_DOM_ROOT_DIR}/@COLLADA_DOM_INCLUDE_INSTALL_DIR@/1.4")
-endif()
-if( COLLADA_DOM_FIND_COMPONENTS STREQUAL "1.5" OR COLLADA_DOM_FIND_COMPONENTS STREQUAL "1.5.0" )
-  if( NOT OPT_COLLADA15 )
-      message(SEND_ERROR "Not compiled with collada ${COLLADA_DOM_FIND_COMPONENTS} support")
-  endif()
-#  set( COLLADA_DOM_INCLUDE_DIRS ${COLLADA_DOM_INCLUDE_DIRS} "${COLLADA_DOM_ROOT_DIR}/@COLLADA_DOM_INCLUDE_INSTALL_DIR@/1.5")
+# if only one is specified, add the include path to allow for backward compatibility.
+set( COLLADA_DOM_INCLUDE_DIRS_SPEC )
+set( COLLADA_DOM_VERSIONS_USING )
+if( COLLADA_DOM_FIND_COMPONENTS )
+  foreach( component ${COLLADA_DOM_FIND_COMPONENTS} )
+    if( ${component} STREQUAL "1.4.1" OR ${component} STREQUAL "1.4" )
+      if( NOT COLLADA_DOM_SUPPORT14 )
+        message(SEND_ERROR "Not compiled with collada ${COLLADA_DOM_FIND_COMPONENTS} support")
+      endif()
+      set( COLLADA_DOM_INCLUDE_DIRS_SPEC ${COLLADA_DOM_INCLUDE_DIRS_SPEC} "${COLLADA_DOM_ROOT_DIR}/@COLLADA_DOM_INCLUDE_INSTALL_DIR@/1.4")
+      set( COLLADA_DOM_VERSIONS_USING "${COLLADA_DOM_VERSIONS_USING} -DCOLLADA_DOM_USING_141")
+    elseif( ${component} STREQUAL "1.5.0" OR ${component} STREQUAL "1.5" )
+      if( NOT COLLADA_DOM_SUPPORT15 )
+        message(SEND_ERROR "Not compiled with collada ${COLLADA_DOM_FIND_COMPONENTS} support")
+      endif()
+      set( COLLADA_DOM_INCLUDE_DIRS_SPEC ${COLLADA_DOM_INCLUDE_DIRS_SPEC} "${COLLADA_DOM_ROOT_DIR}/@COLLADA_DOM_INCLUDE_INSTALL_DIR@/1.5")
+      set( COLLADA_DOM_VERSIONS_USING "${COLLADA_DOM_VERSIONS_USING} -DCOLLADA_DOM_USING_150")
+    endif()
+  endforeach( component )
 endif()
 
-if( NOT COLLADA_DOM_LIBRARIES )
-  message(FATAL_ERROR "need to specify a collada specification component, for example '1.4.1' or '1.5.0'")
+# check how many components were requested. if only one, add that version's headers, otherwise do not since user might want to use multiple versions
+list(LENGTH COLLADA_DOM_INCLUDE_DIRS_SPEC COLLADA_DOM_NUMCOMPONENTS )
+if( ${COLLADA_DOM_NUMCOMPONENTS} EQUAL 1 )
+  set(COLLADA_DOM_INCLUDE_DIRS ${COLLADA_DOM_INCLUDE_DIRS_SPEC} "${COLLADA_DOM_ROOT_DIR}/@COLLADA_DOM_INCLUDE_INSTALL_DIR@")
+  set(COLLADA_DOM_CXX_FLAGS "${COLLADA_DOM_CXX_FLAGS} ${COLLADA_DOM_VERSIONS_USING}")
+else()
+  set(COLLADA_DOM_INCLUDE_DIRS "${COLLADA_DOM_ROOT_DIR}/@COLLADA_DOM_INCLUDE_INSTALL_DIR@")
 endif()
 
 set( COLLADA_DOM_Boost_VERSION "@Boost_MAJOR_VERSION@.@Boost_MINOR_VERSION@")
 
 if( WIN32 )
-  # search for the boost version openrave was compiled with
+  # search for the boost version collada-dom was compiled with
   set(Boost_USE_MULTITHREAD ON)
   set(Boost_USE_STATIC_LIBS OFF)
   set(Boost_USE_STATIC_RUNTIME OFF)
@@ -91,4 +103,9 @@ MARK_AS_ADVANCED(
   COLLADA_DOM_CFLAGS_OTHER
   COLLADA_DOM_LDFLAGS_OTHER
   COLLADA_DOM_LIBRARY_SUFFIX
+  COLLADA_DOM_SUPPORT14
+  COLLADA_DOM_SUPPORT15
+  COLLADA_DOM_INCLUDE_DIRS_SPEC
+  COLLADA_DOM_NUMCOMPONENTS
+  COLLADA_DOM_VERSIONS_USING
 )
