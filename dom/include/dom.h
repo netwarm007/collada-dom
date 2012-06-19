@@ -13,32 +13,32 @@ class daeMetaElement;
 
 #ifdef COLLADA_DOM_SUPPORT150
 namespace ColladaDOM150 {
-extern daeString COLLADA_VERSION;
-extern daeString COLLADA_NAMESPACE;
+extern DLLSPEC daeString COLLADA_VERSION;
+extern DLLSPEC daeString COLLADA_NAMESPACE;
 
 // Register all types
-void DLLSPEC registerDomTypes(DAE& dae);
+DLLSPEC void registerDomTypes(DAE& dae);
 
 // Register all elements
-daeMetaElement* DLLSPEC registerDomElements(DAE& dae);
+DLLSPEC daeMetaElement* registerDomElements(DAE& dae);
 
-daeInt DLLSPEC colladaTypeCount();
+DLLSPEC daeInt colladaTypeCount();
 
 }
 #endif
 
 #ifdef COLLADA_DOM_SUPPORT141
 namespace ColladaDOM141 {
-extern daeString COLLADA_VERSION;
-extern daeString COLLADA_NAMESPACE;
+extern DLLSPEC daeString COLLADA_VERSION;
+extern DLLSPEC daeString COLLADA_NAMESPACE;
 
 // Register all types
-void DLLSPEC registerDomTypes(DAE& dae);
+DLLSPEC void registerDomTypes(DAE& dae);
 
 // Register all elements
-daeMetaElement* DLLSPEC registerDomElements(DAE& dae);
+DLLSPEC daeMetaElement* registerDomElements(DAE& dae);
 
-daeInt DLLSPEC colladaTypeCount();
+DLLSPEC daeInt colladaTypeCount();
 
 }
 #endif

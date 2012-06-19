@@ -5,7 +5,7 @@
 
 namespace ColladaDOM150 {
 
-void DLLSPEC registerDomTypes(DAE& dae)
+void registerDomTypes(DAE& dae)
 {
     daeAtomicType* type = NULL;
     daeAtomicTypeList& atomicTypes = dae.getAtomicTypes();
@@ -1655,7 +1655,7 @@ void DLLSPEC registerDomTypes(DAE& dae)
 
 }
 
-daeMetaElement* DLLSPEC registerDomElements(DAE& dae)
+daeMetaElement* registerDomElements(DAE& dae)
 {
     daeMetaElement* meta = domCOLLADA::registerElement(dae);
     // Enable tracking of top level object by default
@@ -1663,7 +1663,7 @@ daeMetaElement* DLLSPEC registerDomElements(DAE& dae)
     return meta;
 }
 
-daeInt DLLSPEC colladaTypeCount() {
+daeInt colladaTypeCount() {
     return 969;
 }
 
