@@ -32,6 +32,12 @@
 #include <iomanip>
 using namespace std;
 
+#include <zip.h> // for saving compressed files
+#ifdef _WIN32
+#include <iowin32.h>
+#else
+#include <unistd.h>
+#endif
 
 // Some helper functions for working with libxml
 namespace {
@@ -43,6 +49,12 @@ daeInt getCurrentLineNumber(xmlTextReaderPtr reader) {
 #endif
 }
 
+#ifdef _WIN32
+static const char s_filesep = '\\';
+#else
+static const char s_filesep = '/';
+#endif
+
 // Return value should be freed by caller with delete[]. Passed in value should not
 // be null.
 xmlChar* utf8ToLatin1(const xmlChar* utf8) {
@@ -50,10 +62,10 @@ xmlChar* utf8ToLatin1(const xmlChar* utf8) {
     int outLen = (inLen+1) * 2;
     xmlChar* latin1 = new xmlChar[outLen];
     int numBytes = UTF8Toisolat1(latin1, &outLen, utf8, &inLen);
-    if (numBytes < 0)
+    if (numBytes < 0) {
         // Failed. Return an empty string instead.
         numBytes = 0;
-
+    }
     latin1[numBytes] = '\0';
     return latin1;
 }
@@ -71,6 +83,40 @@ xmlChar* latin1ToUtf8(const string& latin1) {
     utf8[numBytes] = '\0';
     return utf8;
 }
+
+// wrapper that automatically closes the zip file handle
+class zipFileHandler
+{
+public:
+    zipFileHandler() {
+        zf = NULL;
+    }
+    ~zipFileHandler() {
+        if( !!zf ) {
+            int errclose = zipClose(zf,NULL);
+            if (errclose != ZIP_OK) {
+                ostringstream msg;
+                msg << "zipClose error" << errclose << "\n";
+                daeErrorHandler::get()->handleError(msg.str().c_str());
+            }
+        }
+    }
+    zipFile zf;
+};
+
+class xmlBufferHandler
+{
+public:
+    xmlBufferHandler() {
+        buf = NULL;
+    }
+    ~xmlBufferHandler() {
+        if( !!buf ) {
+            xmlBufferFree(buf);
+        }
+    }
+    xmlBufferPtr buf;
+};
 
 typedef pair<daeString, daeString> stringPair;
 
@@ -110,10 +156,15 @@ daeLIBXMLPlugin::daeLIBXMLPlugin(DAE& dae) : dae(dae), rawRelPath(dae)
     rawFile = NULL;
     rawByteCount = 0;
     saveRawFile = false;
+    writer = NULL;
 }
 
 daeLIBXMLPlugin::~daeLIBXMLPlugin()
 {
+    if( !writer ) {
+        xmlFreeTextWriter( writer );
+        writer = NULL;
+    }
     xmlCleanupParser();
 }
 
@@ -232,8 +283,9 @@ daeElementRef daeLIBXMLPlugin::readElement(_xmlTextReader* reader,
     packageCurrentAttributes(reader, dae.getCharEncoding(), /* out */ attributes);
 
     daeElementRef element = beginReadElement(parentElement, elementName, attributes, getCurrentLineNumber(reader));
-    if (dae.getCharEncoding() != DAE::Utf8)
+    if (dae.getCharEncoding() != DAE::Utf8) {
         freeAttrValues(attributes);
+    }
 
     if (!element) {
         // We couldn't create the element. beginReadElement already printed an error message. Just make sure
@@ -242,11 +294,12 @@ daeElementRef daeLIBXMLPlugin::readElement(_xmlTextReader* reader,
         return NULL;
     }
 
-    if ((readRetVal = xmlTextReaderRead(reader)) == -1)
+    if ((readRetVal = xmlTextReaderRead(reader)) == -1) {
         return NULL;
-    if (empty)
+    }
+    if (empty) {
         return element;
-
+    }
     int nodeType = xmlTextReaderNodeType(reader);
     while (readRetVal == 1  &&  nodeType != XML_READER_TYPE_END_ELEMENT) {
         if (nodeType == XML_READER_TYPE_ELEMENT) {
@@ -254,25 +307,27 @@ daeElementRef daeLIBXMLPlugin::readElement(_xmlTextReader* reader,
         }
         else if (nodeType == XML_READER_TYPE_TEXT) {
             const xmlChar* xmlText = xmlTextReaderConstValue(reader);
-            if (dae.getCharEncoding() == DAE::Latin1)
+            if (dae.getCharEncoding() == DAE::Latin1) {
                 xmlText = utf8ToLatin1(xmlText);
+            }
             readElementText(element, (daeString)xmlText, getCurrentLineNumber(reader));
-            if (dae.getCharEncoding() == DAE::Latin1)
+            if (dae.getCharEncoding() == DAE::Latin1) {
                 delete[] xmlText;
-
+            }
             readRetVal = xmlTextReaderRead(reader);
         }
-        else
+        else {
             readRetVal = xmlTextReaderRead(reader);
-
+        }
         nodeType = xmlTextReaderNodeType(reader);
     }
 
-    if (nodeType == XML_READER_TYPE_END_ELEMENT)
+    if (nodeType == XML_READER_TYPE_END_ELEMENT) {
         readRetVal = xmlTextReaderRead(reader);
-
-    if (readRetVal == -1) // Something went wrong (bad xml probably)
+    }
+    if (readRetVal == -1) { // Something went wrong (bad xml probably)
         return NULL;
+    }
 
     return element;
 }
@@ -280,11 +335,12 @@ daeElementRef daeLIBXMLPlugin::readElement(_xmlTextReader* reader,
 daeInt daeLIBXMLPlugin::write(const daeURI& name, daeDocument *document, daeBool replace)
 {
     // Make sure database and document are both set
-    if (!database)
+    if (!database) {
         return DAE_ERR_INVALID_CALL;
-    if(!document)
+    }
+    if(!document) {
         return DAE_ERR_COLLECTION_DOES_NOT_EXIST;
-
+    }
     // Convert the URI to a file path, to see if we're about to overwrite a file
     string file = cdom::uriToNativePath(name.str());
     if (file.empty()  &&  saveRawFile)
@@ -328,23 +384,154 @@ daeInt daeLIBXMLPlugin::write(const daeURI& name, daeDocument *document, daeBool
         rawRelPath.makeRelativeTo( &name );
     }
 
-    // Open the file we will write to
-    writer = xmlNewTextWriterFilename(cdom::fixUriForLibxml(name.str()).c_str(), 0);
-    if ( !writer ) {
+    std::string fileName = cdom::uriToNativePath(name.str());
+    bool bcompress = fileName.size() >= 4 && fileName[fileName.size()-4] == '.' && ::tolower(fileName[fileName.size()-3]) == 'z' && ::tolower(fileName[fileName.size()-2]) == 'a' && ::tolower(fileName[fileName.size()-1]) == 'e';
+
+    int err=0;
+    xmlBufferHandler bufhandler;
+
+    if( bcompress ) {
+        // taken from http://xmlsoft.org/examples/testWriter.c
+        // Create a new XML buffer, to which the XML document will be written
+        bufhandler.buf = xmlBufferCreate();
+        if (!bufhandler.buf) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") testXmlwriterMemory: Error creating the xml buffer\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+
+        // Create a new XmlWriter for memory, with no compression. Remark: there is no compression for this kind of xmlTextWriter
+        writer = xmlNewTextWriterMemory(bufhandler.buf, 0);
+    }
+    else {
+        // Open the file we will write to
+        writer = xmlNewTextWriterFilename(cdom::fixUriForLibxml(name.str()).c_str(), 0);
+    }
+
+    if (!writer) {
         ostringstream msg;
-        msg << "daeLIBXMLPlugin::write(" << name.str() << ") failed\n";
+        msg << "daeLIBXMLPlugin::write(" << name.str() << ") Error creating the xml writer\n";
         daeErrorHandler::get()->handleError(msg.str().c_str());
         return DAE_ERR_BACKEND_IO;
     }
-    xmlTextWriterSetIndentString( writer, (const xmlChar*)"\t" ); // Don't change this to spaces
-    xmlTextWriterSetIndent( writer, 1 ); // Turns indentation on
-    xmlTextWriterStartDocument( writer, "1.0", "UTF-8", NULL );
+    err = xmlTextWriterSetIndentString( writer, (const xmlChar*)"\t" ); // Don't change this to spaces
+    if( err < 0 ) {
+    }
+    err = xmlTextWriterSetIndent( writer, 1 ); // Turns indentation on
+    if( err < 0 ) {
+    }
+    err = xmlTextWriterStartDocument( writer, "1.0", "UTF-8", NULL );
+    if( err < 0 ) {
+    }
 
     writeElement( document->getDomRoot() );
 
     xmlTextWriterEndDocument( writer );
     xmlTextWriterFlush( writer );
     xmlFreeTextWriter( writer );
+    writer = NULL; // reset pointer
+
+    if( bcompress ) {
+        std::string savefilenameinzip;
+        size_t namestart = fileName.find_last_of(s_filesep);
+        if( namestart == string::npos ) {
+            namestart = 0;
+        }
+        else {
+            namestart+=1;
+        }
+        if(namestart+4>=fileName.size()) {
+            daeErrorHandler::get()->handleError("invalid fileName when removing zae extension");
+            return DAE_ERR_BACKEND_IO;
+        }
+        savefilenameinzip = fileName.substr(namestart,fileName.size()-namestart-4);
+        savefilenameinzip += ".dae";
+
+        zipFileHandler zfh;
+#ifdef _WIN32
+        zlib_filefunc64_def ffunc;
+        fill_win32_filefunc64A(&ffunc);
+        zfh.zf = zipOpen2_64(fileName.c_str(),APPEND_STATUS_CREATE,NULL,&ffunc);
+#else
+        zfh.zf = zipOpen64(fileName.c_str(),APPEND_STATUS_CREATE);
+#endif
+        if (!zfh.zf) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") Error opening zip file for writing\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+
+        time_t curtime = time(NULL);
+        struct tm* timeofday = localtime(&curtime);
+        zip_fileinfo zi;
+        zi.tmz_date.tm_sec = timeofday->tm_sec;
+        zi.tmz_date.tm_min = timeofday->tm_min;
+        zi.tmz_date.tm_hour = timeofday->tm_hour;
+        zi.tmz_date.tm_mday = timeofday->tm_mday;
+        zi.tmz_date.tm_mon = timeofday->tm_mon;
+        zi.tmz_date.tm_year = timeofday->tm_year;
+        zi.dosDate = 0;
+        zi.internal_fa = 0;
+        zi.external_fa = 0;
+
+        int zip64 = bufhandler.buf->use >= 0xffffffff;
+
+        char* password=NULL;
+        unsigned long crcFile=0;
+        int opt_compress_level = 9;
+        err = zipOpenNewFileInZip3_64(zfh.zf,savefilenameinzip.c_str(),&zi,NULL,0,NULL,0,"collada file generated by collada-dom",Z_DEFLATED, opt_compress_level,0,-MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY,password,crcFile, zip64);
+        if (err != ZIP_OK) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") zipOpenNewFileInZip3_64 error" << err << "\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+
+        err = zipWriteInFileInZip (zfh.zf,bufhandler.buf->content, bufhandler.buf->use);
+        if (err<0) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") zipWriteInFileInZip error for dae file " << err << "\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+        err = zipCloseFileInZip(zfh.zf);
+        if (err!=ZIP_OK) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") zipCloseFileInZip error for dae file " << err << "\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+
+        // add the manifest
+        string smanifest = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<dae_root>./";
+        smanifest += savefilenameinzip;
+        smanifest += "</dae_root>\n";
+        err = zipOpenNewFileInZip3_64(zfh.zf,"manifest.xml",&zi,NULL,0,NULL,0,NULL,Z_DEFLATED, opt_compress_level,0,-MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY,password,crcFile, zip64);
+        if (err != ZIP_OK) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") zipOpenNewFileInZip3_64 error for manifest.xml file " << err << "\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+
+        err = zipWriteInFileInZip (zfh.zf,&smanifest[0],smanifest.size());
+        if (err != ZIP_OK) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") zipWriteInFileInZip error for manifest.xml file " << err << "\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+
+        err = zipCloseFileInZip(zfh.zf);
+        if (err != ZIP_OK) {
+            ostringstream msg;
+            msg << "daeLIBXMLPlugin::write(" << name.str() << ") zipCloseFileInZip error for manifest.xml file " << err << "\n";
+            daeErrorHandler::get()->handleError(msg.str().c_str());
+            return DAE_ERR_BACKEND_IO;
+        }
+    }
 
     if ( saveRawFile && rawFile != NULL )
     {

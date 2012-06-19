@@ -29,3 +29,4 @@ COLLADA-DOM 2.4
 
 - Included a double-precision flag COLLADA_DOM_DAEFLOAT_IS64 to compile collada-dom without any floating point. When using cmake, do -DOPT_DOUBLE_PRECISION=ON
 
+- DAE::writeX support writing to compressed ZAE files using zlib and minizip. Automatically enabled when extension is zae.
