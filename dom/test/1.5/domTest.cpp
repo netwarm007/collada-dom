@@ -734,7 +734,7 @@ daeArray* getSkewArray(daeElement* node, const string& sid) {
         return NULL;
 
     daeElement* skew = resolveSid(sid, *node);
-    if (!skew || skew->getTypeName() != COLLADA_TYPE_SKEW)
+    if (!skew || strcmp(skew->getTypeName(), COLLADA_TYPE_SKEW) )
         return NULL;
 
     return (daeArray*)skew->getCharDataObject()->get(skew);
