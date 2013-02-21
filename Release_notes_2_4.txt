@@ -2,6 +2,13 @@
 COLLADA-DOM 2.4
 ---------------
 
+2.4.1
+=====
+
+- Using boost filesystem v3 for better temp directory creation
+
+- fix local cmake libpcre compilation
+
 2.4.0
 =====
 
