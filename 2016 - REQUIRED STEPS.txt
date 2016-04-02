@@ -1,0 +1,10 @@
+
+As of the year 2016 the following ZIP archive must be downloaded 
+and unpacked into the same folder as this text file. It contains
+many procedurally generated files. 
+
+This is a courtesy. dom/codeGen/gen.php can generate these files.
+
+https://sourceforge.net/projects/collada-dom/files/COLLADA%20Schema%20generated%20CPP%20and%20H%20files/Transitional%201.4-or-1.5%20with%20old%20dom-%20prefix.zip/download
+
+This text file should be removed if this step is no longer necessary.

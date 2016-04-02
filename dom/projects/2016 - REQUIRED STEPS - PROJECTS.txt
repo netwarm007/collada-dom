@@ -1,0 +1,6 @@
+
+Unfortunately it's difficult to repair these older project files.
+
+They will be removed before too long. Do not worry about missing
+files. Simply remove them from the project, and replace them with
+the separately downloaded pre-generated files, or your own files.
