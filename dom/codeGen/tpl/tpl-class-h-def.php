@@ -48,10 +48,13 @@ echoDoxygen(@$meta['documentation']);
 $baseClass = $meta_prefix.'Element';
 if($meta['substitutionGroup']!='') 
 $baseClass = $prefix.ucfirst($meta['substitutionGroup']);
-if($meta['isExtension']) 
+else if($meta['isExtension']) 
 $baseClass = $prefix.ucfirst($meta['base_type']);
-if(!empty($meta['baseTypeViaRestriction']))
+else if(!empty($meta['baseTypeViaRestriction']))
 $baseClass = $prefix.ucfirst($meta['baseTypeViaRestriction']);
+//NEW: 1.4 does inheritance from type="complexType"
+else if(@!empty($classmeta[$meta['base_type']]))
+$baseClass = $prefix.ucfirst($meta['base_type']);
 echoCode("
 typedef class $full_element_name : public $baseClass
 {

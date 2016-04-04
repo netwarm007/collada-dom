@@ -45,7 +45,12 @@ if(defined('big_number')) die('die(big_number is defined?)');
 //TODO: include a commandline supplied PHP file, or else default to the Collada/C++ file
 //THIS included file should also setup TypeMeta::generateXMLSchemaTypes' arguments (see gen.php)
 function asFriendlyType($name)
-{ return "_type"===substr($name,strlen($name)-5)?substr($name,0,strlen($name)-5):$name; }
+{
+	//NEW: converting to enum ending
+	if("_type"!==substr($name,strlen($name)-5)) return $name; 
+	global $typemeta;
+	return substr($name,0,strlen($name)-5).(@empty($typemeta[$name]['enum'])?'':'_enum');
+}
 function asFriendlyEnum($name) //scheduled obsolete: COLLADA 1.5 backward compatibility
 { return "_enum"===substr($name,strlen($name)-5)?substr($name,0,strlen($name)-5):$name; }
 //SCHEDULED OBSOLETE
@@ -180,7 +185,8 @@ function getDocumentationText($doc) //may need to do more
 {
 	//<xs:documentation> are full of double spaces/tabs etc.
 	//$doc = str_replace(array("\n","\t"),array(' ',''),$doc);
-	return preg_replace('/\s+/', ' ',$doc); //collapse whitespace
+	$doc = preg_replace('/\s+/', ' ',$doc); //collapse whitespace	
+	return iconv('UTF-8','ASCII//TRANSLIT',$doc); //1.4 has pretty quotes
 }
 function echoDoxygen($doc, $tab='', $see='')
 {
@@ -208,11 +214,11 @@ function echoDoxygen($doc, $tab='', $see='')
 
 function getFriendlyType($type)
 {
-	global $_globals; 
+	global $_globals, $typemeta; 
 	//NEW: supporting import: eg. MathML
 	//generalizing from preg_match("/xs\:/")
 	$match = explode(':',$type);	
-	if(2===count($match)) $type = $match[0].ucfirst($match[1]); 
+	if(2===count($match)) $type = $match[0].ucfirst($match[1]); 	
 	else //hack: local namespace
 	$type = $_globals['prefix'].ucfirst(asFriendlyType($type)); 
 	return strtr($type,':.-','___'); 
@@ -431,7 +437,25 @@ function echoAccessorsAndMutatorsCPP_attribs(& $meta)
 	 * codeGen: adding for backward compatibility
 	 */
 	void set$Name(xsString at$Name){ _attr$Name = at$Name; }
-	"); //C-style string	
+	");	else //Collada 1.4?
+		if($type=='xs:IDREF') //SCHEDULED OBSOLETE
+		echoCode("
+	/**
+	* Gets the $name attribute.
+	* @return Returns a xsIDREF reference of the $name attribute.
+	*/
+	xsIDREF &get$Name(){ return _attr$Name; }
+	/**
+	* Gets the $name attribute.
+	* @return Returns a constant xsIDREF reference of the $name attribute.
+	*/
+	const xsIDREF &get$Name()const{ return _attr$Name; }
+	/**
+	* Sets the $name attribute.
+	* @param at$Name The new value for the $name attribute.
+	*/
+	void set$Name(const xsIDREF &at$Name ){ _attrRef = at$Name; }
+	");	//C-style string	
 		else
 		echoCode("
 	/**
@@ -589,8 +613,27 @@ public: //Accessors and Mutators");
 	 * codeGen: adding for backward compatibility
 	 */
 	void setValue(xsString val){ _value = val; }
-	"); 	
-	else 
+	"); 
+	else //Collada 1.4?
+	if($content_type=='xs:IDREF') //SCHEDULED OBSOLETE
+	echoCode("
+	/**
+	 * Gets the value of this element.
+	 * @return Returns a xsIDREF of the value.
+	 */
+	xsIDREF &getValue(){ return _value; }
+	/**
+	 * Gets the value of this element.
+	 * @return Returns a constant xsIDREF of the value.
+	 */
+	const xsIDREF &getValue()const{ return _value; }
+	/**
+	 * Sets the _value of this element.
+	 * @param val The new value for this element.
+	 */
+	void setValue(const xsIDREF &val){ _value = val; }
+	");	
+	else //C-string
 	echoCode("
 	/**
 	 * Gets the value of this element.

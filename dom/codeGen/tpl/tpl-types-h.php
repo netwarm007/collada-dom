@@ -51,6 +51,8 @@ foreach($typemeta as $type=>$meta) if(!empty($meta['enum']))
 	if(!$meta['useConstStrings'])
 	{
 		echoDoxygen(@$meta['documentation']);
+		//NEW: convert to _enum ending if _type
+		$type = asFriendlyType($type); 
 		echo "enum ", $prefix.ucfirst($type), "\n{\n";
 		$type = strtoupper(asFriendlyEnum($type));
 		foreach($meta['enum'] as $enum=>$ea)
@@ -88,13 +90,15 @@ foreach($typemeta as $type=>& $meta) if($meta['union_type'])
 		echoDoxygen(@$meta['documentation']);
 
 		//unions end in _type, and it must be stripped off
-		echo "enum ", getFriendlyType($type)." //union\n{\n";
+		//in 1.4 some enums end in _type inexplicably, so...
+		//NEW: convert to _enum ending if _type
+		$type = asFriendlyType($type); 
+		echo "enum ", $prefix.ucfirst($type)." //union\n{\n";
+		$type = strtoupper(asFriendlyEnum($type)); 
 
-		//tokenize memberTypes string
-		$types = explode(' ',$meta['union_members']);
 		//look up the members
-		//COLLADA specific: union enums have _type
-		$type = strtoupper(asFriendlyType($type)); //asFriendlyEnum
+		//tokenize memberTypes string
+		$types = explode(' ',$meta['union_members']);		
 		$count = 1; //RESERVING 0?
 		foreach($types as $ea)
 		if(!empty($typemeta[$ea]))					

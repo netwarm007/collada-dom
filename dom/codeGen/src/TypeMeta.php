@@ -144,7 +144,7 @@ class TypeMeta //antipattern
 	{
 		$this->bag['base'] = $b;
 		//NEW: simplifying inheritance model by exposing $typemeta global
-		$base = self::$generated[$b]; if(!empty($base))
+		$base = @self::$generated[$b]; if(!empty($base))
 		{	
 			if(empty($this->bag['enum'])||$this->bag['useConstStrings'])
 			$this->bag['isString'] = $base['isString'];

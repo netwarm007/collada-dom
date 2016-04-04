@@ -199,7 +199,7 @@ if(!empty($meta['elements'])||$meta['has_any'])
 	mea->setOffset($1OffsetOf($shortname,_elem".strtr(ucfirst($name),'.-:','___').($arrayOrNot?'_array':'')."));
 	mea->setElementType(" //it seems like according to substitutionGroup rules, this should suffice, long term
 	.$prefix.ucfirst($ea2)."::registerElement($1));
-	cm->appendChild(mea)",$meta_prefix);			
+	cm->appendChild(mea);",$meta_prefix);			
 
 			if(@ElementMeta::sequenceCMopening===$currentCM['cm']['name'])
 			$currentOrd++;

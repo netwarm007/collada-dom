@@ -36,7 +36,8 @@ if(!empty($meta['enum'])&&!$meta['useConstStrings'])
 	//BASICALLY AT THIS POINT UNION TYPES APPEAR TO BE
 	//ENUM TYPES, AND UNION TYPES USE THE _type ENDING
 	//(see the Note in the C-commented-out UNION code)
-	$preType = $meta['union_type']?getFriendlyType($type):$prefix.ucfirst($type);
+	//NEW: now normalizing _type to _enum because 1.4 has _type on some enums
+	$type = asFriendlyType($type); $preType = $prefix.ucfirst($type);
 	
 	echoCode("
 	//ENUM: $preType
@@ -46,7 +47,7 @@ if(!empty($meta['enum'])&&!$meta['useConstStrings'])
 	(($1EnumType*)type)->_values = new $1EnumArray;"
 	,$meta_prefix); 
 	//SAME DEAL AS ABOVE
-	$type = strtoupper($meta['union_type']?asFriendlyType($type):asFriendlyEnum($type));
+	$type = strtoupper(asFriendlyEnum($type)); 
 	foreach($meta['enum'] as $enum=>$ea) echoCode("
 	(($1EnumType*)type)->_strings->append(\"$enum\");
 	(($1EnumType*)type)->_values->append({$type}_".strtr($enum,'.-','__').");"
@@ -69,7 +70,8 @@ else if($meta['isComplex']) //UNUSED?
 else if($meta['union_type']) //union type
 { 
 	die('die(Is this COLLADA 1.4.1??)');
-	$preType = getFriendlyType($type);
+	//NEW: now normalizing _type to _enum because 1.4 has _type on some enums
+	$type = asFriendlyType($type); $preType = $prefix.ucfirst($type);
 	echoCode("
 	//ENUM: $preType
 	type = new $1EnumType;
@@ -77,8 +79,7 @@ else if($meta['union_type']) //union type
 	(($1EnumType*)type)->_strings = new $1StringRefArray;
 	(($1EnumType*)type)->_values = new $1EnumArray;"
 	,$meta_prefix);
-	//COLLADA specific: union enums have _type
-	$type = strtoupper(asFriendlyType($type)); //asFriendlyEnum
+	$type = strtoupper(asFriendlyEnum($type)); 
 	foreach(explode(' ',$meta['union_members']) as $ea) 
 	if(@!empty($typemeta[$ea]['enum']))
 	foreach($typemeta[$ea]['enum'] as $enum=>$ea2) echoCode("
