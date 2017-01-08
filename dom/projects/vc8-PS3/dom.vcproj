@@ -42,7 +42,7 @@
 				PreprocessorDefinitions="WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE;EXPORTING_COLLADA_DOM;BUILDING_IN_LIBXML;"
 				
 				AdditionalIncludeDirectories="&quot;$(SN_PS3_PATH)\ppu\include\sn&quot;;&quot;$(SCE_PS3_ROOT)\target\ppu\include&quot;;&quot;$(SCE_PS3_ROOT)\target\common\include&quot;;"
-				PreprocessorDefinitions="SN_TARGET_PS3;__CELLOS_LV2__;_DEBUG;__GCC__;DOM_BUILDING_IN_TINYXML;NO_ZAE"
+				PreprocessorDefinitions="SN_TARGET_PS3;__CELLOS_LV2__;_DEBUG;__GCC__;DOM_BUILDING_IN_TINYXML;"
 				ProgramDataBaseFileName="$(IntDir)\"
 				DebugInformationFormat="0"
 				CompileAs="0"
@@ -103,7 +103,7 @@
 				Name="VCCLCompilerTool"
 				AdditionalOptions="-O2 -Wall"
 				AdditionalIncludeDirectories="&quot;$(SN_PS3_PATH)\ppu\include\sn&quot;;&quot;$(SCE_PS3_ROOT)\target\ppu\include&quot;;&quot;$(SCE_PS3_ROOT)\target\common\include&quot;;"
-				PreprocessorDefinitions="SN_TARGET_PS3;BUILDING_IN_TINYXML;NDEBUG;__GCC__;NO_ZAE"
+				PreprocessorDefinitions="SN_TARGET_PS3;BUILDING_IN_TINYXML;NDEBUG;__GCC__;"
 				ProgramDataBaseFileName="$(IntDir)\"
 				DebugInformationFormat="0"
 				CompileAs="0"

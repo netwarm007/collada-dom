@@ -5,11 +5,11 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+#include <ColladaDOM.inl> //PCH
+
 //The user can choose whether or not to include TinyXML support in the DOM. Supporting TinyXML will
 //require linking against it. By default TinyXML support isn't included.
 #ifdef BUILDING_IN_TINYXML /////////////////////////////////////////////
-
-#include "../../include/ColladaDOM.inl" //PCH
 
 #include <tinyxml.h>
 
@@ -256,7 +256,7 @@ void daeTinyXMLPlugin::_writeContent2(TiXmlNode *tinyXmlNode, const daeContents 
 
 		case daeKindOfText::PI_LIKE:
 
-			if(i==0&&"xml "==daeName(_CD.data()+1,4))
+			if("xml "==daeName(_CD.data()+1,4))
 			continue;
 			node = new TiXmlUnknown; break;
 

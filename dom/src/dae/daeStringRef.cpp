@@ -6,7 +6,7 @@
  *
  */
 											 
-#include "../../include/ColladaDOM.inl" //PCH
+#include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
 {//-.

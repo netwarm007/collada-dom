@@ -174,14 +174,14 @@ COLLADA_(private) //DATA-MEMBER
  *
  * (It turns <source> URLs to RAW resources into <x_array> elements.)
  *
- * The counterpart to this resolver is @c daeLIBXMLPlugin::write; as 
+ * The counterpart to this resolver is @c daeLibXMLPlugin::write; as 
  * it's required, to reverse the changes made by @c daeRawResolver on
  * write. @c option_to_write_COLLADA_array_values_to_RAW_file_resource 
  * is required to be enabled to do so.
  *
  * This is an old part of the library, which would be better performed
  * by a RAW plugin proxy, if at all (on both read in, and write out.)
- * It's hard to make the call to roll it into the daeLIBXMLPlugin. It's
+ * It's hard to make the call to roll it into the daeLibXMLPlugin. It's
  * hard to know if this functionality is relied upon. It's a speed 
  * optimization, on because it makes parsing the text unnecessary. That
  * said, if COLLADA has to be high performance--you're doing it wrong!

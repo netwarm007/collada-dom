@@ -5,17 +5,17 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+#include <ColladaDOM.inl> //PCH
+
 //The user can choose whether or not to include libxml support in the DOM. Supporting libxml will
 //require linking against it. By default libxml support is included.
 #ifdef BUILDING_IN_LIBXML //////////////////////////////////////////
-
-#include "../../include/ColladaDOM.inl" //PCH
 			
  //DID THIS SUCCEED?
 //This is a rework of the XML plugin that contains a complete interface to libxml2 "readXML"
-//This is intended to be a seperate plugin but I'm starting out by rewriting it in daeLIBXMLPlugin
+//This is intended to be a seperate plugin but I'm starting out by rewriting it in daeLibXMLPlugin
 //because I'm not sure if all the plugin handling stuff has been tested.  Once I get a working
-//plugin I'll look into renaming it so the old daeLIBXMLPlugin can coexist with it.
+//plugin I'll look into renaming it so the old daeLibXMLPlugin can coexist with it.
 // - WHO WROTE THIS?
 #include <libxml/xmlreader.h>
 #include <libxml/xmlwriter.h>
@@ -68,7 +68,7 @@ namespace
 	};
 }*/
 
-int daeLIBXMLPlugin::_errorRow()
+int daeLibXMLPlugin::_errorRow()
 {
 	#if LIBXML_VERSION >= 20620
 	return xmlTextReaderGetParserLineNumber(_reader);
@@ -77,7 +77,7 @@ int daeLIBXMLPlugin::_errorRow()
 	#endif
 }
 
-daeLIBXMLPlugin::daeLIBXMLPlugin(int legacy):_saveRawFile()
+daeLibXMLPlugin::daeLibXMLPlugin(int legacy):_saveRawFile()
 {
 	xmlInitParser(); 
 
@@ -97,12 +97,12 @@ daeLIBXMLPlugin::daeLIBXMLPlugin(int legacy):_saveRawFile()
 	//2/3 is to give US a heads up
 	daeCTC<(__combined_size_on_client_stack*2/3>=sizeof(*this))>();
 }
-daeLIBXMLPlugin::~daeLIBXMLPlugin(){ xmlCleanupParser(); }
+daeLibXMLPlugin::~daeLibXMLPlugin(){ xmlCleanupParser(); }
  
 //This an old feature request.
 //_CD is extended Latin. Put UTF8 into the _X buffer.
 //It isn't said why the document isn't just written with a Latin declaration.
-void daeLIBXMLPlugin::option_to_use_codec_Latin1()
+void daeLibXMLPlugin::option_to_use_codec_Latin1()
 {
 	daeCTC<sizeof(daeStringCP)==sizeof(xmlChar)>();
 	struct _ //SCOPING. THESE MAY NEED TO BE GLOBALS IN ORDER TO  DEBUG THEM.
@@ -135,7 +135,7 @@ void daeLIBXMLPlugin::option_to_use_codec_Latin1()
 	_encoder = _::UTF8ToLatin1; _decoder = _::Latin1ToUTF8;
 }
 
-static void daeLIBXMLPlugin_libxmlErrorHandler
+static void daeLibXMLPlugin_libxmlErrorHandler
 (void *arg, const char *msg, xmlParserSeverities severity, xmlTextReaderLocatorPtr locator)
 {
 	if(severity==XML_PARSER_SEVERITY_VALIDITY_WARNING||severity==XML_PARSER_SEVERITY_WARNING)
@@ -147,7 +147,7 @@ static void daeLIBXMLPlugin_libxmlErrorHandler
 
 //Previously ::xmlTextReaderHelper.
 //A simple structure to help alloc/free xmlTextReader objects
-struct daeLIBXMLPlugin::Reader
+struct daeLibXMLPlugin::Reader
 { 
 	//Who owns this macro???
 	#if LIBXML_VERSION < 20700
@@ -267,7 +267,7 @@ struct daeLIBXMLPlugin::Reader
 	{
 		assert(reader==nullptr);
 		if((reader=r)!=nullptr)
-		xmlTextReaderSetErrorHandler(reader,daeLIBXMLPlugin_libxmlErrorHandler,nullptr); 
+		xmlTextReaderSetErrorHandler(reader,daeLibXMLPlugin_libxmlErrorHandler,nullptr); 
 	}
 	void set_up_xmlReaderForFd(int fd)
 	{
@@ -284,7 +284,7 @@ struct daeLIBXMLPlugin::Reader
 	}
 };
 
-bool daeLIBXMLPlugin::_read(daeIO &IO, daeContents &content)
+bool daeLibXMLPlugin::_read(daeIO &IO, daeContents &content)
 {
 	const daeIORequest &req = getRequest();
 
@@ -302,7 +302,7 @@ bool daeLIBXMLPlugin::_read(daeIO &IO, daeContents &content)
 		if(RAII.reader==nullptr)
 		{
 			daeErrorHandler::get()->handleError
-			("In daeLIBXMLPlugin::readFromFile...\n");
+			("In daeLibXMLPlugin::readFromFile...\n");
 			return false;
 		}
 	}
@@ -312,14 +312,14 @@ bool daeLIBXMLPlugin::_read(daeIO &IO, daeContents &content)
 		if(RAII.reader==nullptr)
 		{
 			daeErrorHandler::get()->handleError
-			("In daeLIBXMLPlugin::readFromMemory...\n");
+			("In daeLibXMLPlugin::readFromMemory...\n");
 			return false;
 		}
 	}
 	else //This is unexpected.
 	{
 		daeErrorHandler::get()->handleError
-		("daeLIBXMLPlugin I/O request is neither file-descriptor, nor memory-string...\n");
+		("daeLibXMLPlugin I/O request is neither file-descriptor, nor memory-string...\n");
 		return false;
 	}
 
@@ -341,7 +341,7 @@ bool daeLIBXMLPlugin::_read(daeIO &IO, daeContents &content)
 	return true;
 }
 
-int daeLIBXMLPlugin::_readElement(daePseudoElement &parent)
+int daeLibXMLPlugin::_readElement(daePseudoElement &parent)
 {
 	//This was an argument. It should fetch better as a stack object.
 	xmlTextReader *reader = _reader; 
@@ -376,7 +376,7 @@ int daeLIBXMLPlugin::_readElement(daePseudoElement &parent)
 	return readRetVal;
 	return _readContent2(element);
 }
-int daeLIBXMLPlugin::_readContent2(daePseudoElement &parent)
+int daeLibXMLPlugin::_readContent2(daePseudoElement &parent)
 {
 	//This was an argument. It should fetch better as a stack object.
 	xmlTextReader *reader = _reader; 
@@ -462,7 +462,7 @@ int daeLIBXMLPlugin::_readContent2(daePseudoElement &parent)
 	return readRetVal;
 }
  
-daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
+daeOK daeLibXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 {	
 	int err;
 	const daeIORequest &req = getRequest();
@@ -482,7 +482,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(_rawIO==nullptr||nullptr==_rawIO->getWriteFILE())
 		{
 			daeErrorHandler::get()->handleError
-			("RAW: Couldn't open secondary I/O channel for daeLIBXMLPlugin::option_to_write_COLLADA_array_values_to_RAW_file_resource.\n");
+			("RAW: Couldn't open secondary I/O channel for daeLibXMLPlugin::option_to_write_COLLADA_array_values_to_RAW_file_resource.\n");
 			if(_rawIO!=nullptr) goto RawFILE_is_0;
 			return DAE_ERR_BACKEND_IO;		
 		}
@@ -507,7 +507,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(!bufhandler.buf)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") testXmlwriterMemory: Error creating the xml buffer\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") testXmlwriterMemory: Error creating the xml buffer\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -532,7 +532,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 	if(_writer==nullptr)
 	{
 		std::ostringstream msg;				
-		msg<<"daeLIBXMLPlugin::write(";
+		msg<<"daeLibXMLPlugin::write(";
 		if(req.remoteURI!=nullptr)
 		msg<<req.remoteURI->data(); //LEGACY
 		else assert(0);
@@ -590,7 +590,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(!zfh.zf)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") Error opening zip file for writing\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") Error opening zip file for writing\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -617,7 +617,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(err!=ZIP_OK)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") zipOpenNewFileInZip3_64 error"<<err<<"\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") zipOpenNewFileInZip3_64 error"<<err<<"\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -626,7 +626,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(err<0)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") zipWriteInFileInZip error for dae file "<<err<<"\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") zipWriteInFileInZip error for dae file "<<err<<"\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -634,7 +634,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(err!=ZIP_OK)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") zipCloseFileInZip error for dae file "<<err<<"\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") zipCloseFileInZip error for dae file "<<err<<"\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -647,7 +647,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(err!=ZIP_OK)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") zipOpenNewFileInZip3_64 error for manifest.xml file "<<err<<"\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") zipOpenNewFileInZip3_64 error for manifest.xml file "<<err<<"\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -656,7 +656,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(err!=ZIP_OK)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") zipWriteInFileInZip error for manifest.xml file "<<err<<"\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") zipWriteInFileInZip error for manifest.xml file "<<err<<"\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -665,7 +665,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		if(err!=ZIP_OK)
 		{
 			ostringstream msg;
-			msg<<"daeLIBXMLPlugin::write("<<name.str()<<") zipCloseFileInZip error for manifest.xml file "<<err<<"\n";
+			msg<<"daeLibXMLPlugin::write("<<name.str()<<") zipCloseFileInZip error for manifest.xml file "<<err<<"\n";
 			daeErrorHandler::get()->handleError(msg.str().c_str());
 			return DAE_ERR_BACKEND_IO;
 		}
@@ -684,7 +684,7 @@ daeOK daeLIBXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 	return _OK;
 }
 
-void daeLIBXMLPlugin::_writeElement(const daeElement &element)
+void daeLibXMLPlugin::_writeElement(const daeElement &element)
 {
 	daeMeta *meta = element->getMeta();
 	const daeContents &content = meta->getContentsWRT(&element);
@@ -723,7 +723,7 @@ void daeLIBXMLPlugin::_writeElement(const daeElement &element)
 	xmlTextWriterEndElement(_writer);	
 }
 
-void daeLIBXMLPlugin::_writeContent2(const daeContents &content)
+void daeLibXMLPlugin::_writeContent2(const daeContents &content)
 {
 	for(size_t i=0,iN=content.size();i<iN;) if(content[i].hasText())
 	{
@@ -742,7 +742,7 @@ void daeLIBXMLPlugin::_writeContent2(const daeContents &content)
 
 		case daeKindOfText::PI_LIKE:
 		
-			if(i==0&&"xml "==daeName(_CD.data(),4))
+			if("xml "==daeName(_CD.data(),4))
 			break;
 			//Note, the parameter is called "target" but
 			//it seems to accept target & value together.
@@ -761,7 +761,7 @@ void daeLIBXMLPlugin::_writeContent2(const daeContents &content)
 	else _writeElement(content[i++]);
 }
 
-void daeLIBXMLPlugin::_writeAttribute(daeAttribute &attr, const daeElement &element)
+void daeLibXMLPlugin::_writeAttribute(daeAttribute &attr, const daeElement &element)
 {
 	attr->memoryToStringWRT(&element,_CD);
 
@@ -793,7 +793,7 @@ void daeLIBXMLPlugin::_writeAttribute(daeAttribute &attr, const daeElement &elem
 	xmlTextWriterEndAttribute(_writer);
 }
 
-void daeLIBXMLPlugin::_writeValue(const daeElement &element)
+void daeLibXMLPlugin::_writeValue(const daeElement &element)
 {
 	if(!element.getCharData(_CD).empty()) 
 	if(_maybeExtendedASCII(*element.getCharDataObject()))
@@ -806,7 +806,7 @@ void daeLIBXMLPlugin::_writeValue(const daeElement &element)
 	else xmlTextWriterWriteString(_writer,(xmlChar*)_CD.data());	
 }
 
-void daeLIBXMLPlugin::_writeRawSource(const daeElement &src, 
+void daeLibXMLPlugin::_writeRawSource(const daeElement &src, 
 #ifdef NDEBUG
 #error clone()???? clone()???? clone()???? clone()???? Don't use clone().
 #endif									  

@@ -654,7 +654,7 @@ COLLADA_(public)
 		 * does this. Database implementations can choose to facilitate these flags.
 		 */
 		LEGACY_SIDREF_RESOLVER=32,
-		/**Use daeLIBXMLPlugin::option_to_use_codec_Latin1(). (Avoid if possible.) */
+		/**Use daeLibXMLPlugin::option_to_use_codec_Latin1(). (Avoid if possible.) */
 		LEGACY_EXTENDED_LATIN1=64,
 		
 	  ////THESE ARE UNLIKELY TO BE IMPLEMENTED///////////////////////////

@@ -48,7 +48,7 @@ struct daeLegacyIOPlugins : daeIOEmpty //INTERNAL
 
 /**LEGACY, ABSTRACT INTERFACE 
  * This class exists only to serve as a base class for the common functionality
- * between the @c daeLIBXMLPlugin and @c daeTinyXMLPlugin classes.
+ * between the @c daeLibXMLPlugin and @c daeTinyXMLPlugin classes.
  */
 class daeIOPluginCommon : public daeIOPlugin
 {
@@ -57,6 +57,11 @@ COLLADA_(protected) //daeIOPlugin methods
 	virtual daeOK addDoc(daeDOM &DOM, daeDocRef &readDoc);
 	/**PURE-OVERRIDE */
 	virtual daeOK readContent(daeIO &IO, daeContents &content);
+
+COLLADA_(protected) //Visual Studio workaround
+
+	/**Implements constructors/destructors. */
+	LINKAGE void __xstruct(int x, int legacy=0);
 	
 COLLADA_(public) //These status APIs are new in 2.5
 
@@ -187,20 +192,27 @@ COLLADA_(protected)
 #ifdef BUILDING_IN_LIBXML////////////////////
 /**LEGACY
  * NOT-REALLY RECOMMENDED: DOCUMENTATION FOR LIBXML IS SPARSE/NEXT TO NONEXISTENT.
- * The @c daeLIBXMLPlugin class derives from @c daeIOPlugin and implements an XML
+ * The @c daeLibXMLPlugin class derives from @c daeIOPlugin and implements an XML
  * input/output backend using libxml2 as a parser. 
  */
-class daeLIBXMLPlugin : public daeIOPluginCommon
+class daeLibXMLPlugin : public daeIOPluginCommon
 {
 COLLADA_(public) 
 	/**
-	 * Default Constructor & Virtual Destructor
+	 * Default Constructor
 	 */
-	LINKAGE daeLIBXMLPlugin(int legacy=0);
-	#ifdef NDEBUG
-	#error Visual Studio needs this exported like daeDOM
+	daeLibXMLPlugin(int legacy=0)
+	#ifdef BUILDING_COLLADA_DOM
+	;
+	#else //VS workaround; similar to daeDOM's.
+	{
+		daeIOPluginCommon::__xstruct(daePlatform::LEGACY_LIBXML,legacy);
+	}
+	virtual ~daeLibXMLPlugin() //dummy
+	{
+		daeIOPluginCommon::__xstruct(~daePlatform::LEGACY_LIBXML);
+	}
 	#endif
-	virtual ~daeLIBXMLPlugin();
 
 COLLADA_(protected) //daeIOPlugin methods
 	/**PURE-OVERRIDE */
@@ -264,6 +276,10 @@ COLLADA_(private) //daeIOPluginCommon methods
 		virtual int _errorRow();
 
 COLLADA_(private)
+		/**
+		 * Virtual Destructor 
+		 */
+		virtual ~daeLibXMLPlugin();
 
 		//STATEFUL
 		bool _saveRawFile;
@@ -290,9 +306,9 @@ COLLADA_(private)
 };
 #if defined(BUILDING_COLLADA_DOM)\
  && !defined(BUILDING_IN_TINYXML)
-struct daeLegacyIOPlugins : daeLIBXMLPlugin //INTERNAL
+struct daeLegacyIOPlugins : daeLibXMLPlugin //INTERNAL
 {
-	daeLegacyIOPlugins(int legacy, const daeURI&):daeLIBXMLPlugin(legacy)
+	daeLegacyIOPlugins(int legacy, const daeURI&):daeLibXMLPlugin(legacy)
 	{
 		assert(0!=(legacy&daePlatform::LEGACY_LIBXML)); 
 	}
@@ -311,13 +327,20 @@ class daeTinyXMLPlugin : public daeIOPluginCommon
 {
 COLLADA_(public)
 	/**
-	 * Default Constructor & Virtual Destructor
+	 * Default Constructor
 	 */
-	LINKAGE daeTinyXMLPlugin(); 
-	#ifdef NDEBUG
-	#error Visual Studio needs this exported like daeDOM
+	daeTinyXMLPlugin()
+	#ifdef BUILDING_COLLADA_DOM
+	;
+	#else //VS workaround; similar to daeDOM's.
+	{
+		daeIOPluginCommon::__xstruct(0);
+	}
+	virtual ~daeTinyXMLPlugin() //dummy
+	{
+		daeIOPluginCommon::__xstruct(~0);
+	}
 	#endif
-	virtual ~daeTinyXMLPlugin(){};
 
 COLLADA_(protected) //daeIOPlugin methods
 	/**PURE-OVERRIDE */
@@ -338,6 +361,10 @@ COLLADA_(private) //daeIOPluginCommon methods
 		virtual int _errorRow();
 
 COLLADA_(private)
+		/**
+		 * Virtual Destructor 
+		 */
+		virtual ~daeTinyXMLPlugin(){ /*NOP*/ }
 
 		//STATELESS
 		TiXmlBase *_err;
@@ -357,7 +384,7 @@ COLLADA_(private)
 #ifdef BUILDING_IN_LIBXML
 struct daeLegacyIOPlugins //INTERNAL
 {
-	typedef daeLIBXMLPlugin A;
+	typedef daeLibXMLPlugin A;
 	typedef daeTinyXMLPlugin B;
 	char IO[sizeof(A)>sizeof(B)?sizeof(A):sizeof(B)];
 	daeLegacyIOPlugins(int legacy, const daeURI&)

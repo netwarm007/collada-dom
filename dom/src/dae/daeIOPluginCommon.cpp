@@ -6,11 +6,28 @@
  *
  */
 
-#include "../../include/ColladaDOM.inl" //PCH
+#include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
 {//-.
 //<-'
+
+void daeIOPluginCommon::__xstruct(int x, int legacy)
+{			  
+	switch(x) //Visual Studio workaround
+	{
+	#ifdef BUILDING_IN_LIBXML
+	case daePlatform::LEGACY_LIBXML:
+	new(this) daeLibXMLPlugin(legacy); return;
+	#endif
+	#ifdef BUILDING_IN_TINYXML
+	case 0: new(this) daeTinyXMLPlugin; return;
+	#endif
+	case ~daePlatform::LEGACY_LIBXML:
+	case ~0: this->~daeIOPluginCommon(); return;
+	}
+	assert(0); //Are libraries mismatched?
+}
 
 daeIOPluginCommon::daeIOPluginCommon()
 :_encoder(),_decoder(),_readFlags()

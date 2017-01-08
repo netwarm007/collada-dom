@@ -441,19 +441,24 @@ COLLADA_(public) //daeSmartRef<T> T factories
 	/**OVERLOAD Adds a generic object to the database. */
 	template<class T> inline T *_add2(...)
 	{
-		_add2_concrete_CTC<T>((T*)nullptr);
+		_add2_concrete_CTC<T,0>(dae((T*)nullptr));
 		T *obj(new(_addObject(sizeof(T)))T(*this));
 		obj->__DAEP__Object__unembed(1); return obj;
 	}
-	/**DISABLED: daeDOM/daeElement are friends. */
-	template<class X> inline void _add2_concrete_CTC(daeElement*)
+	/**CTC: @c daeDOM should not add a @c daeDOM to itself. */	
+	template<class,int> inline void _add2_concrete_CTC(daeDOM*)
 	{
-		daeCTC<0>("Sanity check. Abstract types.");
+		daeCTC<0>("DOM cannot add a DOM to itself.");
 	}
-	/**DISABLED: There's only one DOM per DOM. */	
-	template<class T> inline void _add2_concrete_CTC(daeDOM*)
+	/**CTC @c DAEP::Element & @c daeElement are abstract. */
+	template<class,int> inline void _add2_concrete_CTC(daeElement*)
 	{
-		daeCTC<0>("Shouldn't be. __daeDOM__new__?"); 
+		daeCTC<0>("Elements must be a concrete type.");
+	}		
+	/**ENABLED: Almost forgot this one! */	
+	template<class T, int I> inline void _add2_concrete_CTC(daeObject*)
+	{
+		if(I==0) _add2_concrete_CTC<T,1>((T*)nullptr); 
 	}
 	/**TEMPLATE-SPECIALIZATION Adds an archive to the database. */
 	template<> inline daeArchive *_add2<daeArchive/*MSVC2010*/>(...)
@@ -533,13 +538,6 @@ COLLADA_(public) //CONSTRUCTORS
 	virtual ~daeDOM()
 	{ 
 		__daeDOM__destruct(*this); assert(_uri.empty()&&isUnparentedObject());
-	}	
-	/**
-	 * Visual Studio wants this for its unused vptr.
-	 */
-	virtual DAEP::Model &__DAEP__Object__v1__model()const
-	{
-		return ((DAEP::Object*)this)->__DAEP__Object__v1__model();
 	}
 	#endif
 	/**
@@ -648,7 +646,7 @@ COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
 	SNIPPET( return *_refResolvers._plain_vanilla_this(); )
 
 	 //EUROPEAN 8-BIT ASCII BUSINESS?
-	//The Latin encoding stuff is moved to daeLIBXMLPlugin.
+	//The Latin encoding stuff is moved to daeLibXMLPlugin.
 	//Note, it doesn't have to do with character-sets, but
 	//rather how the in-memory documents are to be encoded.
 	//The library doesn't care; or it shouldn't. Users are
@@ -656,7 +654,7 @@ COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
 	#ifndef COLLADA_NODEPRECATED	
 	COLLADA_DEPRECATED("daePlatform::setLegacy")
 	static void setGlobalCharEncoding(void);
-	COLLADA_DEPRECATED("daeLIBXMLPlugin::option_to_use_codec_Latin1")
+	COLLADA_DEPRECATED("daeLibXMLPlugin::option_to_use_codec_Latin1")
 	void setCharEncoding(void);	
 	#endif
 

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="ColladaDOM_3::daeArray&lt;*&gt;">    
+    <DisplayString Condition="sizeof($T1)==1">{($T1*)_au->_varray,na}</DisplayString>
+    <DisplayString>{{size = {_au->_counter}, capacity = {_au->_capacity}}}</DisplayString>
+    <Expand>
+      <Item Name="...">*(daeAllocThunk*)_au,nd</Item>
+      <Synthetic Name="abc" Condition="sizeof($T1)==1">
+        <DisplayString>{($T1*)_au->_varray}</DisplayString>
+      </Synthetic>
+      <ArrayItems>
+        <Size>_au->_counter</Size>
+        <ValuePointer>_au->_varray</ValuePointer>
+      </ArrayItems>
+      <Synthetic Name="[-]" Condition="0==_au->_counter">
+        <DisplayString>{{}}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::daeContents_size&lt;*&gt;">    
+    <DisplayString>{{size = {_au->_counter}, capacity = {_au->_capacity}}}</DisplayString>
+    <Expand>
+      <Item Name="...">*(daeAllocThunk*)_au,nd</Item>
+      <CustomListItems>
+        <Variable Name="ptr" InitialValue="(daeContent*)0" />
+        <Exec>ptr=_au->_varray</Exec>
+        <Loop>
+          <Break Condition="ptr->_child.ID==0" />
+          <If Condition="ptr->_magic_ordinal&lt;=daeOrdinals||ptr->_SOTextview._.hole&lt;9">
+            <Item Name="[{ptr-_au->_varray}]">*ptr</Item>
+          </If>
+          <Exec>ptr++</Exec>
+        </Loop>
+      </CustomListItems>
+      <Synthetic Name="[-]" Condition="0==_au->_counter">
+        <DisplayString>{{}}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::daeSmartRef&lt;*&gt;">
+    <DisplayString>{{refs = {_ptr->__DAEP__Object__refs}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*($T1*)_ptr</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::DAEP::Value&lt;*&gt;">
+    <DisplayString>{{value = {value}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::DAEP::Class&lt;*&gt;">
+    <DisplayString>{wrapped_value}</DisplayString>
+    <Expand>
+      <ExpandedItem>wrapped_value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::dae_Array&lt;*,*&gt;">            
+    <DisplayString Condition="$T2&gt;=0">{{size = {_counter&amp;0xFFFF}}}</DisplayString>
+    <DisplayString Condition="$T2&lt;0">{{size = {this[-1+$T2/32]._counter&amp;1&lt;&lt;($T2+1)%-32?1:0}}}</DisplayString>
+    <Expand>
+      <CustomListItems>
+        <Variable Name="ptr" InitialValue="(daeContent*)0" />
+        <Size>$T2&gt;=0?_counter&amp;0xFFFF:this[-1+$T2/32]._counter&amp;1&lt;&lt;($T2+1)%-32?1:0</Size>
+        <Exec>ptr = ((daeContents&amp;)(this[$T2&gt;=0?_counter&gt;&gt;16:1]))._au->_varray</Exec>
+        <Loop>
+          <Break Condition="ptr->_child.ID==0" />
+          <If Condition="ptr->_child.ID&gt;&gt;16==$T2&amp;&amp;ptr->_child.ordinal&lt;=daeOrdinals">
+          <Item Name="[{ptr->_child.ID&amp;0xFFFF}]">($T1*)ptr->_child.ref</Item>
+          </If>
+          <Exec>ptr++</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+  <Type Inheritable="false" Name="ColladaDOM_3::DAEP::Elemental&lt;*,*&gt;">    
+    <Expand>      
+      <Item Name="[data]">__DAEP__Element__data</Item>
+      <Item Name="[parent]">__DAEP__Object__parent</Item>
+      <ExpandedItem>(($T1*)this)->content</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Inheritable="false" Name="ColladaDOM_3::daeElemental&lt;*&gt;">
+    <Expand>
+      <!--Nothing works to help natvis find the namespace???
+      <ExpandedItem>*(Elemental&lt;$T1,daeElement&gt;*)this,nd</ExpandedItem>
+      -->
+      <ExpandedItem>*(__super_natvis*)this,nd</ExpandedItem>      
+    </Expand>
+  </Type>
+  <Type Inheritable="false" Name="ColladaDOM_3::daeObject;">
+    <DisplayString>{{refs = {__DAEP__Object__refs}}}</DisplayString>
+    <Expand>
+      <!--Nothing works to help natvis find the namespace???
+      <ExpandedItem>*(Object*)this,nd</ExpandedItem>
+      -->
+      <ExpandedItem>*(__super_natvis*)this,nd</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::daeContent">
+    <DisplayString Condition="_child.ordinal&gt;daeOrdinals&amp;&amp;_SOTextview._.hole&gt;=9">
+      {*(daeText*)this}
+    </DisplayString>
+    <DisplayString Condition="_child.ordinal&gt;daeOrdinals&amp;&amp;_SOTextview._.hole==1">
+      &lt;!--{(daeString)_SOTextview._text,[_SOTextview._.len]sb}--&gt;
+    </DisplayString>
+    <DisplayString Condition="_child.ordinal&gt;daeOrdinals&amp;&amp;_SOTextview._.hole==4">
+      &lt;?{(daeString)_SOTextview._text,[_SOTextview._.len]sb}?&gt;
+    </DisplayString>
+    <DisplayString Condition="_child.ordinal&gt;daeOrdinals">
+      {(daeString)_SOTextview._text,[_SOTextview._.len]sb}
+    </DisplayString>    
+    <DisplayString Condition="_child.ref!=0">
+    &lt;{_child.ref->__DAEP__Element__data.NCName.string,sb}&gt;</DisplayString>
+    <DisplayString Condition="_child.ref==0">&lt;?&gt;</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="_child.ref!=0">*_child.ref</ExpandedItem>
+      <Item Name="[daeOrdinals - ordinal]">daeOrdinals-_child.ordinal</Item>
+      <Item Name="[Child-ID]">*(daeChildID*)&amp;_child.ID</Item>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::daeChildID">
+    <DisplayString>{{name = {_id&gt;&gt;16}, index = {_id&amp;0xFFFF}}}</DisplayString>
+    <Expand />
+  </Type>
+  <Type Name="ColladaDOM_3::DAEP::Element::__DAEP__Element__Data">
+    <Expand>
+      <Item Name="name">NCName,na</Item>      
+      <ExpandedItem>*meta</ExpandedItem>
+      <ExpandedItem>DOM</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::daeStringRef">
+    <DisplayString>{{{_string,na}}}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(daeDBaseString*)(_string-size_t(_string)%2-daeStringRef_debase)</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::XS::Attribute">
+    <DisplayString Condition="_default.string">{_attribute_name.string,sb}="{_default.string,sb}"</DisplayString>
+    <DisplayString>{_attribute_name.string,sb}=""</DisplayString>
+    <Expand>
+      <ExpandedItem>*(daeValue*)this</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="ColladaDOM_3::daeDocument">    
+    <Expand>
+      <ExpandedItem>*(daeDoc*)this,nd</ExpandedItem>
+      <Item Name="content">((_PseudoElement*)&amp;((daeMeta*)_pseudo.meta)->_prototype)->content</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>
