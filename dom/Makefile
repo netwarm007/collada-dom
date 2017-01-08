@@ -54,9 +54,7 @@ project := all
 # Release/debug configuration: 'release', 'debug', or 'all'
 conf := release
 
-# Collada version: '1.4', '1.5', or 'all'
-colladaVersion := 1.4
-
+# 2017: Does "parser" affect the build? None is the newly recommended setting. 
 # parser: 'libxml', 'tinyxml', or 'all'.
 parser := libxml
 
@@ -93,13 +91,12 @@ $(error Invalid setting arch=$(arch))
 endif
 
 $(eval $(call setBuildVar,project,minizip dom domTest))
-$(eval $(call setBuildVar,colladaVersion,1.4 1.5))
 $(eval $(call setBuildVar,conf,debug release))
 $(eval $(call setBuildVar,parser,libxml tinyxml))
 
 comma := ,
 domMajorVersion := 2
-domMinorVersion := 2
+domMinorVersion := 5
 domVersion := $(domMajorVersion).$(domMinorVersion)
 domVersionNoDots := $(subst .,,$(domVersion))
 
@@ -113,7 +110,6 @@ allTargets :=
 define includeConfig
 override project := $(1)
 override os := $(2)
-override colladaVersion := $(3)
 override conf := $(4)
 include make/$(1).mk
 allOutputFiles += $$(outputFiles)
@@ -122,9 +118,8 @@ endef
 
 $(foreach _project,$(projects),\
 $(foreach _os,$(oss),\
-$(foreach _colladaVersion,$(colladaVersions),\
 $(foreach _conf,$(confs),\
-$(eval $(call includeConfig,$(_project),$(_os),$(_colladaVersion),$(_conf)))))))
+$(eval $(call includeConfig,$(_project),$(_os),$(_conf)))))))
 
 buildObj := $(filter %$(file:.cpp=.o),$(filter %.o,$(allOutputFiles)))
 
@@ -215,7 +210,7 @@ uninstall:
 endif
 
 # 1st param is build path, 2nd param is framework name, 3rd param is framework version number
-# e.g. $(call installMacFrameworkCmd,build/mac-1.4,Collada14Dom.framework,2.0)
+# e.g. $(call installMacFrameworkCmd,build/mac,ColladaDOM.framework,2.0)
 define installMacFrameworkCmd
 if [ -d $(1) ]; then \
 cp -R $(1)/$(2) $(prefix)/$(2); \
@@ -233,16 +228,16 @@ install: uninstall
 	cp -R include $(prefix)/include/colladadom
 # We write this as a loop to avoid an error when there are no files to remove
 	for svndir in $(find $(prefix)/include/colladadom -name '.svn'); do rm -rf $svndir; done
-# Install linux-1.4 libs
-	if [ -d build/linux-1.4 ]; then cp -P build/linux-1.4/libcollada*dom* $(prefix)/lib; fi;
-# Install linux-1.4-d libs
-	if [ -d build/linux-1.4-d ]; then cp -P build/linux-1.4-d/libcollada*dom* $(prefix)/lib; fi;
+# Install linux libs
+	if [ -d build/linux ]; then cp -P build/linux/libcollada*dom* $(prefix)/lib; fi;
+# Install linux-d libs
+	if [ -d build/linux-d ]; then cp -P build/linux-d/libcollada*dom* $(prefix)/lib; fi;
 else ifeq ($(oss),mac)
 install: uninstall
 	$(call printMessage,Installing to $(prefix))
 	echo 'installPrefix := $(prefix)' > make/installPrefix.mk
-	$(call installMacFrameworkCmd,build/mac-1.4,Collada14Dom.framework,$(domVersion))
-	$(call installMacFrameworkCmd,build/mac-1.4-d,Collada14Dom-d.framework,$(domVersion))
+	$(call installMacFrameworkCmd,build/mac,ColladaDOM.framework,$(domVersion))
+	$(call installMacFrameworkCmd,build/mac-d,ColladaDOM-d.framework,$(domVersion))
 endif
 
 .PHONY: installTest

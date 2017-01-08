@@ -1,320 +1,453 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/ 
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
 
-#ifndef __DAE_META_ATTRIBUTE_H__
-#define __DAE_META_ATTRIBUTE_H__
+#ifndef __COLLADA_DOM__DAE_META_ATTRIBUTE_H__
+#define __COLLADA_DOM__DAE_META_ATTRIBUTE_H__
 
-#include <string>
-#include <sstream>
-#include <dae/daeTypes.h>
-#include <dae/daeStringRef.h>
-#include <dae/daeAtomicType.h>
-#include <dae/daeElement.h>
-#include <dae/daeArray.h>
+#include "DAEP.h"
+#include "daeAtomicType.h"
 
-class daeElement;
-class daeMetaElement;
-class daeMetaAttribute;
-class daeMetaElementAttribute;
+COLLADA_(namespace)
+{//-.
+//<-'
 
 /**
- * The @c daeMetaAttribute class describes one attribute in a C++ COLLADA dom element.
- *
- * In the case of the C++ object model a conceptual attribute can be
- * either a dom attribute, a dom element, or a dom value.
- * Essentially, the meta attribute describes fields on the C++ class.
- * However these attributes are stored separately in the containing meta
- * @c daeMetaElement.
- * @c daeMetaAttributes always exist inside of @c daeMetaElements.
- * Each @c daeMetaAttribute has certain semantic operations it is capable of
- * including @c set(), @c get(), and @c print().
- * @c daeMetaAttributes use the @c daeAtomicType system as their underlying semantic
- * implementation, but contain additional information about the packaging
- * of the atomic types into the C++ dom classes such as offset, and
- * array information.
+ * The @c daeValue class describes a C++ COLLADA-DOM element's value.
+ * @c XS::Attribute is based on @c daeValue.
  */
-class DLLSPEC daeMetaAttribute : public daeRefCountedObj
+class daeValue
 {
-protected:
-	daeStringRef    _name;
-	daeInt          _offset;
-	daeAtomicType*  _type;
-	daeMetaElement*	_container;
-	std::string     _defaultString;
-	daeMemoryRef    _defaultValue;
-	daeBool         _isRequired;
+	friend class daeElement;
+	friend class daeMetaElement;
 
-public:
+COLLADA_(protected) //XML Schema relationships	
 	/**
-	 * Constructor
+	 * The element that this value is modeling.
 	 */
-	daeMetaAttribute();
+	daeMeta *_meta;
+	/**
+	 * This is used to destruct the prototypes.
+	 */
+	void (*_destructor)(void*);
+
+COLLADA_(protected) //XML Schema values	
+	/**
+	 * Default, or fixed string if @c _fixed!=0.
+	 */
+	daeHashString _default;	
+	/**
+	 * Not exposed by @c daeValue, but here
+	 * so @c XS::Attribute::getName() can see it.
+	 * @c _attribute_name==nullptr should be meaningful.
+	 */
+	daePseudonym _attribute_name;
+	/**BITFIELD
+	 * @c getNextID() uses this flag.
+	 * @remarks 8 was going to be 1, but it had relied on
+	 * reordering the attributes, except that the generated
+	 * compile-time-constant attribute indices realy ought to
+	 * accurately reflect the ordering of the static attributes.
+	 */
+	unsigned int _next_attribute_is_ID:8,_this_attribute_is_ID:1;
+	/**BITFIELD-CONTINUED
+	 * Both <xs:attribute> & <xs:element> can be fixed.
+	 * In which case @c _default becomes the fixed string.
+	 * This should not effect @c getDefaultString().
+	 */
+	unsigned int _fixed:1;
+	/**BITFIELD-CONTINUED
+	 * Various <xs:attribute> attributes/options.
+	 */
+	unsigned int _attribute_use_required:1, _attribute_use_prohibited:1;
+
+COLLADA_(protected) //Implementation details	
+	/**
+	 * Address of the value where @c this==nullptr.
+	 * @note The value is not necessarily inside of the object
+	 * described by @c _meta. It can be anywhere on the system.
+	 */
+	daeOffset _offset;
+	/**WARNING, VARIABLE-LENGTH
+	 * @warning Positioning this member last, in case it grows.
+	 * Houses default value, RTTI, typename, and min/maxLength.
+	 */
+	daePrototype _type;	
+	/**COURTESY
+	 * Not used internally. 
+	 * Equivalent to @c getMeta()->getSchema()->findType(getType().alias).
+	 */
+	const XS::SimpleType *_simpletype;
+
+#ifdef BUILDING_COLLADA_DOM
+
+COLLADA_(protected) //INVISIBLE
+
+	//ALL MEMBERS ARE VISIBLE FOR THE MAIDEN VOYAGE. _type MAY GROW.	
+
+COLLADA_(public)
+	/**
+	 * Default Constructor
+	 */
+	daeValue(){ /*NOP*/ }
+
+#endif //BUILDING_COLLADA_DOM
+
+COLLADA_(public) //OPERATORS
+
+	COLLADA_DOM_OBJECT_OPERATORS(daeValue)
+	/**
+	 * These are the same class under the hood. 
+	 */
+	inline operator daeAttribute&()const{ return *(daeAttribute*)this; }
+
+COLLADA_(public) 
+	/**
+	 * This is a roundabout way to determine if the value is an <xs:attribute>.
+	 * @note "isAttribute" reads somewhat funny amidst XS::Attribute's members.
+	 */
+	inline daeXS getXS()const
+	{
+		return 0==_attribute_name.extent?(daeXS)0:XS::ATTRIBUTE; 
+	}
+
+	/**LEGACY
+	 * Gets the @c sizeof(char) offset (from @ this) where this value's storage is
+	 * found in its container element class.
+	 * @return Returns the @c sizeof(char) offset from the element's @c this pointer.
+	 */
+	inline daeOffset getOffset()const{ return _offset; }
+
+	/**WARNING, LEGACY
+	 * Gets the number of bytes for this attribute.
+	 * @return Returns the number of bytes in the C++ COLLADA DOM element for this
+	 * attribute.
+	 * @warning There was a bug, in so far as the array version of this class hadn't
+	 * overridden the old implementation; That is like @c getType()->getAtomicSize().
+	 */
+	inline daeSize getSize()const{ return _type->getSize(); }
+
+	/**LEGACY
+	 * Previously "isArrayAttribute."
+	 * Tells if this value is a @c daeArray contained value.
+	 * @return Returns @c true if this value is an array type.
+	 */
+	inline bool isArrayValue()const{ return _type==_type->per<daeArray>(); }
+	
+	/**LEGACY
+	 * Gets the @c daeTypewriter used by this value.
+	 * Post-2.5 @c daePrototype converts into @c daeTypewriter.
+	 * @return Returns the @c daeTypewriter that this value uses for its
+	 * implementation.
+	 */
+	inline const daePrototype &getType()const{ return _type; }
+
+	/**COURTESY
+	 * Gets the @c XS::SimpleType used by this value.
+	 * The library doesn't use this. It's provided if user/client code does.
+	 */
+	inline const XS::SimpleType &getSimpleType()const{ return *_simpletype; }
+
+	/**LEGACY	 
+	 * Gets the "default" for this value as a string.
+	 * @return Returns @c nullptr if no default string is provided.
+	 */
+	inline const daeHashString &getDefaultString()const{ return _default; }
+
+	#ifndef COLLADA_NODEPRECATED
+	COLLADA_DEPRECATED("Post-2.5: END-OF-SUPPORT\n\
+	Sorry, it's too easy to confuse with getDefaultString(). Use getType().value.")
+	/**
+	 * Gets the default for this value as a memory value.
+	 * @return Returns a @c daeOpaque representing the default value.
+	 */
+	void getDefaultValue()const;
+	COLLADA_DEPRECATED("Post-2.5: END-OF-SUPPORT\nUse getMeta()")
+	/**NOT-IMPLEMENTING Use @c getMeta(). */
+	void getContainer()const;
+	#endif //COLLADA_NODEPRECATED
 
 	/**
-	 * Destructor
+	 * Gets the containing @c daeMetaElement for this value.
+	 * @return Returns the @c daeMetaElement to which this @c daeValue belongs.
 	 */
-	virtual ~daeMetaAttribute();
-public:
-	/** 
-	 * Determines if the schema indicates that this is a required attribute.
+	inline daeMeta &getMeta()const{ return *_meta; }	
+
+COLLADA_(public) //GENERATOR-SIDE APIs
+
+	template<int N>
+	/**GENERATOR-SIDE API, LEGACY
+	 * Sets the default for this attribute via a string.
+	 * @param defaultVal @c daeString representing the default value.
+	 */
+	inline void setDefaultString(const daeStringCP (&def)[N])
+	{
+		//This API has to disable the prototype data-bit temporarily.
+		//That could be avoided if there is a dedicated finalization
+		//API that the generator must call. It doesn't seem worth it
+		//to add such an API just for this, although addContentModel
+		//could call it, so it would only be needed for simple-types.
+		_setDefaultString(def);
+	}
+	/** Implements setDefaulString(). */
+	COLLADA_DOM_LINKAGE void _setDefaultString(daeHashString);
+
+COLLADA_(public) //"WRT" APIs. (With Respect To.)
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  //IDEALLY THESE APIs WOULD BE private/friend TO daeElement. ELEMENT/METDATA MUST AGREE.//
+  /////////////////////////////////////////////////////////////////////////////////////////
+
+	template<class T> //daeElement
+	/**LEGACY, NOT-RECOMMENDED
+	 * Gets the value's memory pointer from containing element @a e.
+	 * @param e Element from which to get the value.
+	 * @return Returns the memory pointer corresponding to this value out of parent element @a e.
+	 */
+	inline typename daeConstOf<T,daeOpaque>::type getWRT(T &e)const
+	{
+		const daeElement *upcast = *e; return daeOpaque(e)[getOffset()]; 
+	}
+	template<class This> //daeElement
+	/**LEGACY, NOT-RECOMMENDED
+	 * Gets the value's memory pointer from containing element @a e.
+	 * This overload is just to receive @c this pointers/coceivably other rvalues.
+	 * @param e Element from which to get the value.
+	 * @return Returns the memory pointer corresponding to this value out of parent element @a e.
+	 */
+	inline typename daeConstOf<This,daeOpaque>::type getWRT(This *e)const
+	{
+		const daeElement *upcast = *e; return daeOpaque(e)[getOffset()]; 
+	}
+	
+	template<class Change> //DAEP::Change
+	/**
+	 * Send note-of-change to database if certain conditions are met.
+	 */
+	inline Change &noteChangeWRT(Change &note)const
+	{ 
+		#ifdef NDEBUG
+		#error Need a mechanism for suppressing notification.
+		#endif
+		bool notify = true;
+		if(notify) daeNoteChange(note,(XS::Attribute*)this); return note;
+	}
+
+	/**LEGACY
+	 * Copies the value of this value from fromElement into toElement.
+	 * @param toElement Pointer to a @c daeElement to copy this value to.
+	 * @param fromElement Pointer to a @c daeElement to copy this value from.
+	 * CHANGE-NOTICES
+	 * Do "getType()->copy(getWRT(from),getWRT(to));" to bypass @c noteChangeWRT().
+	 */
+	inline void copyWRT(daeElement *toElement, const daeElement *fromElement)const
+	{
+		_operation<> op(toElement,this,getWRT(fromElement)); return !noteChangeWRT(op);
+	}
+	/**LEGACY
+	 * Copies the default value of this value to the element
+	 * @param toElement Pointer to a @c daeElement to copy the default value to.
+	 * CHANGE-NOTICES
+	 * Do "getType()->copy(getType().value,getWRT(element));" to bypass @c noteChangeWRT().
+	 */
+	inline void copyDefaultWRT(daeElement *toElement)const
+	{
+		_operation<> op(toElement,this,getType().value); return !noteChangeWRT(op);
+	}
+
+	/**LEGACY
+	 * Compares the value of this value in the given elements.
+	 * @param elt1 The first element whose value value should be compared.
+	 * @param elt2 The second element whose value value should be compared.
+	 * @return Returns a positive integer if value1 > value2, a negative integer if 
+	 * value1 < value2, and 0 if value1 == value2.
+	 */
+	inline int compareWRT(const daeElement *elt1, const daeElement *elt2)const
+	{
+		return getType()->compare(getWRT(elt1),getWRT(elt2));
+	}
+	/**LEGACY
+	 * Compares the value of this value from the given element to the default value
+	 * of this value (if one exists).
+	 * @param e The element whose value should be compared to the default value.
+	 * @return Returns a positive integer if value > default, a negative integer if 
+	 * value < default, and 0 if value == default.
+	 */
+	inline int compareToDefaultWRT(const daeElement *e)const
+	{
+		return getType()->compare(getWRT(e),getType().value);
+	}
+
+	/**LEGACY
+	 * Converts a string to a memory value in the specified element.
+	 * @param src Source string, shorter than 128 characters.
+	 * (This is to prevent really long @c strlen calls for potentially short values.)
+	 * @see daeTypewriter::stringToMemory().
+	 * CHANGE-NOTICES
+	 * Do "getType()->stringToMemory("xyz",getWRT(e));" to bypass @c noteChangeWRT().
+	 */
+	inline daeOK stringToMemoryWRT(daeElement *e, daeString src)const
+	{
+		_operation<daeOpaque> op(e,this,src,getWRT(e)); return noteChangeWRT(op);
+	}
+	template<class T> //const daeStringCP* or int
+	/**LEGACY, OVERLOAD
+	 * Converts a string to a memory value in the specified element.
+	 * @see daeTypewriter::stringToMemory().
+	 * CHANGE-NOTICES
+	 * Do "getType()->stringToMemory("xyz",getWRT(e));" to bypass @c noteChangeWRT().
+	 */
+	inline daeOK stringToMemoryWRT(daeElement *e, const daeStringCP *src, T len_or_end)const
+	{
+		_operation<T,daeOpaque> op(e,this,src,len_or_end,getWRT(e)); return noteChangeWRT(op);
+	}
+	/**OVERLOAD, NEW/MAY HAVE ISSUES, LEGACY-SUPPORT
+	 * Converts a string to a memory value in the specified element.
+	 * @see daeTypewriter::stringToMemory().
+	 * CHANGE-NOTICES
+	 * Do "getType()->stringToMemory("xyz",getWRT(e));" to bypass @c noteChangeWRT().
+	 */
+	inline daeOK stringToMemoryWRT(daeElement *e, const daeHashString &src)const
+	{
+		_operation<daeString,daeOpaque> op(e,this,src,src+src.extent,getWRT(e)); return noteChangeWRT(op);
+	}
+
+	/**LEGACY
+	 * Converts an element's attribute value to a string.
+	 * @c dst.data() is 0 terminated. @c dst.size() is not.
+	 */
+	inline daeOK memoryToStringWRT(const daeElement *e, daeArray<daeStringCP> &dst)const
+	{
+		return getType()->memoryToString(getWRT(e),dst);
+	}
+
+	template<class S=void, class T=int>
+	/**EXPERIMENTAL, SEMI-INTERNAL
+	 * Implements change-notice logic. 
+	 */
+	class _operation : public DAEP::Change
+	{	
+		S s; T t; 		
+		daeTypewriter *tw; daeString src;		
+		mutable daeOK OK; mutable bool b; 		
+		virtual void carry_out_change()const
+		{
+			b = true; OK = tw->stringToMemory(src,s,t);
+		}public:
+		_operation(daeElement *e, const daeValue *v, daeString src, S s, T t=0)			
+		//Reminder: getXS here is intended to be provisional.
+		:Change(e,v->getXS()==0?DAEP::CONTENT:DAEP::ATTRIBUTE) 
+		,tw(v->getType()),src(src),s(s),t(t),b(){}
+		inline operator daeOK(){ if(!b) carry_out_change(); return OK; } 		
+	};
+	/**TEMPLATE-SPECIALIZATION
+	 * Implements @c daeTypeWriter::copy(). 
+	 */
+	template<> class _operation<> : public DAEP::Change
+	{	
+		daeOpaque s,t;
+		daeTypewriter *tw; mutable bool b; 		
+		virtual void carry_out_change()const
+		{
+			b = true; tw->copy(s,t);
+		}public:
+		_operation(daeElement *e, const daeValue *v, const daeOpaque src)			
+		//Reminder: getXS here is intended to be provisional.
+		:Change(e,v->getXS()==0?DAEP::CONTENT:DAEP::ATTRIBUTE) 
+		,tw(v->getType()),s(src),t(v->getWRT(e)),b(){}
+		//operator! works surprisingly well for this purpose.
+		inline void operator!(){ if(!b) carry_out_change(); } 		
+	};
+};
+
+//-------------------.
+	namespace XS //<-'
+	{//-.
+//<-----'
+
+/**
+ * @c XS::Attribute describes C++ COLLADA-DOM elements' attributes.
+ * @c XS::Attribute is based on @c daeValue.
+ */
+class Attribute : public daeValue
+{
+	//This is so daeMetaElement's arrays store objects v. pointers.
+	enum{ __size_on_stack=24*sizeof(void*) };
+	char __reserved_for_daeValue[__size_on_stack-sizeof(daeValue)];
+
+#ifdef BUILDING_COLLADA_DOM
+
+COLLADA_(public) //INVISIBLE
+
+	Attribute(){ daeCTC<__size_on_stack*2/3>=sizeof(daeValue)>(); }
+
+#endif //BUILDING_COLLADA_DOM
+
+COLLADA_(public) //daeArray traits
+
+	typedef void __COLLADA__atomize;
+
+COLLADA_(public) //OPERATORS
+
+	COLLADA_DOM_OBJECT_OPERATORS(XS::Attribute)
+
+COLLADA_(public) //ACCESSORS
+	/**LEGACY
+	 * Gets the name of this attribute.
+	 * @return Returns the name of this attribute.
+	 */
+	inline const daePseudonym &getName()const{ return _attribute_name; }
+
+	/**
+	 * Gets the next ID attribute. IDs can be anything. The user provides
+	 * the list on a per @c XS::Schema basis. COLLADA uses "id" and "sid."
+	 * @see @c daeMetaElement::getFirstID()
+	 *
+	 * @note This can reach up to 255 attributes away, but if it must be
+	 * stretched further, it may return a non-ID attribute to make up the
+	 * difference.
+	 */
+	inline daeAttribute *getNextID()const
+	{
+		return _next_attribute_is_ID==0?nullptr:this+_next_attribute_is_ID; 
+	}
+	/**WARNING
+	 * @warning This is probably not @c nullptr for an "id" attribute, but
+	 * it isn't necessarily one. See @c XS::Schema::getIDs().
+	 *
+	 * Tells if this attribute is an ID attribute. This is test if @c this
+	 * is part of the @c getNextID() chain given an arbitrary @c daeAttribute.
+	 * There isn't a backward iterator at this time.
+	 * @see @c daeMetaElement::getFirstID()
+	 */
+	inline daeAttribute *getThisID()const
+	{
+		return _this_attribute_is_ID==0?nullptr:this; 
+	}
+
+	/**LEGACY
+	 * Tells if the schema indicates that this is a required attribute.
 	 * @return Returns true if this is a required attribute, false if not.
 	 */
-	daeBool getIsRequired() {return _isRequired; }
-	/**
-	 * Sets the value that indicates that this attribute is required by the schema.  If set, the attribute
+	inline bool getIsRequired()const{ return _attribute_use_required!=0; }
+
+COLLADA_(public) //GENERATOR-SIDE APIs
+
+	/**GENERATOR-SIDE API, LEGACY
+	 * Sets the value that indicates that this attribute is required by the schema. If set, the attribute
 	 * will always be exported by the API regardless of its value.
 	 * @param isRequired Indicates if the schema says this attribute is required, true if it is, false if not.
 	 */
-	void setIsRequired(daeBool isRequired) {_isRequired = isRequired;}
-	/**
-	 * Sets the byte offset (from @c this) where this attribute's storage is
-	 * found in its container element class.
-	 * @param offset Integer byte offset from @c this pointer.
-	 */
-	void setOffset(daeInt offset) { _offset = offset; }
-
-	/**
-	 * Gets the byte offset (from @ this) where this attribute's storage is
-	 * found in its container element class.
-	 * @return Returns the integer byte offset from @c this pointer for this attribute.
-	 */
-	daeInt getOffset() { return _offset; }
-	 
-	/**
-	 * Sets the name of the attribute.
-	 * @param name @c daeString that is directly stored as a pointer
-	 * without being copied.
-	 */
-	void setName(daeString name) { _name = name; }
-	
-	/**
-	 * Gets the name of this attribute.
-	 * @return Returnsthe name of this attribute.
-	 */
-	daeStringRef getName() { return _name; }
-
-	/**
-	 * Sets the type of the attribute.
-	 * @param type @c daeAtomicType to use for interacting with this
-	 * attribute in a containing @c daeElement.
-	 */
-	void setType(daeAtomicType* type) { _type = type; }
-	
-	/**
-	 * Gets the @c daeAtomicType used by this attribute.
-	 * @return Returns the @c daeAtomicType that this attribute uses for its
-	 * implementation.
-	 */
-	daeAtomicType* getType() { return _type; }
-
-	/**
-	 * Sets the default for this attribute via a string.
-	 * @param defaultVal @c daeString representing the default value.
-	 */
-	virtual void setDefaultString(daeString defaultVal);
-
-	/**
-	 * Sets the default for this attribute via a memory pointer.
-	 * @param defaultVal @c daeMemoryRef representing the default value.
-	 */
-	virtual void setDefaultValue(daeMemoryRef defaultVal);
-
-	/**
-	 * Gets the default for this attribute as a string.
-	 * @return Returns a @c daeString representing the default value.
-	 */
-	daeString getDefaultString();
-
-	/**
-	 * Gets the default for this attribute as a memory value.
-	 * @return Returns a @c daeMemoryRef representing the default value.
-	 */
-	daeMemoryRef getDefaultValue();
-
-	/**
-	 * Sets the containing @c daeMetaElement for this attribute.
-	 * @param container Element on which this @c daeMetaAttribute belongs.
-	 */
-	void setContainer(daeMetaElement* container) { _container = container; }
-
-	/**
-	 * Gets the containing @c daeMetaElement for this attribute.
-	 * @return Returns the @c daeMetaElement to which this @c daeAttribute belongs.
-	 */
-	daeMetaElement* getContainer() { return _container; }
-
-	/**
-	 * Notifies an attribute when the containing document changes.
-	 */
-	virtual void setDocument(daeElement* e, daeDocument* doc);
-	  
-	/**
-	 * Converts an element's attribute value to a string.
-	 */
-	virtual void memoryToString(daeElement* e, std::ostringstream& buffer);
-
-	/**
-	 * Converts a string to a memory value in the specified element.
-	 */
-	virtual void stringToMemory(daeElement* e, daeString s);
-
-	/**
-	 * Gets the attribute's memory pointer from containing element <tt><i>e</i></tt>.
-	 * @param e Containing element from which to get the value.
-	 * @return Returns the memory pointer corresponding to this attribute  out of parent element e.
-	 */
-	virtual daeMemoryRef get(daeElement* e);
-
-	/**
-	 * Gets if this attribute is an array attribute.
-	 * @return Returns true if this attribute is an array type.
-	 */
-	virtual daeBool isArrayAttribute()		{ return false; }
-	  
-public:
-	/**
-	 * Gets the number of bytes for this attribute.
-	 * @return Returns the number of bytes in the C++ COLLADA dom element for this
-	 * attribute.
-	 */
-	virtual daeInt getSize();
-
-	/**
-	 * Gets the alignment in bytes on the class of this meta attribute type.
-	 * @return Returns the alignment in bytes.
-	 */
-	virtual daeInt getAlignment();
-
-	/**
-	 * Copies the value of this attribute from fromElement into toElement.
-	 * @param toElement Pointer to a @c daeElement to copy this attribute to.
-	 * @param fromElement Pointer to a @c daeElement to copy this attribute from.
-	 */
-	virtual void copy(daeElement* toElement, daeElement* fromElement);
-
-	/**
-	 * Copies the default value of this attribute to the element
-	 * @param element Pointer to a @c daeElement to copy the default value to.
-	 */
-	virtual void copyDefault(daeElement* element);
-
-	/**
-	 * Compares the value of this attribute in the given elements.
-	 * @param elt1 The first element whose attribute value should be compared.
-	 * @param elt2 The second element whose attribute value should be compared.
-	 * @return Returns a positive integer if value1 > value2, a negative integer if 
-	 * value1 < value2, and 0 if value1 == value2.
-	 */
-	virtual daeInt compare(daeElement* elt1, daeElement* elt2);
-
-	/**
-	 * Compares the value of this attribute from the given element to the default value
-	 * of this attribute (if one exists).
-	 * @param e The element whose value should be compared to the default value.
-	 * @return Returns a positive integer if value > default, a negative integer if 
-	 * value < default, and 0 if value == default.
-	 */
-	virtual daeInt compareToDefault(daeElement* e);
-	
-public:
-	// These methods are deprecated.
-	virtual daeChar* getWritableMemory(daeElement* e);  // Use get instead.
-	virtual void set(daeElement* element, daeString s); // Use stringToMemory instead.
+	inline void setIsRequired(bool required=true){ _attribute_use_required = required?1:0; }
 };
 
+//-------.
+	}//<-'
+}
 
-/**
- * The @c daeMetaArrayAttribute class is simple a wrapper that implements
- * an array of atomic types rather than a singleton.
- * The corresponding storage is an array
- * and the corresponding operations are implemented on the array
- * data structure rather than on inlined storage in elements.
- */
-class DLLSPEC daeMetaArrayAttribute : public daeMetaAttribute
-{
-public:
-	virtual ~daeMetaArrayAttribute();
-
-	/**
-	 * Defines the override version of this method from @c daeMetaAttribute.
-	 * @param toElement Pointer to a @c daeElement to copy this attribute to.
-	 * @param fromElement Pointer to a @c daeElement to copy this attribute from.
-	 */
-	virtual void copy(daeElement* toElement, daeElement* fromElement);
-
-	/**
-	 * Copies the default value of this attribute to the element
-	 * @param element Pointer to a @c daeElement to copy the default value to.
-	 */
-	virtual void copyDefault(daeElement* element);
-
-	/**
-	 * Compares the value of this attribute in the given elements.
-	 * @param elt1 The first element whose attribute value should be compared.
-	 * @param elt2 The second element whose attribute value should be compared.
-	 * @return Returns a positive integer if value1 > value2, a negative integer if 
-	 * value1 < value2, and 0 if value1 == value2.
-	 */
-	virtual daeInt compare(daeElement* elt1, daeElement* elt2);
-
-	/**
-	 * Compares the value of this attribute from the given element to the default value
-	 * of this attribute (if one exists).
-	 * @param e The element whose value should be compared to the default value.
-	 * @return Returns a positive integer if value > default, a negative integer if 
-	 * value < default, and 0 if value == default.
-	 */
-	virtual daeInt compareToDefault(daeElement* e);
-
-	/**
-	 * Converts an element's attribute value to a string.
-	 */
-	virtual void memoryToString(daeElement* e, std::ostringstream& buffer);
-
-	/**
-	 * Converts a string to a memory value in the specified element.
-	 */
-	virtual void stringToMemory(daeElement* e, daeString s);
-
-	/**
-	 * Sets the default for this attribute via a string.
-	 * @param defaultVal @c daeString representing the default value.
-	 */
-	virtual void setDefaultString(daeString defaultVal);
-
-	/**
-	 * Sets the default for this attribute via a memory pointer.
-	 * @param defaultVal @c daeMemoryRef representing the default value.
-	 */
-	virtual void setDefaultValue(daeMemoryRef defaultVal);
-
-	/**
-	 * Gets if this attribute is an array attribute.
-	 * @return Returns true if this attribute is an array type.
-	 */
-	virtual daeBool isArrayAttribute() { return true; }
-
-	/**
-	 * Notifies an attribute when the containing document changes.
-	 */
-	virtual void setDocument(daeElement* e, daeDocument* doc);
-};
-
-
-typedef daeSmartRef<daeMetaAttribute> daeMetaAttributeRef;
-
-typedef daeTArray<daeMetaAttributeRef> daeMetaAttributeRefArray;
-typedef daeTArray<daeMetaAttribute*> daeMetaAttributePtrArray;
-
-#endif //__DAE_META_ATTRIBUTE_H__
-
-
-
-
-
-
+#endif //__COLLADA_DOM__DAE_META_ATTRIBUTE_H__
+/*C1071*/

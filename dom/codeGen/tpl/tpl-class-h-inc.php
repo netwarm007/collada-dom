@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Copyright 2006 Sony Computer Entertainment Inc.
  *
@@ -11,26 +10,19 @@
 // INCLUDES
 
 //clear duplicate-entry filter
-if($meta['parent_meta']==NULL); $include_list = array(); 
+if($meta['parent_meta']==NULL) $include_list = array(); 
 
-//NEW: check for : excludes imports
-//(could also in_array($import_list))
-foreach($meta['ref_elements'] as $ea)
-if(!in_array($ea,$include_list)&&strpos($ea,':')===false)
+foreach($meta['#include'] as $ea)
+echoInclude($include_list,$ea);
+//implicates COLLADA 1.4.1
+foreach($meta['elements'] as $k=>$ea) 
 {
-	$include_list[] = $ea; 
-	echo "#include <$prefix/$prefix", ucfirst($ea), ".h>\n";
-}//one more to go?
-if(@$classmeta[$meta['content_type']]['isComplexType'])
-{
-	$ea = $meta['content_type']; 
-	if(!in_array($ea,$include_list)&&strpos($ea,':')===false)
-	{
-		$include_list[] = $ea;
-		echo "#include <$prefix/$prefix", ucfirst($ea), ".h>\n";
-	}
+	$sub =@@ $classmeta[$k]['substitutableWith'];
+	if(!empty($sub))
+	foreach($sub as $k=>$ea2) echoInclude($include_list,$k);
 }
 
-foreach($meta['inline_elements'] as $ea) echo applyTemplate('class-h-inc',$ea);
+foreach($meta['classes'] as $ea)
+echo applyTemplate('class-h-inc',$ea);
 
 ?>

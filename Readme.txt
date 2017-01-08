@@ -70,15 +70,13 @@ hard coded COLLADA demos that were included with older PS3 releases.
 |  +-projects
 |     +-VC8-PS3             Visual Studio 2005 project files and platform-specific source code for PS3 COLLADA Viewer
 |     +-VC8-Win             Visual Studio 2005 project files and platform-specific source code for Windows native COLLADA Viewer
-|     +-VC9-PS3             Visual Studio 2008 project files and platform-specific source code for PS3 COLLADA Viewer
-|     +-VC9-Win             Visual Studio 2008 project files and platform-specific source code for Windows native COLLADA Viewer
 |     +--...
 |
 |  +-license.txt
 |  +-Makefile
 |
-+--Makefile                 Makefile for MSYS to build COLLADA Viewer and the necessary libraries
-+--Makefile.linux           Makefile for Linux to build COLLADA Viewer and the necessary libraries
++--Makefile.old             Makefile for MSYS to build COLLADA Viewer and the necessary libraries
++--Makefile.linux.old       Makefile for Linux to build COLLADA Viewer and the necessary libraries
 +--Readme.txt               This file
 
 
@@ -219,12 +217,14 @@ Default:
 
 
 
+WARNING: IN 2017 THESE MACHINE-GENERATED FILES HAD TO BE PURGED. THEY WILL HAVE TO BE REBUILT BY AN OSX USER.
 ================================================================================
 Building the COLLADA package and running the COLLADA Viewer sample for Macintosh
 ================================================================================
 
 These instructions build the entire contents of the COLLADA package including libraries and samples for Macintosh PC
 
+WARNING: IN 2017 THESE MACHINE-GENERATED FILES HAD TO BE PURGED. THEY WILL HAVE TO BE REBUILT BY AN OSX USER.
 1) Open Xcode project file at viewer/projects/xcode/viewer.xcodeproj
 2) Select "Debug" or "Release" configuration to build Macintosh executable
 3) The release or debug 'viewer' executable will be created in viewer/bin

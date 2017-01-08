@@ -7,17 +7,33 @@
  *
  */
 
+if(inline_CM)
+{
+	echo '//Generator inline_CM==true put class definitions in their h files.';
+	return;
+}	
+if(2!=$COLLADA_DOM)
+{
+	echo '//ColladaDOM 3 doesn\'t require this file. It\'s legacy only anyway.';
+	return;
+}
+	
 echoCode("
 $copyright
 
-#ifndef __$1_CONSTANTS_H__
-#define __$1_CONSTANTS_H__
+#ifndef __$1_CONSTANTS_H__$2
+#define __$1_CONSTANTS_H__$2",
+strtoupper($prefix),$include_guard);
 
-#include <$2/$2DomTypes.h>
+echo "
+COLLADA_(namespace)
+{
+    COLLADA_($target_namespace,namespace)
+    {//-.
+//<-----'
+";
 
-",strtoupper($prefix),$meta_prefix);
-
-$DLLSPEC_preString = 'extern DLLSPEC '.$meta_prefix.'String';
+$DLLSPEC_preString = 'extern DLLSPEC daeString';
 
 foreach($constStrings as $el=>$ea)
 {
@@ -34,9 +50,8 @@ foreach($elementNames as $el=>$ea)
 echo $DLLSPEC_preString, " COLLADA_ELEMENT_$el;\n";*/
 
 echoCode("
-	
-#endif //__$1_CONSTANTS_H__
-",strtoupper($prefix));
+}} //COLLADA_($target_namespace,namespace)
 
-?>
+#endif //__$1_CONSTANTS_H__$2",strtoupper($prefix),$include_guard);
 
+?>/*C1071*/

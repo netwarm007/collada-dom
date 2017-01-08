@@ -8,95 +8,126 @@
  *
  */
 
-$full_element_name = //shorthand
-$prefix.ucfirst($meta['element_name']);
-$friendly_typedef = asFriendlyType($full_element_name);
-
-//SCHEDULED OBSOLETE
-$deep_type_constant_pop = $deep_type_constant;
-$deep_type_constant.=strtoupper($meta['element_name']);
-//UNUSED: domConstants.h/cpp COLLADA_TYPE/ELEMENT/ETC STRINGS
-//(NOTE: these files also have COLLADA_VERSION/NAMESPACE which are, but?)
+if(2===$COLLADA_DOM)
 {
-	/*//COLLADA_ELEMENT/TYPE_ 
-	foreach($meta['elements'] as $ea)
-	if(array_search($ea,$elementNames)===FALSE)
-	$elementNames[] = $ea;
-	if(!empty($meta['substitutionGroup'])) //one more?
-	if(array_search($meta['element_name'],$elementNames)===FALSE)
-	$elementNames[] = $meta['element_name'];*/
-	//namespace COLLADA_TYPE; 
-	//???: THESE CONDITIONS MAKE ABSOLUTELY NO SENSE
-	//if(array_search($meta['element_name'],$elementTypes)===FALSE) 
-	$elementTypes[] = $deep_type_constant;
+	$synth = ',';
+	if(!empty($meta['isSynth']))
+	{
+		global $synthetics;
+		$a = reset($synthetics[$meta['element_name']]);
+		$synth = ', //SYNTHESIZED';
+	}
+	else $a = array($meta);	
+	foreach($a as $ea)
+	{
+		$elementType = $ea['context'];
+		foreach($elementType as& $ea) 
+		$ea = strtoupper(asFriendlyType($ea));
+		$elementType = implode($elementType,'_');
+		$elementTypes[] = $elementType.'='.($genus+1).$synth;
+	}
+	if(count($a)>1) $elementType = $genus+1;
+	else $elementType = $namespace.'_TYPE::'.$elementType;
 }
 
-if($meta['parent_meta']!=NULL) 
-{ 
-	//only echo these for the inner classes.. the main classes will have
-	//them defined in a seperate file to avoid circular includes.
-	echoCode("
-class $full_element_name;
-typedef $1SmartRef<$full_element_name> {$friendly_typedef}Ref;
-typedef $1TArray<{$friendly_typedef}Ref> {$friendly_typedef}_Array;
-",$meta_prefix);
+if(NULL===$meta['parent_meta'])
+{
+	if(2===$COLLADA_DOM)
+	{
+		$classname = getFriendlyType($meta['element_name']);
+	}
+	else $classname = getAlias($meta['element_name']);
 }
+else $classname = getIntelliSenseName($meta);
 
+//NEW: The notes must come above the class definitions
+//so that the DAEP::InnerValue conversion operator can
+//figure out the const-ness of the return-type.
+//It would be interesting if the return-type could not
+//be instantiated in order to let the translation-unit
+//override DAEP::Concern (assuming One Definition Rule
+//is not a factor) but this seems like it's impossible. 
+//Another way was to force would-be const return-types
+//to be wrapped in something like std::as_const. C++17
+//To facilitate this a crazy ---> operator was thought
+//about; where -- simply does the const-cast; but that
+//seemed like too much baggage to take on to play with
+//experiments that violate the C++ One Definition Rule.
+$lo = layoutTOC($meta);
+$extent_of_attributes = count($meta['attributes']);
+$value = !empty($meta['content_type']);
+$extent_of_values = $extent_of_attributes+$value;
+reset($lo); $k0 = key($lo);
+$_No = $extent_of_values+max($k0-1,0);
+echoNotesCPP($meta,$notes,$_No);
+
+//These come from DAEP.h.
+$schema = 0; //empty-content-model
+$any = $meta['flags']&ElementMeta::hasAny;
+if($value) $schema = 1; //simple
+if(!empty($meta['elements'])||$any) $schema = 2; //complex
+if($meta['mixed']) $schema = 3; //mixed
+if($meta['parent_meta']!=NULL) $schema|=4; //inline
+$schema|=$meta['flags'];
+$baseclass = ($COLLADA_DOM==2?'dae':'DAEP::').'Elemental';
+$schema = sprintf('0x%04x%04x%08xULL',$genus++,$extent_of_attributes,$schema);
 //DOCUMENTATION
-echoDoxygen(@$meta['documentation']);
-//SUBSTITION GROUP/INHERITANCE
-$baseClass = $meta_prefix.'Element';
-if($meta['substitutionGroup']!='') 
-$baseClass = $prefix.ucfirst($meta['substitutionGroup']);
-else if($meta['isExtension']) 
-$baseClass = $prefix.ucfirst($meta['base_type']);
-else if(!empty($meta['baseTypeViaRestriction']))
-$baseClass = $prefix.ucfirst($meta['baseTypeViaRestriction']);
-//NEW: 1.4 does inheritance from type="complexType"
-else if(@!empty($classmeta[$meta['base_type']]))
-$baseClass = $prefix.ucfirst($meta['base_type']);
+echoClassDoxygentation($indent,$meta); 
 echoCode("
-typedef class $full_element_name : public $baseClass
-{
-public:
+class $1
+: 
+public $baseclass<$1>, public DAEP::Schema<$schema>
+{",$classname);
 
-	//This function is deprecated. Use typeID instead
-	virtual $1_TYPE::TypeEnum 
-	getElementType()const{ return $1_TYPE::$deep_type_constant; }	
-	//ID is scheduled for removal. As it's not exported
-	static $2Int ID(){ return $3; } 
-	virtual $2Int typeID()const{ return $3; }	
-",$namespace,$meta_prefix,$typeID++); //NOTICE INCREMENTING!
+if(2===$COLLADA_DOM)
+{
+	echoCode("
+public: //COLLADA-DOM 2
+	/**
+	 * These were deprecated; but are kept for switch-cases.
+	 */
+	enum{ elementType=$elementType };
+	");	
+}
 
 //INTERNAL CLASSES
-$deep_type_constant.='_'; //SCHEDULED OBSOLETE
-$result = ''; $results = 0;
-foreach($meta['inline_elements'] as $ea)
-if(!$ea['complex_type']||$ea['isRestriction']||$ea['isExtension'])
+//
+// Pre-2.5 these were nested inside the class definitions
+// But for large classes Microsoft's IntelliSense product
+// would silently die for the including translation units 
+//
+if(!empty($meta['classes']))
 {
-	$pop = $indent; $indent.="\t"; 	
-	$results++; $result.=applyTemplate('class-h-def',$ea);
-	$indent = $pop;
-}if($results>0)
-echoCode("
-public: //NESTED ELEMENT$1
-",$results>1?'S':'');
-echo $result;
+	echo $indent,
+"public: //NESTED ELEMENTS
+	
+";	$local__ = 2===$COLLADA_DOM?'':'local__'; 
+	foreach($meta['classes'] as $k=>$ea)	
+	{
+		echo 
+'	typedef class ', getIntelliSenseName($ea), "\n";		
+		echoClassDoxygentation($indent="\t",$ea); $indent = '';
+		$k = getFriendlyType($local__.$k);
+		$code = "\n\t$k; ";
+		//NEW: $code puts these on one line, so the comment is attached to them all
+		if(2===$COLLADA_DOM)
+		$code.="typedef daeSmartRef<$1> $1Ref; typedef dae_Array<$1> $1_Array; typedef daeSmartRef<const $1> const_$1Ref;";
+		echoCode($code,$k);		
+		echo "\n";
+	}	
+}
 
-//SCHEDULED OBSOLETE
-$deep_type_constant = $deep_type_constant_pop;
-
-//ENUMS
-//NOTE: COLLADA 1.5 has no instances of this
-//14.1 may? In any case, it's not been tested
+//INLINE-ENUMS?
+/*BLANKING OUT SO NOT TO HAVE TO THINK IT'S ACTIVE
+//On 1.5.0 only <author_email> requires'simple_type'
+//NOTE: the COLLADA schemas have no instance of this
 if($meta['simple_type']!=NULL)
 {
-	$meta2 =& $meta['simple_type']->getMeta();	
+	$meta2 = $meta['simple_type']->getMeta();	
 	if(!empty($meta2['enum']))
 	{
 		//REMINDER: not properly indented either
-		die("die(is this COLLADA 1.4.1? is anybody out there?)");
-		
+		die("die(inline enum? This code is not up-to-date.)");		
 		$type = $meta2['type'];		
 		if(!$meta2['useConstStrings'])
 		{
@@ -105,7 +136,7 @@ if($meta['simple_type']!=NULL)
 			echo $indent, "public: //ENUM\n";		
 			//what is this comment saying?
 			//Decided to name mangle the enum constants so they are more descriptive and avoid collisions			
-			echoDoxygen(@$meta2['documentation'],"\t");
+			echoDoxygen($meta2['documentation'],"\t");
 			//previously _type is injected. HOWEVER this is an ENUM and tpl-types-header.cpp doesn't do this, so
 			echo "enum ", $prefix, ucfirst($$type), "\n{\n";		
 			$type = strtoupper(asFriendlyEnum($type));
@@ -113,7 +144,7 @@ if($meta['simple_type']!=NULL)
 			{
 				echo "\t", $type, "_", strtr($enum,'.-','__'), ",";
 				if(!empty($ea['documentation']))
-				echo " /**< ", getDocumentationText($ea['documentation']), " */";								
+				echo ' /**< ', getDocumentationText($ea['documentation']), ' *','/';
 				echo "\n";
 			}
 			echo "\t", $type, "_COUNT";
@@ -125,86 +156,156 @@ if($meta['simple_type']!=NULL)
 			foreach($meta2['enum'] as $enum=>$ea)
 			{
 				if(!empty($ea['documentation']))
-				$constStrings[] = "/**\n * ".getDocumentationText($ea['documentation'])."\n */\n";								
+				$constStrings[] = "/**\n * ".getDocumentationText($ea['documentation'])."\n *"."/\n";								
 				$constStrings[$type."_".strtr($enum,'.-','__')] = "\"".$enum."\";\n";
 			}
 			$constStrings[] = "\n";
 		}
 	}
+}*/
+
+$i = 0; 
+echoCode("
+public: //Parameters
+
+	typedef struct:Elemental,Schema");
+echo $indent,
+"	{   ";
+foreach($meta['attributes'] as $ea)
+{
+	$at = getGlobalType($meta,$ea['type']);
+echo	
+"DAEP::Value<$i,$at>\n",$indent,
+"	_$i; "; $i++;
 }
+if($value)
+{
+	$value = getGlobalType($meta,$meta['content_type']);
+echo
+"DAEP::Value<$i,$value>\n",$indent,
+"	_$i; "; $i++;
+}
+
+//TODO: EVENTUALLY THIS SHOULD BE REPLACED
+//BY SOME ATTRIBUTE DATA-MEMBERS THAT WILL 
+//GET THE ALIGNMENT ON TRACK. IF THERE ARE
+//NO ATTRIBUTES, ALIGNMENT ISN'T NECESSARY
+//aligning contents-arrays on 64bit builds	
+//echo "COLLADA_ALIGN(sizeof(_*))\n",$indent,
+echo "COLLADA_WORD_ALIGN\n",$indent,
+"		";
+ 
+foreach($lo as $k=>$ea)
+{
+	if($k<=1) break;
+echo
+"DAEP::Child<$k,$ea->type>\n",$indent, 
+"	_$i; "; $i++;
+}
+$i-=$extent_of_values;
+$count_lo = count($lo);
+$singles = $count_lo-$i;
+
+//THIS IS VERY HARD TO EXPLAIN! 
+//alignN is optional-unless there are "plural"
+//children involved. (they must factor alignN into
+//their IDs regardless.) 0 means add the alignment
+//see COLLADA_DOM_N in the C++ sources for details
+$wordsN = ceil($singles/32); $alignN = $i+$wordsN&1;
+$N = $i?'1,'.($wordsN+($alignN^1)):"$alignN,$wordsN";
+echo "COLLADA_DOM_N($N)\n";
+
+$i = $_No+($singles==0?0:1/*0 ID*/)+$singles+1; 
+$contentID = $i; //save for later
+$elementPtoMs = $extent_of_values;
+//the generator here is 32/64bit agnostic
+//dae_Array<> has pointer alignment logic 
+//which COLLADA_DOM_PRECURSOR understands
+echoCode("
+	DAEP::Value<$_No,dae_Array<$1_N; enum{ _No=$_No };
+	DAEP::Value<$i,daeContents> content; typedef __NS__<$notes> notestart;
+	}_;
+",$_globals['>> ']); //support C++98/03 double-angle-bracket rules
+$notes+=$i+1;
 
 //ATTRIBUTES
-if((!empty($meta['attributes'])||$meta['useXMLNS'])
-/*&&empty($meta['baseTypeViaRestriction'])*/)
+if(2!==$COLLADA_DOM) 
+$nc = $meta['elements']; else $nc = array();
+if(!empty($meta['attributes']))
 {
+	if($_attr=2===$COLLADA_DOM?'attr':'')
+	$nc2 = array(); else $nc2 = $meta['attributes'];
 	echoCode("
-protected: //Attribute$1",count($meta['attributes'])>1?'s':'');
+public: //Attributes");
 
-	if($meta['useXMLNS']) //domCOLLADA/technique
-	echoCode("
-	/**
-	 * This element may specify its own xmlns.
-	 */
-	xsAnyURI _attrXmlns;");
-	foreach($meta['attributes'] as $attr_name=>$ea)
+	$i = 0;		
+	foreach($meta['attributes'] as $k=>$ea)
 	{
-		$type = $ea['type']; 
-		$preType = $type; $Name = $attr_name;
-		getFriendlyTypeAndName($preType,$Name);		
-		echoDoxygen(@$ea['documentation'],"\t");				
+		$type = $ea['type'];
+		$preType = getGlobalType($meta,$type); 		
+		echoDoxygen(@$ea['documentation'],"\t",getFriendlyType($type));
+		$clash = getNameClash($nc,$k,'__ATTRIBUTE');
+		$name = $_attr.getFriendlyName($k.$clash);		
 		echoCode("
-	$preType _attr$Name;");
+	DAEP::Value<$i,$preType,_,(_::_)&_::_$i> $name;"); 
+		$i++;
 	}echo "\n";
 }
+else $nc2 = array();
 
-//ELEMENTS
-echoElementsCPP($meta);
-
-//get/setX methods
-echoAccessorsAndMutatorsCPP($meta);
-
-//VALUE
-//NOTE: following NOTE is never the case???
-//NOTE: special casing any element with 'mixed' content model to ListOfInts type _value
-if((!empty($meta['content_type'])||$meta['mixed']))
-if(!$meta['abstract']&&empty($meta['baseTypeViaRestriction']))
-{
-	$content_type = $meta['content_type'];	
-	$preType = getFriendlyType($content_type);
-	if($meta['parent_meta']!=NULL)
-	{
-		$content = asFriendlyType($content_type); //HACK
-		if(array_key_exists($content,$meta['parent_meta']['inline_elements']))
-		$preType = '::'.$preType;		
-	}
-	if(@$classmeta[$content_type]['isComplexType']) //$valueType.="Ref";
-	die('Please investigate'); //Reminder: C comment displays type without Ref suffix
-	
+if($el_less=$count_lo==0&&!$any)
 echoCode("
-protected: //Value
+public: //Content");
+//CONTENT (VALUE)
+if(!empty($value))
+{
+	$clash = getNameClash($nc,'value','__CONTENT',$nc2);
+	echoCode("
 	/**
-	 * The $preType value of the text data of this element. 
+	 * The $value value of the text data of this element. 
 	 */
-	$preType _value;
-	");
+	DAEP::Value<$1,$value,_,(_::_)&_::_$1> value;"
+	,$extent_of_attributes);
+}
+//ELEMENTS
+//Reminder: all kinds hold comments and/or processing-instructions.
+//And the children are laid out ahead of the contents-array.
+//TECHNICALLY THIS IS CORRECT, HOWEVER THERE SHOULDN'T BE ELEMENTS
+//WHEN THERE IS A VALUE, AND SO THE //Content SECTION SHOULD MERGE.
+//Reminder:
+//NOW THIS OUTPUTS COLLADA_DOM_N(X) union{ int:0; }; //USER-CHILDS
+echoElementsCPP($meta,$elementPtoMs,$N,$any);
+//CONTENT
+if(!$el_less) 
+echoCode("
+public: //Content");
+$clash = getNameClash($nc,'content','__CONTENT',$nc2);
+echoCode("
+	/**
+	 * Children, mixed-text, comments & processing-instructions.
+	 */
+	DAEP::Value<$1,daeContents,_,(_::_)&_::content> content$clash;"
+,$contentID);
+	
+//get/setX methods
+if($COLLADA_DOM==2)
+{
+	echo "\n";
+	echoAccessorsAndMutatorsCPP($meta);
 }
 
-//CONSTRUCTORS  
-echoConstructorsCPP($full_element_name,$meta,$baseClass);
+echo $indent,
+'};';
 
-echoCode("
-public: //STATIC METHODS
-	/**
-	 * Creates an instance of this class and returns a $1ElementRef referencing it.
-	 * @return Returns a $1ElementRef referencing an instance of this object.
-	 */
-	static DLLSPEC $1ElementRef create($2 &$1);
-	/**
-	 * Creates a $1MetaElement object that describes this element in the meta object reflection framework.
-	 * If a $1MetaElement already exists it will return that instead of creating a new one. 
-	 * @return Returns a $1MetaElement describing this $3 element.
-	 */
-	static DLLSPEC $1MetaElement *registerElement($2 &$1);
-	
-}$friendly_typedef;
-",$meta_prefix,strtoupper($meta_prefix),$namespace);
+//INTERNAL CLASSES
+//
+// Pre-2.5 these were nested inside the class definitions
+// But for large classes Microsoft's IntelliSense product
+// would silently die for the including translation units 
+//
+//as&/unset($ea) is supporting echoNotesCPP and layoutTOC
+foreach($meta['classes'] as& $ea) 
+if(empty($ea['isSynth']))
+echo "\n",applyTemplate('class-h-def',$ea); unset($ea);	
+
+?>

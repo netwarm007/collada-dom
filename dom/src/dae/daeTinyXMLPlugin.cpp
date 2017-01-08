@@ -5,233 +5,275 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+//The user can choose whether or not to include TinyXML support in the DOM. Supporting TinyXML will
+//require linking against it. By default TinyXML support isn't included.
+#ifdef BUILDING_IN_TINYXML /////////////////////////////////////////////
 
-// The user can choose whether or not to include TinyXML support in the DOM. Supporting TinyXML will
-// require linking against it. By default TinyXML support isn't included.
-#if defined(DOM_INCLUDE_TINYXML)
+#include "../../include/ColladaDOM.inl" //PCH
 
-#if defined(DOM_DYNAMIC) && defined(_MSC_VER)
-#pragma comment(lib, "tinyxml.lib")
-#endif
-
-#if defined(_MSC_VER)
-#pragma warning(disable: 4100) // warning C4100: 'element' : unreferenced formal parameter
-#endif
-
-#include <string>
 #include <tinyxml.h>
-#include <dae.h>
-#include <dom.h>
-#include <dae/daeMetaElement.h>
-#include <dae/daeErrorHandler.h>
-#include <dae/daeMetaElementAttribute.h>
-#include <dae/daeTinyXMLPlugin.h>
-#include <dae/daeDocument.h>
 
-using namespace std;
+COLLADA_(namespace)
+{//-.
+//<-'
 
-namespace {
-daeInt getCurrentLineNumber(TiXmlElement* element) {
-    return -1;
-}
+//TIXML_USE_STL is a mess.
+struct daeTinyXMLPlugin::Value : daeHashString
+{
+	Value(TiXmlNode *p)
+	{
+		const TIXML_STRING &str = p->ValueTStr();
+		string = str.c_str(); extent = str.size();
+	}
+};
+template<class T>
+static T *daeTinyXMLPlugin::setValue(T *io, const daeHashString &v)
+{
+	const_cast<TIXML_STRING&>(io->ValueTStr()).assign(v.string,v.extent);
+	return io;
 }
 
 daeTinyXMLPlugin::daeTinyXMLPlugin()
 {
-    m_doc = NULL;
-    supportedProtocols.push_back("*");
+	//2/3 is to give US a heads up
+	daeCTC<(__combined_size_on_client_stack*2/3>=sizeof(*this))>();
 }
 
-daeTinyXMLPlugin::~daeTinyXMLPlugin()
+int daeTinyXMLPlugin::_errorRow(){ return _err->Row(); }
+
+bool daeTinyXMLPlugin::_read(daeIO &IO, daeContents &content)
 {
+	TiXmlDocument doc; _err = &doc; 
+	const daeIORequest &req = getRequest();	
+	if(!req.string.empty())
+	{
+		//doc.Parse expects a 0-terminator.
+		//doc.Parse(req.string);
+		int undefined[16] = {};
+		daeString q,p = req.string, d = p+req.string.extent;
+		for(TiXmlNode*n;p+1<d;p=q) if(p[0]=='<')
+		{
+			switch(p[1])
+			{
+			case '/': 				
+				//Theoretically this API can read a partial 
+				//document, but it's not really fleshed out.				
+				assert(p[1]!='/'); p = d; break;			
+			case '!': if('-'==p[2]) 
+				n = new TiXmlComment(); else
+				n = new TiXmlUnknown(); break; //DTD
+			case '?': n = new TiXmlDeclaration(); break;
+			default:  n = new TiXmlElement(""); break;
+			}
+			q = n->Parse(p,(TiXmlParsingData*)undefined,TIXML_ENCODING_UTF8);			
+			doc.LinkEndChild(n);
+			if(p==q||p==nullptr) //Documentation is poor.
+			goto error;
+		}
+		else switch(p[1])
+		{
+		case ' ': case '\t': case '\r': case '\n': 
+				
+			p++; continue; //Assuming spaces are OK.
+
+		default: error:
+
+			daeErrorHandler::get()->handleError
+			("In daeTinyXMLPlugin::readFromMemory...\n");
+			return false;
+		}
+	}
+	else if(nullptr!=req.remoteURI)
+	{
+		doc.LoadFile(IO.getReadFILE()); 
+		if(!doc.RootElement())
+		{
+			daeErrorHandler::get()->handleError
+			("In daeTinyXMLPlugin::readFromFile...\n");
+			return false;
+		}
+	}
+	else //This is unexpected.
+	{
+		daeErrorHandler::get()->handleError
+		("daeTinyXMLPlugin I/O request is neither FILE, nor memory-string...\n");
+		return false;
+	}
+
+	TiXmlNode *p = doc.FirstChild();
+	if(p!=nullptr&&p->Type()==TiXmlNode::TINYXML_DECLARATION)
+	{
+		TiXmlDeclaration *decl = (TiXmlDeclaration*)p;
+		daeIOPluginCommon::_push_back_xml_decl(content,
+		decl->Version(),decl->Encoding(),"yes"==daeName(decl->Standalone()));
+		p = p->NextSibling();
+	}
+	while(p!=nullptr&&p->Type()==TiXmlNode::TINYXML_UNKNOWN)
+	{
+		Value v(p); if('!'==v[0])
+		{
+			#ifdef NDEBUG
+			#error parent.getDTD().push_back(v);
+			#endif	
+			assert(0); p = p->NextSibling();
+		}
+		else break;
+	}	
+	_readContent2(p,content.getElement()); return true;
 }
 
-daeInt daeTinyXMLPlugin::setOption( daeString option, daeString value )
+void daeTinyXMLPlugin::_readElement(TiXmlElement *tinyXmlElement, daePseudoElement &parent)
 {
-    return DAE_ERR_INVALID_CALL;
+	_err = tinyXmlElement;
+
+	TiXmlAttribute *a;
+	for(a=tinyXmlElement->FirstAttribute();a!=nullptr;a=a->Next())
+	{
+		//TinyXML is a mess.
+		//Value(a) is not possible. NameTStr exists. ValueTStr does not. And vice versa.
+		daeIOPluginCommon::_attribs.push_back(_attrPair(a->Name(),a->Value()));
+	}
+	daeElement &element = 
+	daeIOPluginCommon::_beginReadElement(parent,Value(tinyXmlElement));	
+	/*Post-2.5 all elements are accepted in order to prevent loss. This is not a validator.
+	if(element==nullptr)
+	{
+		//Couldn't append the element. _beginReadElement prints an error message.
+		return;
+	}*/
+	_readContent2(tinyXmlElement->FirstChild(),element); 
 }
 
-daeString daeTinyXMLPlugin::getOption( daeString option )
+void daeTinyXMLPlugin::_readContent2(TiXmlNode *p, daePseudoElement &parent)
 {
-    return NULL;
+	for(;p!=nullptr;p=p->NextSibling())	switch(p->Type())
+	{
+	default: assert(0);
+	case TiXmlNode::TINYXML_UNKNOWN: 
+	{
+		Value v(p); if('?'==v[0]&&v.extent>=2)
+		{
+			v.string+=1; v.extent-=2;
+			parent.getContents().push_back<'?'>(v);
+		}
+		else assert(0); break;
+	}
+	case TiXmlNode::TINYXML_DECLARATION:
+	
+		assert(0); //Caller handles this
+		break;
+	
+	case TiXmlNode::TINYXML_COMMENT:
+
+		parent.getContents().push_back<'!'>(Value(p));
+		break;
+
+	case TiXmlNode::TINYXML_TEXT:
+
+		daeIOPluginCommon::_readElementText(parent,Value(p));
+		break;
+		
+	case TiXmlNode::TINYXML_ELEMENT:
+		
+		_readElement((TiXmlElement*)p,parent); 
+		break;
+	}
 }
 
-daeElementRef daeTinyXMLPlugin::readFromFile(const daeURI& uri) {
-    string file = cdom::uriToNativePath(uri.str());
-    if (file.empty())
-        return NULL;
-    TiXmlDocument doc;
-    doc.LoadFile(file.c_str());
-    if (!doc.RootElement()) {
-        daeErrorHandler::get()->handleError((std::string("Failed to open ") + uri.str() +
-                                             " in daeTinyXMLPlugin::readFromFile\n").c_str());
-        return NULL;
-    }
-    return readElement(doc.RootElement(), NULL);
-}
-
-daeElementRef daeTinyXMLPlugin::readFromMemory(daeString buffer, const daeURI& baseUri) {
-    TiXmlDocument doc;
-    doc.Parse(buffer);
-    if (!doc.RootElement()) {
-        daeErrorHandler::get()->handleError("Failed to open XML document from memory buffer in "
-                                            "daeTinyXMLPlugin::readFromMemory\n");
-        return NULL;
-    }
-    return readElement(doc.RootElement(), NULL);
-}
-
-daeElementRef daeTinyXMLPlugin::readElement(TiXmlElement* tinyXmlElement, daeElement* parentElement) {
-    std::vector<attrPair> attributes;
-    for (TiXmlAttribute* attrib = tinyXmlElement->FirstAttribute(); attrib != NULL; attrib = attrib->Next())
-        attributes.push_back(attrPair(attrib->Name(), attrib->Value()));
-
-    daeElementRef element = beginReadElement(parentElement, tinyXmlElement->Value(),
-                                             attributes, getCurrentLineNumber(tinyXmlElement));
-    if (!element) {
-        // We couldn't create the element. beginReadElement already printed an error message.
-        return NULL;
-    }
-
-    if (tinyXmlElement->GetText() != NULL)
-        readElementText(element, tinyXmlElement->GetText(), getCurrentLineNumber(tinyXmlElement));
-
-    // Recurse children
-    for (TiXmlElement* child = tinyXmlElement->FirstChildElement(); child != NULL; child = child->NextSiblingElement())
-        element->placeElement(readElement(child, element));
-
-    return element;
-}
-
-daeInt daeTinyXMLPlugin::write(const daeURI& name, daeDocument *document, daeBool replace)
+daeOK daeTinyXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 {
-    // Make sure database and document are both set
-    if (!database)
-        return DAE_ERR_INVALID_CALL;
-    if(!document)
-        return DAE_ERR_COLLECTION_DOES_NOT_EXIST;
+	FILE *f = IO.getWriteFILE(); 
+	if(f==nullptr) return DAE_ERR_BACKEND_IO;
 
-    string fileName = cdom::uriToNativePath(name.str());
-    if (fileName.empty())
-    {
-        daeErrorHandler::get()->handleError( "can't get path in write\n" );
-        return DAE_ERR_BACKEND_IO;
-    }
-    // If replace=false, don't replace existing files
-    if(!replace)
-    {
-        // Using "stat" would be better, but it's not available on all platforms
-        FILE *tempfd = fopen(fileName.c_str(), "r");
-        if(tempfd != NULL)
-        {
-            // File exists, return error
-            fclose(tempfd);
-            return DAE_ERR_BACKEND_FILE_EXISTS;
-        }
-        fclose(tempfd);
-    }
+	TiXmlDocument doc; _err = &doc;
 
-    m_doc = new TiXmlDocument(name.getURI());
-    if (m_doc)
-    {
-        m_doc->SetTabSize(4);
+	char *version,*encoding,*standalone;
+	daeIOPluginCommon::_xml_decl(content,version,encoding,standalone);	
+	doc.LinkEndChild(new TiXmlDeclaration(version,encoding,standalone));
 
-        TiXmlDeclaration* decl = new TiXmlDeclaration( "1.0", "", "" );
-        m_doc->LinkEndChild( decl );
+	_writeContent2(&doc,content);
 
-        writeElement(document->getDomRoot());
-
-        // TODO check if writing to zae
-//        if( 0 ) {
-//            // Declare a printer
-//            TiXmlPrinter printer;
-//
-//            // attach it to the document you want to convert in to a std::string
-//            m_doc->Accept(&printer);
-//
-//            // Create a std::string and copy your document data in to the string
-//            std::string str = printer.CStr();
-//
-//            // compress str and size to fileName
-//
-//        }
-
-        m_doc->SaveFile(fileName.c_str());
-        delete m_doc;
-        m_doc = NULL;
-    }
-    return DAE_OK;
+	doc.SaveFile(f); return DAE_OK;
 }
 
-void daeTinyXMLPlugin::writeElement( daeElement* element )
+void daeTinyXMLPlugin::_writeElement(TiXmlNode *tinyXmlNode, const daeElement &element)
+{	
+	daeMeta &meta = element->getMeta();
+	
+	TiXmlElement *tiElm = setValue(new TiXmlElement(""),element.getElementName());
+
+	//_err may or may not work in this context. It's UNTESTED.
+	_err = tinyXmlNode->LinkEndChild(tiElm);
+
+	const daeArray<daeAttribute> &attrs = meta.getAttributes();
+	for(size_t i=0;i<attrs.size();i++)
+	{
+		//Previously _writeAttribute(attrs[i],element);
+		daeAttribute &attr = attrs[i];
+		attr.memoryToStringWRT(&element,_CD);
+
+		//REMINDER: TO SUPPORT LEGACY BEHAVIOR, <COLLADA> HAS
+		//BOTH-REQUIRED-AND-DEFAULT ON ITS version ATTRIBUTES.
+		//Don't write the attribute if
+		//  - The attribute isn't required AND
+		//     - The attribute has no default value and the current value is ""
+		//     - The attribute has a default value and the current value matches the default
+		if(!attr.getIsRequired())
+		if(attr.getDefaultString()==nullptr)
+		{
+			if(_CD.empty())	continue;
+		}
+		else if(0==attr.compareToDefaultWRT(&element)) 
+		continue;
+
+		tiElm->SetAttribute(attr.getName(),_CD.data());
+	}
+	
+	//Previously this came after _writeValue(element),
+	//-and they were not treated as mutually exclusive.
+	_writeContent2(tiElm,meta.getContentsWRT(&element));
+
+	//Previously _writeValue(element);
+	if(!element->getCharData(_CD).empty())
+	tiElm->LinkEndChild(setValue(new TiXmlText(""),_CD));	
+}
+void daeTinyXMLPlugin::_writeContent2(TiXmlNode *tinyXmlNode, const daeContents &content)
 {
-    daeMetaElement* _meta = element->getMeta();
-    if (!_meta->getIsTransparent() )
-    {
-        TiXmlElement* tiElm = new TiXmlElement( element->getElementName() );
+	for(size_t i=0,iN=content.size();i<iN;) if(content[i].hasText())
+	{
+		daeText &text = content[i]; 
+		enum dae_clear clear; //TinyXML is quirky. 
+		clear = text.isPI_like()?dae_append:dae_clear;
+		if(!clear) _CD.assign("?",1);
+		if(text.getText_increment(i,_CD,clear).size()==(clear?0:1))
+		continue;
+		if(!clear) _CD.append_and_0_terminate("?",1);
+		TiXmlNode *node; switch(text.kind())
+		{			
+		case daeKindOfText::COMMENT:
 
-        if (m_elements.empty() == true) {
-            m_doc->LinkEndChild(tiElm);
-        } else {
-            TiXmlElement* first = m_elements.front();
-            first->LinkEndChild(tiElm);
-        }
-        m_elements.push_front(tiElm);
+			node = new TiXmlComment; break;
 
-        daeMetaAttributeRefArray& attrs = _meta->getMetaAttributes();
+		case daeKindOfText::PI_LIKE:
 
-        int acnt = (int)attrs.getCount();
+			if(i==0&&"xml "==daeName(_CD.data()+1,4))
+			continue;
+			node = new TiXmlUnknown; break;
 
-        for(int i=0; i<acnt; i++)
-        {
-            writeAttribute( attrs[i], element );
-        }
-    }
-    writeValue(element);
+		case daeKindOfText::MIXED:
 
-    daeElementRefArray children;
-    element->getChildren( children );
-    for ( size_t x = 0; x < children.getCount(); x++ )
-    {
-        writeElement( children.get(x) );
-    }
+			node = new TiXmlText(""); break; 
 
-    if (!_meta->getIsTransparent() )
-    {
-        m_elements.pop_front();
-    }
+		default: assert(0); continue;
+		}				
+		_err = tinyXmlNode->LinkEndChild(setValue(node,_CD));
+	}
+	else _writeElement(tinyXmlNode,content[i++]);
 }
 
+//---.
+}//<-'
 
-void daeTinyXMLPlugin::writeValue( daeElement* element )
-{
-    if (daeMetaAttribute* attr = element->getMeta()->getValueAttribute()) {
-        std::ostringstream buffer;
-        attr->memoryToString(element, buffer);
-        std::string s = buffer.str();
-        if (!s.empty())
-            m_elements.front()->LinkEndChild( new TiXmlText(buffer.str().c_str()) );
-    }
-}
+#endif //BUILDING_IN_TINYXML///////////////////////////////////////////////
 
-void daeTinyXMLPlugin::writeAttribute( daeMetaAttribute* attr, daeElement* element )
-{
-    ostringstream buffer;
-    attr->memoryToString(element, buffer);
-    string str = buffer.str();
-
-    // Don't write the attribute if
-    //  - The attribute isn't required AND
-    //     - The attribute has no default value and the current value is ""
-    //     - The attribute has a default value and the current value matches the default
-    if (!attr->getIsRequired()) {
-        if(!attr->getDefaultValue()  &&  str.empty())
-            return;
-        if(attr->getDefaultValue()  &&  attr->compareToDefault(element) == 0)
-            return;
-    }
-
-    m_elements.front()->SetAttribute(attr->getName(), str.c_str());
-}
-
-#endif // DOM_INCLUDE_TINYXML
+/*C1071*/

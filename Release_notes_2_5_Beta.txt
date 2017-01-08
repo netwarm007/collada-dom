@@ -1,0 +1,34 @@
+---------------
+COLLADA-DOM 2.5 (#define DEBUG only Beta)
+---------------
+
+2016-2017 - Please involve yourself in testing and improving the newly rewritten COLLADA-DOM library. The goal is to prepare a competent reference library so that it can be presented to large 3-D maintainers in order to convince them to reconsider meaningful integration with COLLADA: what seems like the worlds best chance for a non-commercial 3-D storage/exchange standard. Commercial companies may not be interested, but that still leaves a lot of us who are hurting for a solution to this age old problem that has been with 3-D software since seemingly the very beginning. It's 2017. Let's finally do something! There must be others who are tired of shirking this problem; accepting halfway proprietary compromises until time in memoriam. You can't build a public infrastructure on proprietary non-standards. It's time to inaugurate the cyberspace. In fact the time was long ago. What are we waiting for?  
+ 
+2.5.0
+=====
+
+- No longer using BOOST nor PCRE. And possibly other dependencies. 
+
+- ZAE support is disabled. It will be reinstated sometime in 2017.
+
+- The core library (the "DOM") has been rewritten in order to revive interest in COLLADA. This effort began in early 2016.
+
+- (The viewer code is in the process of being restored to working order.)
+
+- Back-compatibility is strived for. There will be a few hiccups in porting any project. The port should be worth it.
+
+- Everything previous authors marked "deprecated" is removed without question. Libraries had a decade to observe those markings.
+
+- The core library is no longer aware of "1.4.1" or "1.5.0." Therefore files no longer branch on this factor. Users can use the pregenerated configurations or generate their own, not limited to COLLADA.
+
+- (The PHP-based class generator has been thoroughly reconceived and improved upon.)
+
+- The generator policy has changed to a WYSIWYG one. This means it produces layouts that mirror the XML document. This affects groups and substitution groups, and classes no longer adhere to an inheritance hierarchy as the XML Schema inheritance model is incompatible with the C++ inheritance model.
+
+- The new generator can be configured to output "ColladaDOM 3" style classes. The old-style is referred to as 2.x style. The new style is recommended, but lacks support procedures. Users may wish to stick to the old style if their compiler lacks the C++11 auto keyword, or if rewriting a pre-existing code base in the new style is thought more work than it is worth.
+
+- The TinyXML and LibXML files are no longer included in the versioned files. They may be provided as a supplemental download. The core library constinues to support these plugins, by no removing their code, and maintaining them, but they are not recommended, and have been classified as "legacy" features. Neither is or was the basis for an ideal plugin. The implementation code is easy to study and reproduce, so to build plugins against better libraries.
+
+- A highlight of the newly rewritten core library is a new found expressiveness that affords XML file generation and transformation algorithms complete freedom to flow however code may require.
+
+- Needless to say there are many changes. It's a good idea to prepare a new page (a single page should do) in the Khronos wiki. The old pages will need to be marked as archived, including a redirect.

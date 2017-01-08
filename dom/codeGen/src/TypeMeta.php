@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Copyright 2006 Sony Computer Entertainment Inc.
  *
@@ -17,15 +16,15 @@ class TypeMeta //antipattern
 		$bag = array(
 		'type'				=>'',
 		'base'				=>'',
-		'listType'			=>'',
+		'itemType'			=>'',
 		//previously enum had parallel tracks:
 		//'enum_documentation' and 'enum_value'
 		//now the keys of the array are the enum
 		//this is to be able to use foreach loops 
 		'enum'				=>array(),
 		'restrictions'		=>array(),
-		'isExtension'		=>true,
-		'isComplex'			=>false,
+		//not clear this could ever be of any use
+		//'isExtension'		=>true, //UNUSED
 		'useConstStrings'	=>false,
 		'documentation'		=>'', //array()		
 		'union_type'		=>false,
@@ -39,6 +38,8 @@ class TypeMeta //antipattern
 		//(NOTE: It'd be cool to target non-C++ languages)
 		'isArray'			=>false, 
 		'isString'			=>false, //NEW
+		//Hack: includeTypeInSchema()
+		'inSchema'			=>false, //NEW
 		);
 		$this->bag =& $bag;
 	}
@@ -51,21 +52,29 @@ class TypeMeta //antipattern
 	//SCHEDULED OBSOLETE
 	//give setBase access to $typemeta
 	static $generated = array(); //$string/listtypes moved to gen.php
-	static function& generateXMLSchemaTypes($lists, $listypes, $strings) 
+	static function& generateXMLSchemaTypes($lists, $listypes, $strings, $scalars) 
 	{
+		$s = '/\s+/';
 		$xs = new TypeMeta(); //antipattern
-		foreach(explode(' ',$strings) as $ea)
+		foreach(preg_split($s,$strings) as $ea)
 		{ 
 			$xs->TypeMeta(); $xs->setType($ea); $xs->bag['isString'] = true;
 			self::$generated[$ea] = $xs->GetMeta(); 		
 		}
 		if(!is_array($lists))
-		$lists = array_combine(explode(' ',$lists),explode(' ',$listypes));
-		foreach($lists as $ea=>$ea_listype)
+		$lists = array_combine(preg_split($s,$lists),preg_split($s,$listypes));
+		foreach($lists as $ea=>$ea_itemType)
 		{
-			$xs->TypeMeta(); $xs->setType($ea);	$xs->setListType($ea_listype);
+			$xs->TypeMeta(); $xs->setType($ea);
+			//$xs->setItemType($ea_itemType); //HACK: Non-schema...
+			$xs->bag['itemType'] = $ea_itemType; $xs->bag['isArray'] = true;
 			self::$generated[$ea] = $xs->GetMeta();
-		}//todo? add scalar types: eg. xs:double
+		}
+		foreach(preg_split($s,$scalars) as $ea)
+		{ 
+			$xs->TypeMeta(); $xs->setType($ea); 
+			self::$generated[$ea] = $xs->GetMeta(); 		
+		}
 		return self::$generated;
 	}
 	
@@ -74,24 +83,23 @@ class TypeMeta //antipattern
 		die('die(Sorry! See andFinally_setBase)');
 	}
 	
-	function setListType($type)
+	function setItemType($type)
 	{
-		$this->bag['listType'] = $type;
+		$this->bag['itemType'] = $type;
 		$this->bag['isArray'] = true; //synonymous?
+		
+		//HACK: see andFinally_setBase() explanation
+		self::$generated[$type]['inSchema'] = true;
 	}
 
-	function setIsExtension($bool)
-	{
-		$this->bag['isExtension'] = $bool;
-	}
-
-	function setIsComplex($bool)
-	{
-		$this->bag['isComplex'] = $bool;
-	}
+	//function setIsExtension($bool) //UNUSED
+	//{
+	//	$this->bag['isExtension'] = $bool;
+	//}
 
 	function setRestriction($name,$val)
 	{
+		if($val=='unbounded') $val = unbounded;
 		$this->bag['restrictions'][$name] = $val;
 	}
 
@@ -142,15 +150,27 @@ class TypeMeta //antipattern
 	//HACK: isString needs to reflect on enum/useConstStrings
 	function andFinally_setBase($b) 
 	{
-		$this->bag['base'] = $b;
+		$this->bag['base'] = $b;		
 		//NEW: simplifying inheritance model by exposing $typemeta global
-		$base = @self::$generated[$b]; if(!empty($base))
+		$base =& self::$generated[@$b]; if(!empty($base))
 		{	
 			if(empty($this->bag['enum'])||$this->bag['useConstStrings'])
 			$this->bag['isString'] = $base['isString'];
-			$this->bag['isArray'] = $base['isArray'];
+			if($this->bag['isArray']=$base['isArray'])
+			{	
+				$r2 = $base['restrictions']; if(!empty($r2))
+				{
+					$r =& $this->bag['restrictions']; 
+					if(!isset($r['minLength'])) $r['minLength'] =@@ $r2['minLength'];
+					if(!isset($r['maxLength'])) $r['maxLength'] =@@ $r2['maxLength'];
+				}
+			}		
 		}//should be a scalar type then: eg. xs:double
-		//else die('missing base type, or types appear out-of-order in the XSD schema');
+		//else die('missing base type, or types appear out-of-order in the XSD schema');		
+		//Hack. add a dummy type for any imported base types
+		//Note, they'll need to be before their derived type
+		//Hack. omit unused TypeMeta::generateXMLSchemaTypes
+		self::$generated[$b]['inSchema'] = true;
 	}
 }
 

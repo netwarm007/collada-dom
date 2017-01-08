@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Copyright 2006 Sony Computer Entertainment Inc.
  *
@@ -68,9 +67,18 @@ class _typedData extends _type
 			
 			default: if(!ctype_digit($value)) die("die(min/maxOccurs is NaN? $value)");
 			
-				$value = (int)$value;
+				$value = (int)$value; //Not sure what to do in this case??
+				if($value>big_number) die('die(min/maxOccurs>big_number)');				
 			}			
 			$this->attributes[$name] = $value;
+		}
+		else 
+		{
+			//if('xmlns'!==substr($name,0,5))
+			{
+			//	die('die(unexpected attribute)'); //breakpoint
+			}
+			echo 'WARNING: Unhandled attribute: ', $name, "\n";			
 		}
 	}
 
@@ -116,6 +124,7 @@ class _elementSet extends _typedData
 
 	function _addElement($name,$attrs)
 	{
+		//$attrs doesn't seem to be used anywhere. $name is below.
 		$this->elementMeta[$name] = $attrs;
 	}
 
@@ -123,7 +132,8 @@ class _elementSet extends _typedData
 	{
 		if(!in_array($e->getType(),array_keys($this->elementMeta)))
 		{
-			echo "Invalid element ", $e->getType(), "in ", $this->getType(), "\n";
+			echo "Unexpected element ", $e->getType(), "in ", $this->getType(), "\n";
+			die('die(Where is log defined???)');
 			$this->log("WARN: ".$e->getType()." not a valid member of ".$this->getType());
 		}
 		else $this->elements[] =& $e;
@@ -134,11 +144,18 @@ class _elementSet extends _typedData
 		return $this->elements;
 	}
 
-	function& getElementsByType($type)
+	function getElementsByType($type)
 	{
 		$list = array();
 		foreach($this->elements as& $ea)
 		if($ea->getType()==$type) $list[] =& $ea;
+		return $list;
+	}
+	function getElementsByTypeAccordingToName($type)
+	{
+		$list = array();
+		foreach($this->elements as& $ea)
+		if($ea->getType()==$type) $list[$ea->attributes['name']] =& $ea;
 		return $list;
 	}
 
@@ -174,135 +191,188 @@ class _elementSet2 extends _elementSet
 {
 	function _elementSet2(){ parent::_elementSet(); }
 	
-	//FUNCTIONALLY STATIC	
+	//FUNCTIONALLY STATIC
+	//READ: generateCM+isPlural. This is doing two things, and renamed as such
 	//flatten choice/all/sequence groups into a single list of contained elements
 	//NOTE: generateContentModel is tightly coupled to tpl-classes-cpp.php (formerly tpl-cpp-methods.php)
-	function generateContentModel(_elementSet& $element, ElementMeta& $generator, & $context, $maxOccurs)
+	function generateCM_isPlural(_elementSet $element, ElementMeta& $generator, $maxOccurs)
 	{
+		//WORKAROUND PHP Strict standards:  Only variables should be passed by reference in ...
+		$st = array(true,1,array()); $this->generateContentModel2($st,$element,$generator,$maxOccurs);
+	}
+	function generateContentModel2(& $st, _elementSet $element, ElementMeta& $generator, $maxOccurs)
+	{
+		//NEW: $st is used to properly assign 'isPlural'. $add is used to transclude groups.		
+		$add =& $st[0]; $nonce =& $st[1]; $stack =& $st[2];		
+		$isPlural = function($name) use(&$st,$stack)
+		{				
+			$named =& $st[$name];
+			//if so, save the name, and wait for any duplicates
+			if(empty($named)){ $named = $stack; return false; }			
+			//find the last common parent, and return true for sequences
+			for($i=0,$n;@($n=$named[$i])===$stack[$i]&&!empty($n);$i++);
+			return $stack[$i-1]<0;
+		};		
+
 		//echo "in generateContentModel ";
 		foreach($element->getElements() as $ea) 
 		{
 			$type = $ea->getType(); if($type==='xsAttribute')
 			{
+				if(!$add) die('die(unexpected behavior)');
+				
 				$generator->addAttribute($ea); continue; //echo "found attribute!\n";
+			}
+			else if($type==='xsAnyAttribute') //NEW
+			{
+				$generator->setHasAnyAttribute(); continue;
 			}
 			
 			$minO = $ea->getAttribute('minOccurs');	$maxO = $ea->getAttribute('maxOccurs');
-			
+					
 			switch($type)
 			{
-			case 'xsChoice':
-				$generator->setHasChoice(true);
-				$generator->addContentModel(ElementMeta::choiceCMopening,$minO,$maxO);
+			case 'xsAll':
+				$generator->setHasAll();
+				$cm = ElementMeta::allCMopening; 
+				array_push($stack,$nonce++);
+				goto seq_like;				
+			case 'xsChoice':				
+				//$generator->setHasChoice(); //UNUSED: could be a compile-time-constant?
+				$cm = ElementMeta::choiceCMopening;
+				array_push($stack,$nonce++);
+				goto seq_like;
+			case 'xsSequence': 				
+				$cm = ElementMeta::sequenceCMopening; 
+				array_push($stack,-$nonce++);
+				
+			seq_like: //goto seq_like;
+					
+				if($add) $generator->addContentModel($cm,$minO,$maxO);
 				//propagate the maxOccurs down through choice hierarchy (while flattening)
 				$local_max = $ea->getAttribute('maxOccurs');
-				if($maxOccurs>$local_max)
-				$this->generateContentModel($ea,$generator,$context,$maxOccurs);
-				else $this->generateContentModel($ea,$generator,$context,$local_max);			
-				break;
-			case 'xsSequence':
-				$generator->addContentModel(ElementMeta::sequenceCMopening,$minO,$maxO);
+				$this->generateContentModel2($st,$ea,$generator,max($maxOccurs,$local_max));				
+				//END content model
+				if($add) $generator->endContentModel(); //ElementMeta::CMclosure
+				array_pop($stack);
+				break;			
+			case 'xsGroup': 
+				$ref = $ea->getAttribute('ref');
+				if($add) //NEW: This was encoded as two CM nodes. Just add 'ref' to groups
+				{
+					$PHP =& $generator->addContentModel(ElementMeta::groupCM,$minO,$maxO);
+					$PHP['ref'] = $ref;
+				}				
+				$generator->transcludeRef($ref); //addGroup($ea);
 				//propagate the maxOccurs down through choice hierarchy (while flattening)
 				$local_max = $ea->getAttribute('maxOccurs');
-				if($maxOccurs>$local_max)
-				$this->generateContentModel($ea,$generator,$context,$maxOccurs);			
-				else $this->generateContentModel($ea,$generator,$context,$local_max);			
+				//HACK: find the <xs:group>
+				global $_globals; $group = $_globals['group_types'][$ref];
+				if(empty($group)) die('Testing xs:group transclusion');
+				//Now the children are transcluded, by setting $add=false.
+				$add = false;
+				$this->generateContentModel2($st,$group,$generator,max($maxOccurs,$local_max));	
+				$add = true;
+				$generator->bag['#include'][] = $ref;
 				break;
-			case 'xsAll': //like xsSequence, but in no particular order and listed children must be 1-or-none
-				$generator->addContentModel(ElementMeta::allCMopening,$minO,$maxO);
-				//propagate the maxOccurs down through choice hierarchy (while flattening)
-				$local_max = $ea->getAttribute('maxOccurs');
-				if($maxOccurs>$local_max)
-				$this->generateContentModel($ea,$generator,$context,$maxOccurs);			
-				else $this->generateContentModel($ea,$generator,$context,$local_max);			
-				break;
-			case 'xsGroup':
-				$generator->addContentModel(ElementMeta::groupCMcontinuing,$minO,$maxO);
-				$generator->addGroup($ea);
-				//break; //look out below!
-			case 'xsElement':
-				$nm = $ea->getAttribute('name')?:$ea->getAttribute('ref');
-				if(empty($nm)) die('die(name is empty)');
-				$generator->addContentModel($nm,$minO,$maxO);
-				//echo "found element!\n";
-				//if a containing element/group has a maxOccurs>1, then inherit it (will flag as array in code gen)
-				if($maxOccurs>1) $ea->setAttribute('maxOccurs',$maxOccurs);			
-				$generator->addElement($ea,$context);
-				//NEW: tpl-classes-cpp.php behaves as if there is no END terminator
-				continue 2;
 			case 'xsAny':
 				echo "found an any\n";
-				$generator->addContentModel(ElementMeta::anyCM,$minO,$maxO);
-				$generator->setHasAny(true);
-				//break? OR would return; be more appropriate? 
-				//ANYWAY, the code-generator must agree with whichever way it should be
-				//break; //bug? see tpl/tpl-classes-cpp.php
-				continue 2; //the present code behaves as if there is no END terminator
-			default: continue 2; //break; 
-			}
-			//END content model - There will be one extra on every element
-			$generator->endContentModel(); //ElementMeta::CMclosure
+				if($add)
+				{
+					$PHP =& $generator->addContentModel(ElementMeta::anyCM,$minO,$maxO);
+					//Hack: this should be unpacked by echoContentModelCPP
+					$any =& $PHP['any'];					
+					$ns = $ea->getAttribute('namespace');
+					$pc = $ea->getAttribute('processContents');					
+					$any = '';
+					if(!empty($pc)&&$pc!=='strict')	$any.= '.setProcessContents("'.$pc.'")';
+					if(!empty($ns)&&$ns!=='##any') $any.= '.setNamespaceString("'.$ns.'")';					
+				}
+				//TODO: CAPTURE ANNOTATIONS
+				//Note: if a group has this, it should propagate to where it's transcluded.
+				$generator->setHasAny();
+				break;
+			case 'xsElement':
+				//echo "found element!\n";				
+				//!$add is treating group-transcluded elements as if references
+				//(Otherwise they will be circular if inline defined)
+				$name = $generator->addElement($ea,$add);
+				if($add) $generator->addContentModel($name,$minO,$maxO);
+				//if a containing element/group has a maxOccurs>1, then inherit it (will flag as array in code gen)
+				//"isPlural" isn't an attribute, but neither is a composite "maxOccurs"
+				//Note: this was being set prior to addElement so it would be indirectly included
+				//if($maxOccurs>1) $ea->setAttribute('maxOccurs',$maxOccurs);			
+				$el =& $generator->bag['elements'][$name];				
+				if($maxOccurs>1||$maxO>1||$isPlural($name)) $el['isPlural'] = true;
+				else if(!isset($el['isPlural'])) $el['isPlural'] = false;							
+			default: break; //annotations, etc.
+			}			
 		}
 	}	
 	
 	//function that reads complex types.  will recurse complex type derived heirarchies.
-	function generateComplexType(_elementSet $content, ElementMeta& $generator, & $context)
+	function generateComplexType(_elementSet $content, ElementMeta& $generator)
 	{
+		//TODO: determine if the extension is degenerate
+		//for the library's purposes, and don't set this
+		$generator->setRequiresClass();
+				
 		//echo "in generatecomplextype\n";
-		$temp = $content->getElementsByType('xsSimpleContent');		
-		if(!empty($temp)) //returns
+		$simple = $content->getElementsByType('xsSimpleContent');		
+		if(empty($simple)) 
+		$complex = $content->getElementsByType('xsComplexContent');
+		$temp = $simple?:$complex;
+		if(!empty($temp)) 
+		{
+			//Should only be one - now we now find out element's parent class
+			$content = $temp[0]; $temp = $content->getElements();
+			//Should either be an xsExtension or xsRestriction
+			$content = $temp[0]; $base = $content->getAttribute('base');
+		}
+		if(!empty($simple)) //RETURNS
 		{
 			//echo "found simpleContent!\n";			
-			$content = $temp[0]; // Should only be one - now we now find out element's parent class
-			$temp =& $content->getElements();
-			$content = $temp[0]; // Should either be an xsExtension or xsRestriction
-			$type = $content->getAttribute('base');
-			//echo "setting extends to ". $type ."\n";
-			$generator->setContentType($type);
+			//echo "setting extends to ". $base ."\n";
+			//NEW: THIS WILL LATER BE CONVERTED INTO A SIMPLE-TYPE
+			$generator->setContentType($base);
 			if($content instanceof xsRestriction)
-			$generator->bag['base_type'] = $generator->bag['baseTypeViaRestriction'] = $type;
-			$temp =& $content->getElementsByType('xsAttribute');
+			$generator->bag['base_type'] = $generator->bag['baseTypeViaRestriction'] = $base;
+			$temp = $content->getElementsByType('xsAttribute');
 			foreach($temp as $ea) $generator->addAttribute($ea);
-			return;
-		}//ELSE
-		$temp = $content->getElementsByType('xsComplexContent');
-		if(!empty($temp)) //returns 
+			return; //RETURNING
+		}
+		if(!empty($complex)) //RETURNS
 		{
 			//echo "found complexContent!\n";
-			//ComplexContent specified means type is derived			
-			$content = $temp[0]; // Should only be one - now we now find out element's parent class
-			$temp =& $content->getElements();
-			$content = $temp[0]; // Should either be an xsExtension or xsRestriction
-			if($content->getType()=='xsExtension')
-			$generator->bag['isExtension'] = true;
-			if($content->getType()=='xsRestriction')
-			$generator->bag['isRestriction'] = true;			
-			$type = $content->getAttribute('base');
+			//ComplexContent specified means type is derived						
+						
 			if($content instanceof xsRestriction)
-			$generator->bag['baseTypeViaRestriction'] = $type;
-			//echo "setting extends to ". $type ."\n";
-			$generator->bag['base_type'] = $type;
-			//Generate the complex type this is derived from
-			//*************CHANGE NEEDED HERE 8-25 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			//HACK: there must be a better way than $GLOBALS
-			foreach($GLOBALS['_globals']['complex_types'] as& $ea)
+			$generator->bag['baseTypeViaRestriction'] = $base;
+			//echo "setting extends to ". $base ."\n";
+			$generator->bag['base_type'] = $base;
+			
+			//MAYBE THIS IS UNNECESSARY?
+			//Generate the complex type this is derived from			
+			global $_globals;
+			//HACK: this is more or less how this has always been done
+			if(@isset($_globals['complex_types'][$base]))
 			{
-				if($type==$ea->getAttribute('name'))
-				{
-					$generator->setComplexType(true);
-					$generator->bag['ref_elements'][] = $type;
-					//$this->generateComplexType($ea, $generator, $context );
-					break;
-				}
+				$generator->bag['#include'][] = $base;
 			}
-
+			else //wrapping a simple-type
+			{
+				//Shouldn't this $generator->setContentType($type)?
+				die('die(Is this valid? Shouldn\'t the "value" be setup?)');			
+			}
+				
+			//COMMENTING THIS OUT AS THE RESULT IS THE SAME???
 			//parse element context
-			$this->generateContentModel($content,$generator,$element_context,$content->getAttribute('maxOccurs'));
-			return;
+			//$this->generateCM_isPlural($content,$generator,$content->getAttribute('maxOccurs'));
+			//return;
 		}//ELSE
-		//echo "found nothing so doing complex content generateContentModel\n";
+		//else echo "found nothing so doing complex content generateContentModel\n";
 		//the alternative to xsSimpleContent is xsComplexContent - if it is not specified, it is implied			
-		$this->generateContentModel($content,$generator,$element_context,$content->getAttribute('maxOccurs'));
+		$this->generateCM_isPlural($content,$generator,$content->getAttribute('maxOccurs'));
 	}
 	
 	//function that generates the inline simpleType
@@ -332,14 +402,19 @@ class _elementSet2 extends _elementSet
 		{
 		case 'xsRestriction': case 'xsExtension':
 		
-			$generator->setIsExtension($el->getType()=='xsExtension');
+			//UNUSED: //not clear this could ever be of any use
+			//$generator->setIsExtension($el->getType()=='xsExtension');
 
 			//Set base class //NEW: indirectly sets isString
 			//HACK: saved for last so isString can reflect on enumeration/constant-strings
 			//$generator->setBase($el->getAttribute('base'));
 
-			// Look for enums
+			//Look for enums
 			$enums = $el->getElementsByType('xsEnumeration');
+			
+			//New: improve ColladaDOM 3 binary-search lookup.
+			sort($enums); 
+			
 			foreach($enums as $ea)
 			{
 				$enum = $ea->getAttribute('value');
@@ -355,15 +430,20 @@ class _elementSet2 extends _elementSet
 			}
 
 			// Look for max/mins
-			$min   = $el->getElementsByType('xsMinLength');
-			$max   = $el->getElementsByType('xsMaxLength');
+			$min = $el->getElementsByType('xsLength');
+			if(empty($min))
+			{			
+				$min = $el->getElementsByType('xsMinLength');
+				$max = $el->getElementsByType('xsMaxLength');
+			}
+			else $max = $min;
 			$minIn = $el->getElementsByType('xsMinInclusive');
 			$maxIn = $el->getElementsByType('xsMaxInclusive');
 			$minEx = $el->getElementsByType('xsMinExclusive');
 			$maxEx = $el->getElementsByType('xsMaxExclusive');
 
 			if(!empty($min))			
-			$generator->setRestriction('minLength',$min[0]->getAttribute('value'));
+			$generator->setRestriction('minLength',$min[0]->getAttribute('value'));			
 			if(!empty($max))			
 			$generator->setRestriction('maxLength',$max[0]->getAttribute('value'));
 			if(!empty($minIn))			
@@ -383,7 +463,7 @@ class _elementSet2 extends _elementSet
 		
 			//$extends = "xsList";
 			$itemType = $el->getAttribute('itemType');
-			$generator->setListType($itemType);			
+			$generator->setItemType($itemType);			
 			break;
 		
 		case 'xsUnion':
@@ -393,6 +473,7 @@ class _elementSet2 extends _elementSet
 		
 		default:
 		
+			die('die(Where is log defined???)');
 			$this->log("WARN: unexpected element in xsSimpleType code generation");
 		}
 	}

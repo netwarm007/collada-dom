@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Copyright 2006 Sony Computer Entertainment Inc.
  *
@@ -11,6 +10,9 @@
 require_once('om/base-types.php');
 
 /*HINT: MOST OF THIS FILE SEEMS TO BE HARD-CODING THE XML SCHEMA-SCHEMA*/
+
+//REMINDER: _addElement seems like it doesn't use the minOccurs/maxOccurs stuff.
+//It's not even clear that it's set up correctly or is meaningful in many cases.
 
 class xsAll extends _elementSet //require_once('om/xsAll.php');
 {
@@ -34,7 +36,7 @@ class xsAnnotation extends _elementSet //require_once('om/xsAnnotation.php');
 	}//UNUSED
 	function addAnnotationElement(& $e){ $this->addElement($e); }
 }
-class xsAny extends _typedData //require_once('om/xsAny.php');
+class xsAny extends _elementSet //_typedData //require_once('om/xsAny.php');
 {
 	function xsAny()
 	{
@@ -44,7 +46,16 @@ class xsAny extends _typedData //require_once('om/xsAny.php');
 		$this->setAttribute('minOccurs',1);
 		$this->_addAttribute('maxOccurs',array('type'=>'xs:integer'));
 		$this->setAttribute('maxOccurs',1);
-		$this->type[] = 'xsAny'; parent::_typedData();
+		$this->type[] = 'xsAny'; parent::_elementSet();
+	}
+}
+class xsAnyAttribute extends _elementSet //NEW
+{
+	function xsAnyAttribute()
+	{
+		$this->_addAttribute('namespace',array('type'=>'xs:anyURI'));
+		$this->_addAttribute('processContents',array('type'=>'xs:string'));		
+		$this->type[] = 'xsAnyAttribute'; parent::_elementSet();
 	}
 }
 class xsAttribute extends _elementSet //require_once('om/xsAttribute.php');
@@ -89,6 +100,7 @@ class xsComplexType extends _elementSet2 //require_once('om/xsComplexType.php');
 	function xsComplexType()
 	{
 		$this->_addElement('xsAnnotation',array('minOccurs'=>0,'maxOccurs'=>unbounded));
+		$this->_addElement('xsAnyAttribute',array('minOccurs'=>0,'maxOccurs'=>unbounded));	
 		$this->_addElement('xsChoice',array('minOccurs'=>1,'maxOccurs'=>1));
 		$this->_addElement('xsAttribute',array('minOccurs'=>1,'maxOccurs'=>1));
 		$this->_addElement('xsSequence',array('minOccurs'=>1,'maxOccurs'=>1));
@@ -107,7 +119,6 @@ class xsComplexType extends _elementSet2 //require_once('om/xsComplexType.php');
 		echo implode(",",$element_context)."\n";
 		//get new factory
 		$generator = new ElementMeta($global_elements);
-		$generator->setIsComplexType(true);
 		//load the class name and a context pre-fix (in case we're inside another element)
 		$generator->setName($name);
 		$generator->setContext($element_context);
@@ -123,10 +134,10 @@ class xsComplexType extends _elementSet2 //require_once('om/xsComplexType.php');
 			$generator->setAppInfo($ap[0]->get());			
 		}
 		if($this->getAttribute('mixed')=='true')
-		$generator->setMixed(true);		
+		$generator->setMixed();		
 
 		//should only be one
-		$this->generateComplexType($this,$generator,$element_context);
+		$this->generateComplexType($this,$generator);
 		$meta =& $generator->getMeta();
 		if(1===count($element_context))
 		$global_elements[$element_context[0]] =& $meta;	return $meta;
@@ -152,6 +163,7 @@ class xsElement extends _elementSet2 //require_once('om/xsElement.php');
 		$this->_addAttribute('type',array('type'=>'xs:string'));
 		$this->_addAttribute('abstract',array('type'=>'xs:bool'));
 		$this->_addAttribute('substitutionGroup',array('type'=>'xs:string'));
+		$this->_addAttribute('default',array('type'=>'xs:string'));
 		//$this->_addAttribute('maxOccurs',array('type'=>'xs:integer'));
 		//$this->_addAttribute('minOccurs',array('type'=>'xs:integer'));
 		$this->type[] = 'xsElement'; parent::_elementSet2();
@@ -170,11 +182,10 @@ class xsElement extends _elementSet2 //require_once('om/xsElement.php');
 		{
 			//echo "found a subGroup ". $subGroup ."!\n";
 			$generator->setSubstitutionGroup($subGroup);
-			$generator->bag['ref_elements'][] = $subGroup;
+			$generator->bag['#include'][] = $subGroup;
 		}
-		$abstract = $this->getAttribute('abstract');
-		if(!empty($abstract))
-		$generator->setAbstract(true==$abstract);		
+		if('true'===$this->getAttribute('abstract'))
+		$generator->setAbstract();
 
 		//extract any documentation for this node
 		$a = $this->getElementsByType('xsAnnotation');
@@ -196,21 +207,20 @@ class xsElement extends _elementSet2 //require_once('om/xsElement.php');
 		//echo "element ", $this->getAttribute('name'), " is of type ", $type, "!\n";
 		if(!empty($type))
 		{
-			//HACK: there must be a better way than $GLOBALS
-			//echo "complex types: ", count($GLOBALS['_globals']['complex_types']), "\n";
-			foreach($GLOBALS['_globals']['complex_types'] as $ea)
+			global $_globals;
+			//HACK: this is more or less how this has always been done
+			if(@isset($_globals['complex_types'][$type]))
 			{
-				if($type==$ea->getAttribute('name'))
-				{
-					//echo "found a match for ". $type ."\n";
-					$generator->setComplexType(true);
-					$generator->bag['ref_elements'][] = $type;
-					break;
-				}
+				//echo "found a match for ". $type ."\n";				
+				$generator->bag['#include'][] = $type;
 			}
-			//wasn't a complex type? that means it needs a content type
-			if(!$generator->bag['complex_type'])
-			$generator->setContentType($type);			
+			else //wrapping a simple-type
+			{
+				$generator->setContentType($type);
+				$generator->setRequiresClass();
+				
+				includeTypeInSchema($type); //HACK
+			}			
 		}
 		//*******************************************************************************************/
 		// Inspect the semantic structure of this node and extract the elements/attributes
@@ -220,14 +230,11 @@ class xsElement extends _elementSet2 //require_once('om/xsElement.php');
 		{
 			if($temp[0]->getAttribute('mixed')=='true')
 			{
-				die("die(when is this ever?)");
-				$generator->setMixed(true);
-				//NOTE: ListOfInts is COLLADA 1.4.1 style only
-				$generator->setContentType('ListOfInts');
+				$generator->setMixed();
 			}
 
 			$content = $temp[0]; //Should only be one
-			$this->generateComplexType($content,$generator,$element_context);
+			$this->generateComplexType($content,$generator);
 		}
 		else 
 		{
@@ -235,6 +242,11 @@ class xsElement extends _elementSet2 //require_once('om/xsElement.php');
 			
 			if(!empty($temp))
 			{
+				if($generator->name!=='author_email')
+				die('COLLADA doesn\'t do this. This facility requires work.');				
+				
+				$generator->setRequiresClass();
+		
 				//inline simple type definition
 				//right now handle as string but needs to be fixed
 				$generator->bag['simple_type'] = new TypeMeta();
@@ -248,7 +260,6 @@ class xsElement extends _elementSet2 //require_once('om/xsElement.php');
 			}
 		}
 
-		//1??? LOOKS SUSPICIOUS
 		$meta =& $generator->getMeta();
 		if(1===count($element_context)) $global_elements[$element_context[0]] =& $meta;
 		return $meta;
@@ -268,6 +279,7 @@ class xsExtension extends _elementSet //require_once('om/xsExtension.php');
 	function xsExtension()
 	{
 		$this->_addElement('xsAttribute',array('minOccurs'=>0,'maxOccurs'=>unbounded));
+		$this->_addElement('xsAnyAttribute',array('minOccurs'=>0,'maxOccurs'=>unbounded));	
 		$this->_addElement('xsSequence',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addAttribute('base',array('type'=>'xs:string'));
 		$this->type[] = 'xsExtension'; parent::_elementSet();
@@ -278,8 +290,10 @@ class xsGroup extends _elementSet2 //require_once('om/xsGroup.php');
 	function xsGroup()
 	{
 		$this->_addElement('xsAnnotation',array('minOccurs'=>0,'maxOccurs'=>unbounded));
-		$this->_addElement('xsElement',array('minOccurs'=>0,'maxOccurs'=>unbounded));
-		$this->_addElement('xsAttribute',array('minOccurs'=>0,'maxOccurs'=>unbounded));
+		//Don't think these are allowed in groups.
+		//$this->_addElement('xsElement',array('minOccurs'=>0,'maxOccurs'=>unbounded));		
+		//$this->_addElement('xsAttribute',array('minOccurs'=>0,'maxOccurs'=>unbounded));
+		$this->_addElement('xsAll',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsChoice',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsSequence',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsGroup',array('minOccurs'=>0,'maxOccurs'=>unbounded));
@@ -291,10 +305,10 @@ class xsGroup extends _elementSet2 //require_once('om/xsGroup.php');
 	function& generate($element_context,& $global_elements)
 	{
 		$element_context[] = $this->getAttribute("name");
-		echo implode(",",$element_context)."\n";
+		echo 'Generator context: ', implode(",",$element_context), "\n";
 		//get new factory
 		$generator = new ElementMeta($global_elements);
-		$generator->setIsGroup(true);
+		$generator->setIsGroup();
 		//load the class name and a context pre-fix (in case we're inside another element)
 		$generator->setName($this->getAttribute('name'));
 		$generator->setContext($element_context);
@@ -308,12 +322,20 @@ class xsGroup extends _elementSet2 //require_once('om/xsGroup.php');
 		}
 
 		//inspect the semantic structure of this node and extract the elements/attributes
-		$this->generateContentModel($this,$generator,$element_context,$this->getAttribute('maxOccurs'));
+		$this->generateCM_isPlural($this,$generator,$this->getAttribute('maxOccurs'));
 
 		$meta =& $generator->getMeta();
 		if(1===count($element_context))
 		$global_elements[$element_context[0]] =& $meta;	return $meta;
 	}	
+}
+class xsLength extends _typedData //NEW
+{
+	function xsLength()
+	{
+		$this->_addAttribute('value',array('type'=>'xs:integer'));
+		$this->type[] = 'xsLength'; parent::_typedData();
+	}
 }
 class xsList extends _typedData //require_once('om/xsList.php');
 {
@@ -401,6 +423,8 @@ class xsRestriction extends _elementSet //require_once('om/xsRestriction.php');
 	function xsRestriction()
 	{
 		$this->_addElement('xsAttribute',array('minOccurs'=>0,'maxOccurs'=>unbounded));
+		$this->_addElement('xsAnyAttribute',array('minOccurs'=>0,'maxOccurs'=>unbounded));	
+		$this->_addElement('xsLength',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsMinLength',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsMaxLength',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsMinInclusive',array('minOccurs'=>0,'maxOccurs'=>unbounded));
@@ -410,6 +434,8 @@ class xsRestriction extends _elementSet //require_once('om/xsRestriction.php');
 		$this->_addElement('xsEnumeration',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsWhiteSpace',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addElement('xsPattern',array('minOccurs'=>0,'maxOccurs'=>unbounded));
+		$this->_addElement('totalDigits',array('minOccurs'=>0,'maxOccurs'=>unbounded));
+		$this->_addElement('fractionDigits',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addAttribute('base',array('type'=>'xs:string'));
 		$this->type[] = 'xsRestriction'; parent::_elementSet();
 	}
@@ -426,8 +452,12 @@ class xsSchema extends _elementSet //require_once('om/xsSchema.php');
 		$this->_addElement('xsImport',array('minOccurs'=>0,'maxOccurs'=>unbounded));
 		$this->_addAttribute('targetNamespace',array('type'=>'xs:string'));
 		$this->_addAttribute('elementFormDefault',array('type'=>'xs:string'));
-		$this->_addAttribute('xmlns:xs',array('type'=>'xs:string'));
 		$this->_addAttribute('xmlns',array('type'=>'xs:string'));
+		//Just letting these go out as WARNING: Unhandled attribute: 
+		//$this->_addAttribute('xmlns:xs',array('type'=>'xs:string'));
+		//$this->_addAttribute('xmlns:xsi',array('type'=>'xs:string'));
+		//$this->_addAttribute('xml:lang',array('type'=>'xs:string'));
+		//$this->_addAttribute('xsi:schemaLocation',array('type'=>'xs:string'));
 		$this->_addAttribute('version',array('type'=>'xs:string'));
 		$this->type[] = 'xsSchema';	parent::_elementSet();
 	}

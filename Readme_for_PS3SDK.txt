@@ -70,14 +70,12 @@ hard coded COLLADA demos that were included with older PS3 releases.
 |  +-projects
 |     +-VC8-PS3             Visual Studio 2005 project files and platform-specific source code for PS3 COLLADA Viewer
 |     +-VC8-Win             Visual Studio 2005 project files and platform-specific source code for Windows native COLLADA Viewer
-|     +-VC9-PS3             Visual Studio 2008 project files and platform-specific source code for PS3 COLLADA Viewer
-|     +-VC9-Win             Visual Studio 2008 project files and platform-specific source code for Windows native COLLADA Viewer
 |     +--...
 |
 |  +-license.txt
 |  +-Makefile
 |
-+--Makefile                 Makefile (for Linux and MSYS) to build COLLADA Viewer and the necessary libraries
++--Makefile.old             Makefile (for Linux and MSYS) to build COLLADA Viewer and the necessary libraries
 +--Readme_e.txt             This file
 
 

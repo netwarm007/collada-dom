@@ -1,0 +1,111 @@
+
+<!-- VC10 PS3/Win32 project comparison analysis
+
+Note: PS3 is equivalent to 1.4 dom-static projects -->
+
+<!-- ==PS3================ -->
+<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='PS3 Release|Win32'" Label="Configuration">  
+<ConfigurationType>StaticLibrary</ConfigurationType>
+</PropertyGroup>
+<PropertyGroup>DEBUG IS THE SAME</PropertyGroup>
+<!-- --WIN32-------------- -->
+<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+	<ConfigurationType>StaticLibrary</ConfigurationType>
+  <CharacterSet>MultiByte</CharacterSet>
+  <WholeProgramOptimization>true</WholeProgramOptimization>
+</PropertyGroup>
+<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+	<ConfigurationType>StaticLibrary</ConfigurationType>
+  <CharacterSet>MultiByte</CharacterSet>              
+</PropertyGroup>
+<!-- ===================== -->
+
+<!-- ==PS3================ -->
+<PropertyGroup>  
+  <ExtensionsToDeleteOnClean Condition="'$(Configuration)|$(Platform)'=='PS3 Debug|Win32'">*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
+  <ExtensionsToDeleteOnClean Condition="'$(Configuration)|$(Platform)'=='PS3 Release|Win32'">*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
+</PropertyGroup>    
+<!-- --WIN32-------------- -->
+<PropertyGroup>
+  <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+  <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+  <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">libcollada15dom22-d</TargetName>
+  <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">libcollada15dom22</TargetName>
+</PropertyGroup>
+<!-- ===================== -->         
+
+<!-- ==PS3================ -->
+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='PS3 Debug|Win32'">
+  <ClCompile>
+    <AdditionalOptions>-g -O0 -Wall -fno-exceptions -fno-rtti %(AdditionalOptions)</AdditionalOptions>
+    <AdditionalIncludeDirectories>$(SN_PS3_PATH)\ppu\include\sn;$(SCE_PS3_ROOT)\target\ppu\include;$(SCE_PS3_ROOT)\target\common\include;..\..\include;..\..\include\1.4;..\..\external-libs\pcre;..\..\external-libs\tinyxml;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <PreprocessorDefinitions>SN_TARGET_PS3;__CELLOS_LV2__;_DEBUG;__GCC__;DOM_INCLUDE_TINYXML;NO_BOOST;NO_ZAE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+    <DebugInformationFormat>EMPTY</DebugInformationFormat>
+    <CompileAs>Default</CompileAs>
+  </ClCompile>
+  <Lib>    
+    <OutputFile>$(OutDir)$(ProjectName)-d.lib</OutputFile>
+    <AdditionalOptions>DEFAULT PROPS - SHOULD NOT BE PS3 SPECIFIC</AdditionalOptions>
+  </Lib>
+</ItemDefinitionGroup>
+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='PS3 Release|Win32'">
+  <ClCompile>
+    <AdditionalOptions>-O2 -Wall -fno-exceptions -fno-rtti %(AdditionalOptions)</AdditionalOptions>
+    <AdditionalIncludeDirectories>SAME AS ABOVE</AdditionalIncludeDirectories>
+    <PreprocessorDefinitions>NDEBUG WITHOUT __CELLOS_LV2__ OTHERWISE SAME AS ABOVE</PreprocessorDefinitions>
+    <ProgramDataBaseFileName>SAME AS ABOVE</ProgramDataBaseFileName>
+    <DebugInformationFormat>EMPTY-SAME AS ABOVE</DebugInformationFormat>
+    <CompileAs>Default SAME AS ABOVE</CompileAs>
+  </ClCompile>
+  <Lib>    
+    <OutputFile>WITHOUT -d OTHERWISE SAME AS ABOVE</OutputFile>
+    <AdditionalOptions>SAME AS ABOVE</AdditionalOptions>
+  </Lib>
+</ItemDefinitionGroup>
+<!-- --WIN32---------------- -->
+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+  <ClCompile>    
+    <AdditionalIncludeDirectories>..\..\include;..\..\include\1.5;..\..\external-libs\libxml2\include;..\..\external-libs\tinyxml;..\..\external-libs\pcre;..\..\external-libs\minizip\include;..\..\external-libs\boost;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <PreprocessorDefinitions>WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE;DOM_INCLUDE_LIBXML;PCRE_STATIC;BOOST_ALL_NO_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <MinimalRebuild>false</MinimalRebuild>
+    <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    <DisableLanguageExtensions>true</DisableLanguageExtensions>    
+    <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    <WarningLevel>Level3</WarningLevel>
+    <PrecompiledHeader>EMPTY</PrecompiledHeader>
+    
+    <Optimization>Disabled</Optimization>
+    <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>        
+  </ClCompile>
+  <Lib>
+    <OutputFile>$(OutDir)libcollada15dom22-sd.lib</OutputFile>
+    NO ADDITIONAL-LIBRARY-DIRECTORIES (SEE NOTE BELOW*)
+    NO ADDITIONAL-OPTIONS (SEE NOTE BELOW*)
+  </Lib>
+</ItemDefinitionGroup>
+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+  <ClCompile>
+    <AdditionalIncludeDirectories>SAME AS ABOVE</AdditionalIncludeDirectories>
+    <PreprocessorDefinitions>NDEBUG - OTHERWISE SAME AS ABOVE</PreprocessorDefinitions>
+    <MinimalRebuild>true</MinimalRebuild>
+    <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    <DisableLanguageExtensions>true SAME AS ABOVE</DisableLanguageExtensions>    
+    <DebugInformationFormat>EMPTY</DebugInformationFormat>
+    <WarningLevel>Level3 SAME AS ABOVE</WarningLevel>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+  
+		<WholeProgramOptimization>false</WholeProgramOptimization>  
+    <PrecompiledHeaderFile>EMPTY</PrecompiledHeaderFile>
+    <StringPooling>true</StringPooling>    
+  </ClCompile>
+  <Lib>
+    <OutputFile>$(OutDir)libcollada15dom22-s.lib</OutputFile>
+    <AdditionalLibraryDirectories>..\..\external-libs\pcre\lib\vc10;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    NO ADDITIONAL-OPTIONS (SEE NOTE BELOW*)
+  </Lib>
+</ItemDefinitionGroup>
+<!-- =====================
+*NOTE: props file contains the following (PS3 has no props file)-->
+<AdditionalLibraryDirectories>..\..\external-libs\pcre\lib\vc10;..\..\external-libs\tinyxml\lib\vc10;..\..\external-libs\minizip\win32\lib;..\..\external-libs\libxml2-new\lib;..\..\external-libs\boost\lib\vc10;..\..\external-libs\libxml2\win32\lib</AdditionalLibraryDirectories>
+<AdditionalOptions>/DXML_PARSE_HUGE=524288 %(AdditionalOptions)</AdditionalOptions>

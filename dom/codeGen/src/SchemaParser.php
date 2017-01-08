@@ -36,7 +36,7 @@ class SchemaParser
 			$class_name = 'xs'.ucfirst($class_name);
 
 			eval('$e = new '.$class_name.'();');						
-			foreach($attrs as $k=>$ea)	$e->setAttribute($k,$ea);
+			foreach($attrs as $k=>$ea) $e->setAttribute($k,$ea);
 
 			if(!empty($this->parse_stack))
 			{
@@ -77,4 +77,4 @@ class SchemaParser
 	}
 }
 
-?> 
+?>

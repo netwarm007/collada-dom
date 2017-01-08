@@ -10,16 +10,37 @@
 echoCode("
 $copyright
 
-#ifndef __$2$1_h__
-#define __$2$1_h__
-
-#include <$3/$3Document.h>
-#include <$2/$2Types.h>
-#include <$2/$2Elements.h>",
-ucfirst($meta['element_name']),$prefix,$meta_prefix);			
-echo applyTemplate('class-h-inc',$meta);
-echo "\n";
+#ifndef __$1_h__$2
+#define __$1_h__$2"
+,$meta['element_name'],$include_guard);
+//HACK. As long as localy types are inside the
+//global classes, there's no way to workaround
+//circular-dependencies.
+$ob_len = ob_get_length();
+echoInclude_dependents($meta,$meta['element_name']);
+if($ob_len===ob_get_length())
+echo "
+#include \"$target_namespace.h\"";	
+echo "
+COLLADA_H(__FILE__)
+COLLADA_(namespace)
+{
+    COLLADA_($target_namespace,namespace)
+    {//-.
+//<-----'
+";
 echo applyTemplate('class-h-def',$meta);
+echo "
+//-------.
+    }//<-'
+}
+
+";
+echo applyTemplate('class-h-inc',$meta);
+if(inline_CM)
+echo applyTemplate('classes-cpp',$meta);
 echoCode("
-#endif //__$2$1_h__
-",ucfirst($meta['element_name']),$prefix,$meta_prefix);
+#endif //__$1_h__$2",
+$meta['element_name'],$include_guard);
+
+?>/*C1071*/

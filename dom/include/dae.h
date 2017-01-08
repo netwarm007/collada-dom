@@ -1,4 +1,4 @@
-/*
+/*				  /
  * Copyright 2006 Sony Computer Entertainment Inc.
  *
  * Licensed under the MIT Open Source License, for details please see license.txt or the website
@@ -6,299 +6,762 @@
  *
  */
 
-#ifndef __DAE__
-#define __DAE__
+#ifndef __COLLADA_DOM__DAE_H__
+#define __COLLADA_DOM__DAE_H__
 
-// We use the boost filesystem library for cross-platform file system support. You'll need
-// to have boost on your machine for this to work. For the Windows build boost is provided
-// in the external-libs folder, but for Linux it's expected that you'll install a boost
-// obtained via your distro's package manager. For example on Debian/Ubuntu, you can run
-//   apt-get install libboost-filesystem-dev
-// to install the boost filesystem library on your machine.
-//
-// Disable the warnings we get from Boost
-// warning C4180: qualifier applied to function type has no meaning; ignored
-// warning C4245: 'argument' : conversion from 'int' to 'boost::filesystem::system_error_type',
-//   signed/unsigned mismatch
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4180 4245)
-#endif
-#ifndef NO_BOOST
-#include <boost/filesystem/convenience.hpp>
-#endif
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+#include "dae/domAny.h"
+#include "dae/daeIOPlugin.h"
+#include "dae/daeDocument.h"
 
-#include <dae/daeTypes.h>
-#include <dae/daeError.h>
-#include <dae/daeDatabase.h>
-#include <dae/daeIOPlugin.h>
-#include <dae/daeAtomicType.h>
-#include <dae/daeMetaElement.h>
-#include <dae/daeIDRef.h>
-#include <dae/daeURI.h>
-#include <dae/daeUtils.h>
-#include <dae/daeRawResolver.h>
-#include <dae/daeSIDResolver.h>
+COLLADA_(namespace)
+{//-.
+//<-'
 
-// needed for backward compatibility
-#ifdef COLLADA_DOM_SUPPORT150
-namespace ColladaDOM150 {
-class domCOLLADA;
-typedef daeSmartRef<domCOLLADA> domCOLLADARef;
-}
-#endif
-#ifdef COLLADA_DOM_SUPPORT141
-namespace ColladaDOM141 {
-class domCOLLADA;
-typedef daeSmartRef<domCOLLADA> domCOLLADARef;
-}
-#endif
-
-typedef daeElement domCOLLADAProxy;
-typedef daeSmartRef<daeElement> domCOLLADAProxyRef;
-
-class daeDatabase;
-
-// The DAE class is the core interface via which you interact with the DOM. It
-// has methods to load/save documents, get the root element of each document,
-// etc. Although internally the DOM works exclusively with URIs, the methods of
-// the DAE class that take document paths can take URIs or OS-specific file
-// paths.
-class DLLSPEC DAE
+/**
+ * @c daeDocRoot lets APIs return the doc in addition to the root.
+ * Technically, @c daeDocRoot extracts the doc's XML-like root on
+ * demand when it is assigned to a @c daeSmartRef that can hold a
+ * type of root suiting @a T. A @c daeError code is also included.
+ */
+template<class T> struct daeDocRoot : daeDocRef, daeOK
 {
-public:
-    // Constructor. If no database or IO plugin are provided, a default database and
-    // IO plugin will be used.
-    // \param specversion the collada specification to load into memory. For example: "1.4.1" or "1.5.0". If NULL, then the highest version found will be loaded.
-    DAE(daeDatabase* database = NULL, daeIOPlugin* ioPlugin = NULL, const char* specversion = NULL)
-        : atomicTypes(*this),
-        baseUri(*this, cdom::getCurrentDirAsUri().c_str())
-    {
-        // See the end of the thread linked below for an explanation of why we have the DAE
-        // constructor set up this way. Basically, I'm going to be changing the build output
-        // location, and when this happens people sometimes continue to link against the old
-        // libraries by accident (e.g. if they just do an svn update). By introducing a new
-        // function that gets called from a function in a header file, I'm ensuring that someone
-        // who tries linking against old libraries will get a link error. This may not sound
-        // very nice, but it's certainly better than getting bizarre runtime crashes.
-        // https://collada.org/public_forum/viewtopic.php?t=771&sid=f13c34f2d17ca720c5021bccbe5128b7
-        init(database, ioPlugin,specversion);
-        dummyFunction1();
-    }
+	template<class T> 
+	struct _unvoid{ typedef typename T::__COLLADA__T type; };
+	template<> struct _unvoid<void>{ typedef daeElement type; };
+	template<> struct _unvoid<void*>{ typedef daeElement type; };
 
-    virtual ~DAE();
+	typedef typename _unvoid<T>::type T;
 
-    // Release all memory used by the DOM. You never need to call this explicitly. It's
-    // called automatically when all DAE objects go out of scope.
-    // Deletes directory returned by cdom::getSafeTmpDir().
-    static void cleanup();
-
-public:
-    // Database setup
-    virtual daeDatabase* getDatabase();
-    virtual daeInt setDatabase(daeDatabase* database);
-
-    // IO Plugin setup
-    virtual daeIOPlugin* getIOPlugin();
-    virtual daeInt setIOPlugin(daeIOPlugin* plugin);
-
-    // Creates a new document, returning null on failure. Cast to ColladaDOMXXX::domCOLLADA
-    virtual domCOLLADAProxy* add(const std::string& path);
-    // Opens an existing document, returning null on failure. Cast to ColladaDOMXXX::domCOLLADA
-    virtual domCOLLADAProxy* open(const std::string& path);
-    // Opens a document from memory, returning null on failure. Cast to ColladaDOMXXX::domCOLLADA
-    virtual domCOLLADAProxy* openFromMemory(const std::string& path, daeString buffer);
-#ifdef COLLADA_DOM_SUPPORT141
-    virtual ColladaDOM141::domCOLLADA* add141(const std::string& path) {
-        return (ColladaDOM141::domCOLLADA*)add(path);
-    }
-    virtual ColladaDOM141::domCOLLADA* open141(const std::string& path) {
-        return (ColladaDOM141::domCOLLADA*)open(path);
-    }
-    // Opens a document from memory, returning null on failure.
-    virtual ColladaDOM141::domCOLLADA* openFromMemory141(const std::string& path, daeString buffer) {
-        return (ColladaDOM141::domCOLLADA*)openFromMemory(path,buffer);
-    }
-#endif
-#ifdef COLLADA_DOM_SUPPORT150
-    virtual ColladaDOM150::domCOLLADA* add150(const std::string& path) {
-        return (ColladaDOM150::domCOLLADA*)add(path);
-    }
-    virtual ColladaDOM150::domCOLLADA* open150(const std::string& path) {
-        return (ColladaDOM150::domCOLLADA*)open(path);
-    }
-    // Opens a document from memory, returning null on failure.
-    virtual ColladaDOM150::domCOLLADA* openFromMemory150(const std::string& path, daeString buffer) {
-        return (ColladaDOM150::domCOLLADA*)openFromMemory(path,buffer);
-    }
-#endif
-
-    // Write a document to the path specified by the document's URI, returning false on failure.
-    virtual bool write(const std::string& path);
-    // Write a document to the path specified in the second parameter, returning false on failure.
-    virtual bool writeTo(const std::string& docPath, const std::string& pathToWriteTo);
-    // Writes all documents, returning false if any document failed to write.
-    virtual bool writeAll();
-    // Close a specific document, unloading all memory used by the document. Returns false on failure.
-    virtual void close(const std::string& path);
-    // Remove all loaded documents. Always returns DAE_OK.
-    virtual daeInt clear();
-
-    // Returns the total number of documents.
-    virtual int getDocCount();
-    // Returns the i'th document .
-    virtual daeDocument* getDoc(int i);
-    // Returns a document matching the path.
-    virtual daeDocument* getDoc(const std::string& path);
-
-    // Get the root daeElement object corresponding to a particular document. Cast to ColladaDOMXXX::domCOLLADA
-    virtual domCOLLADAProxy* getRoot(const std::string& path);
-    // Set the root daeElement object corresponding to a particular document, returning false on failure.
-    virtual bool        setRoot(const std::string& path, domCOLLADAProxy* root);
-#ifdef COLLADA_DOM_SUPPORT141
-    virtual ColladaDOM141::domCOLLADA* getRoot141(const std::string& path) {
-        return (ColladaDOM141::domCOLLADA*)getRoot(path);
-    }
-    virtual bool        setRoot141(const std::string& path, ColladaDOM141::domCOLLADA* root) {
-        return setRoot(path,(domCOLLADAProxy*)root);
-    }
-#endif
-#ifdef COLLADA_DOM_SUPPORT150
-    virtual ColladaDOM150::domCOLLADA* getRoot150(const std::string& path) {
-        return (ColladaDOM150::domCOLLADA*)getRoot(path);
-    }
-    virtual bool        setRoot150(const std::string& path, ColladaDOM150::domCOLLADA* root) {
-        return setRoot(path,(domCOLLADAProxy*)root);
-    }
-#endif
-
-    // Returns the Collada version, i.e. 1.4, 1.5, etc. Note that this _isn't_ the
-    // same as the DOM version (1.3, 2.0, ...).
-    virtual daeString getDomVersion();
-
-    // Returns the (modifiable) list of atomic type objects.
-    daeAtomicTypeList& getAtomicTypes();
-
-    // Get/set a daeMetaElement object given the meta object's type ID.
-    daeMetaElement* getMeta(daeInt typeID);
-    void setMeta(daeInt typeID, daeMetaElement& meta);
-
-    // Get all daeMetaElement objects.
-    daeMetaElementRefArray& getAllMetas();
-
-    // Returns the list of URI resolvers. You can modify the list to add new resolvers.
-    daeURIResolverList& getURIResolvers();
-
-    // The base URI used for resolving relative URI references.
-    daeURI& getBaseURI();
-    void setBaseURI(const daeURI& uri);
-    void setBaseURI(const std::string& uri);
-
-    // Returns the list of ID reference resolvers. You can modify the list to add new
-    // resolvers.
-    daeIDRefResolverList& getIDRefResolvers();
-
-    // Meant for internal DOM use only.
-    daeRawRefCache& getRawRefCache();
-    daeSidRefCache& getSidRefCache();
-
-    // These functions specify the client's character encoding for the DOM. The
-    // default is Utf8, but if you specify Latin1 then the DOM will use libxml's
-    // character conversion functions to convert to Utf8 when writing data and
-    // convert to Latin1 when reading data. This can help with the handling of
-    // non-ASCII characters on Windows. Only when using libxml for xml I/O does
-    // any character conversion occur.
-    //
-    // Most people can probably just ignore this completely. If you have trouble
-    // with non-ASCII characters on Windows, try setting the char encoding to
-    // Latin1 to see if that helps.
-    //
-    // Frankly this certainly isn't the best way of handling non-ASCII character
-    // support on Windows, so this interface is a likely target for significant
-    // changes in the future.
-    //
-    // See this Sourceforge thread for more info:
-    // http://sourceforge.net/tracker/index.php?func=detail&aid=1818473&group_id=157838&atid=805426
-    //
-    enum charEncoding {
-        Utf8,
-        Latin1
-    };
-
-    // Global encoding setting. Defaults to Utf8. Set this if you want to make a
-    // char encoding change and apply it to all DAE objects.
-    static charEncoding getGlobalCharEncoding();
-    static void setGlobalCharEncoding(charEncoding encoding);
-
-    // Local encoding setting. If set, overrides the global setting. Useful for setting
-    // a specific char encoding for a single DAE object but not for all DAE objects.
-    charEncoding getCharEncoding();
-    void setCharEncoding(charEncoding encoding);
-
-    // Deprecated. Alternative methods are given.
-    virtual daeInt load(daeString uri, daeString docBuffer = NULL); // Use open
-    virtual daeInt save(daeString uri, daeBool replace=true); // Use write
-    virtual daeInt save(daeUInt documentIndex, daeBool replace=true); // Use write
-    virtual daeInt saveAs(daeString uriToSaveTo, daeString docUri, daeBool replace=true); // Use writeTo
-    virtual daeInt saveAs(daeString uriToSaveTo, daeUInt documentIndex=0, daeBool replace=true); // Use writeTo
-    virtual daeInt unload(daeString uri); // Use close
-
-    virtual domCOLLADAProxy* getDom(daeString uri); // use getRoot, Cast to ColladaDOMXXX::domCOLLADA
-    virtual daeInt      setDom(daeString uri, domCOLLADAProxy* dom); // use setRoot,
-#ifdef COLLADA_DOM_SUPPORT141
-    virtual ColladaDOM141::domCOLLADA* getDom141(daeString uri) {
-        return (ColladaDOM141::domCOLLADA*)getDom(uri);
-    }
-    virtual daeInt      setDom141(daeString uri, ColladaDOM141::domCOLLADA* dom) {
-        return setDom(uri,(domCOLLADAProxy*)dom);
-    }
-#endif
-#ifdef COLLADA_DOM_SUPPORT150
-    virtual ColladaDOM150::domCOLLADA* getDom150(daeString uri) {
-        return (ColladaDOM150::domCOLLADA*)getDom(uri);
-    }
-    virtual daeInt      setDom150(daeString uri, ColladaDOM150::domCOLLADA* dom) {
-        return setDom(uri,(domCOLLADAProxy*)dom);
-    }
-#endif
-
-    virtual daeString getColladaNamespace();
-
-private:
-    void init(daeDatabase* database, daeIOPlugin* ioPlugin, const char* specversion);
-    void dummyFunction1();
-    std::string makeFullUri(const std::string& path);
-    domCOLLADAProxy* openCommon(const std::string& path, daeString buffer);
-    bool writeCommon(const std::string& docPath, const std::string& pathToWriteTo, bool replace);
-
-    daeDatabase *database;
-    daeIOPlugin *plugin;
-    bool defaultDatabase;
-    bool defaultPlugin;
-    daeAtomicTypeList atomicTypes;
-    daeMetaElementRefArray metas;
-    daeURI baseUri;
-    daeURIResolverList uriResolvers;
-    daeIDRefResolverList idRefResolvers;
-    daeRawRefCache rawRefCache;
-    daeSidRefCache sidRefCache;
-    daeString COLLADA_VERSION, COLLADA_NAMESPACE; // dynamic
-
-    std::auto_ptr<charEncoding> localCharEncoding;
-    static charEncoding globalCharEncoding;
+	using daeDocRef::operator=; //using daeOK::operator=; //C4522	
+	
+	daeDocRoot(){}
+	daeDocRoot(daeOK cp):daeOK(cp){}
+	daeDocRoot(daeError cp):daeOK(cp){}
+	daeDocRoot(daeDocRef &cp):daeDocRef(cp){}
+	daeDocRoot(const daeDocRoot<> &cp):daeDocRef(cp),daeOK(cp){}
+	template<class U>daeDocRoot&operator=(const daeDocRoot<U> &cp)
+	{
+		//Allow same types or dae/DAEP type to void/void*.
+		T &crazy_cast = *(typename daeDocRoot<U>::T*)nullptr; 
+		daeDocRef::operator=(cp); error = cp.error; return *this; 
+	}
+	template<class S> operator S*()const
+	{ return (S*)_SFINAE<S>((S*)nullptr); }	
+	template<template<class> class R, class S> operator R<S>()const
+	{ return (S*)_SFINAE<S>((S*)nullptr); }
+	operator daeDocument*()const
+	{ return daeDocRef::operator->()->_getDocument(); }
+	operator daeDocumentRef()const
+	{ return daeDocRef::operator->()->getDocument(); }
+	template<class S> daeObject *_SFINAE(...)const
+	{ return daeDocRef::operator->(); }	
+	template<class S> daeObject *_SFINAE(DAEP::Element*)const
+	{ return _SFINAE<S>((daeElement*)nullptr); }
+	template<class S> daeObject *_SFINAE(daeElement*)const
+	{ 
+		//& is used to invoke the DAEP::Element conversion
+		//to a daeElement& in order to behave like xs::any.
+		S &upcast = *(T*)nullptr;
+		if(*this==COLLADA_(nullptr)) return nullptr;
+		daeElement *root = (*this)->getDocument()->getRoot(); 
+		daeSafeCast<T>(root); return root;
+	}
 };
 
+#include "./LINKAGE.HPP" //#define LINKAGE
 
-template <typename T>
-inline T *daeSafeCast(daeElement *element)
-{
-    if (element  &&  element->typeID() == T::ID())
-        return (T*)element;
-    return NULL;
-}
+/**
+ * Class @c daeDOM is based on @c daeArchive. COLLADA ZAE archives are @c daeArchives.
+ */
+class daeArchive : public daeDoc
+{		
+	friend class daeDOM;
+	friend class daeDoc;		
+	friend class daeIORequest;
+	friend class DAEP::Object;
+	/**
+	 * Disabling @c new operator for clients.
+	 * This is here because @c daeDOM, can't
+	 * be deleted by a @c daeSmartRef, since
+	 * @c __DAEP__Make__v1__delete() must be
+	 * generated by @c __daeDOM__construct().
+	 * @c _isDOM() needs the 0 process-share.
+	 * @see @c daeDOM::_addArchive().
+	 */
+	void *operator new(size_t n)
+	{
+		return ::operator new(n); //NOP 
+	}	
 
+COLLADA_(public) //OPERATORS
+	/** 
+	 * Placement-new wants this on MSVC2015. 
+	 * There's no reason for this to be @c public,
+	 * -but neither is there reason for it to not be so.
+	 */
+	void *operator new(size_t, void *p){ return p; }
 
-#endif // __DAE_INTERFACE__
+	COLLADA_DOM_OBJECT_OPERATORS(daeArchive)
+
+COLLADA_(private) //new/openDoc() implementation
+	
+	template<class ROOT> 
+	/** Creates/recreates a @a ROOT rooted doc. */	
+	inline daeDocRoot<ROOT> _read(const daeIORequest &req, daeIOPlugin *I)
+	{
+		return _read2(daeGetMeta<ROOT>(),req,I);
+	}
+	template<> 
+	/**TEMPLATE-SPECIALIZATION
+	 * Creates/recreates a purely @c domAny doc. */	
+	inline daeDocRoot<domAny> _read(const daeIORequest &req, daeIOPlugin *I)
+	{
+		return _read2(nullptr,req,I);
+	}
+	template<> 
+	/**TEMPLATE-SPECIALIZATION
+	 * Delegates creation/recreation of a new doc to @c daePlatform::openURI().
+	 * If @a !req.localURI->getAllowsAny(), then @c DAE_ERR_NOT_IMPLEMENTED is
+	 * returned before resorting to populating the doc with @c domAny elements.
+	 * (@c daeIORequest::unfulfillRequest() is provided just for this purpose.)
+	 * (@c _read<void*>() is provided below to automatically "setAllowsAny()".)
+	 */	
+	inline daeDocRoot<void> _read(const daeIORequest &req, daeIOPlugin *I)
+	{
+		daeDocRoot<> doc; 
+		doc.error = _getPlatform(*getDOM()).openURI(req,I,(daeURIRef&)doc);		
+		if(doc!=COLLADA_(nullptr)&&!(doc=(daeDoc*)&doc->getParentObject())->_isDoc())
+		{
+			//Hate to inline this logic, but openURI() is designed so to support
+			//non-doc based URIs (in the future) and this is a doc-based routine.
+			doc = nullptr; doc.error = DAE_ERR_CLIENT_FATAL; assert(0); 
+		}
+		return doc;
+	}
+	template<> 
+	/**TEMPLATE-SPECIALIZATION	 
+	 * Delegates creation/recreation of a new doc to @c daePlatform::openURI(), with
+	 * further instructions to default/fallback to a @c domAny based doc if required. 
+	 * The * in "void*" is an asterisk. It's to illustrate that @c domAny isn't free.
+	 * @warning This is NOT RECOMMENDED if @a URI is part of, or bound to a document.
+	 */
+	inline daeDocRoot<void*> _read(const daeIORequest &req, daeIOPlugin *I)
+	{
+		const_cast<daeURI&>(*req.localURI).setAllowsAny(); return _read<void>(req,I); 		
+	}
+
+	/**
+	 * Creates/recreates a new document. 
+	 * @todo There needs to be a wildcard @c daeMetaElement to have any root element,
+	 * on a per namespace basis, as not all XML Schema are as restrictive as COLLADA.
+	 */
+	LINKAGE static daeDocRoot<> _read2(daeMeta*, const daeIORequest&, daeIOPlugin*);
+
+COLLADA_(public) //ACCESSORS & MUTATORS
+	/**
+	 * Creates/recreates an empty doc/document. 
+	 * @note Originally the idea was to have @c newDoc<void>() create a
+	 * new empty doc/document, but instead that's like @c openDoc<void>().
+	 */
+	inline daeDocRoot<> newDoc(const daeURI &URI, daeIOPlugin *I=nullptr)
+	{ 
+		return _read2(nullptr,daeIORequest(this,nullptr,&URI),I);
+	}	
+
+	template<class ROOT>
+	/** 
+	 * Creates/recreates a @a ROOT rooted doc/document.
+	 * This is identical to @c openDoc<ROOT>() except that a new doc/document
+	 * is created and a root node is set up and returned. 
+	 * @tparam ROOT if @c void or @c void* is given to @c daePlatform::openURI().
+	 * It must decided based on @a URI what
+	 */
+	inline daeDocRoot<ROOT> newDoc(const daeURI &URI, daeIOPlugin *I=nullptr)
+	{ 
+		return _read<ROOT>(daeIORequest(this,nullptr,&URI),I);
+	}	
+	//A newDoc<domAny>() version is all included for completeness.
+	template<class T>
+	/** This is a dummy to force writing "<domAny>"; and reserved. */
+	inline daeDocRoot<T> newDoc(const daeName&, const daeURI&, daeIOPlugin *I=nullptr);
+	template<>
+	/**TEMPLATE-SPECIALIZATION Creates/recreates a @c domAny rooted doc. */
+	inline daeDocRoot<domAny> newDoc<domAny>(const daeName &QName, const daeURI &URI, daeIOPlugin *I/*=nullptr*/)
+	{ 
+		#ifdef NDEBUG //CIRCULAR-DEPENDENCY?
+		#error MSVC compiles domAnyRef(getDOM()). daeDOM is undefined. It's probably a circular-dependency.
+		#endif
+		daeDocRoot<> doc = newDoc(URI,I); daeDocumentRef docu = doc->getDocument();
+		daeDOM *DOM = const_cast<daeDOM*>(getDOM());
+		if(docu!=nullptr&&doc==DAE_OK) (docu->getRoot()=domAnyRef(DOM))->setElementName(QName); return doc;
+	}
+
+	template<class ROOT>
+	/**
+	 * Creates/recreates a new doc by opening @a URI.
+	 * @tparam ROOT validates the document at @a URI.
+	 * When @a ROOT is not a generated element based class, it has three other
+	 * forms: Where ROOT is @c void, ROOT and @a I if @c nullptr are forwarded
+	 * to @c getDOM()->getPlatform().openURI().	 
+	 * Where ROOT is @c void*, the same, except @c daeURI::setAllowsAny() will
+	 * be added to @a URI. This is intended to complement temporary parameters.
+	 * Where ROOT is @c domAny, @a URI is created purely of @c domAny elements.
+	 * @see @c daePlatform::openURI().
+	 */
+	inline daeDocRoot<ROOT> openDoc(const daeURI &URI, daeIOPlugin *I=nullptr)
+	{
+		return _read<ROOT>(daeIORequest(this,nullptr,&URI,&URI),I);
+	}
+
+	template<class ROOT> 
+	/**LEGACY, WARNING
+	 * Creates/recreates a new document, filled with plugin processed string text.
+	 * @warning Nothing requires @a I interpret @a string as a document in memory.
+	 * The string doesn't have be 0-terminated. The built-in (old) TinyXML loader
+	 * has been rewritten to not depend on a 0. But if the string is bad it might
+	 * read past the end. The LibXML plugin is a vast improvement but still lousy.
+	 * @see openDoc() Doxygentation.
+	 */	
+	inline daeDocRoot<ROOT> openDocFromMemory(const daeURI &URI, const daeHashString &string, daeIOPlugin *I=nullptr)
+	{
+		return _read<ROOT>(daeIORequest(this,string,&URI),I);
+	}
+
+	/** 
+	 * Writes doc where @a localURI is lexically identical to remote URI.
+	 */
+	inline daeOK writeDoc(const daeURI &localURI, daeIOPlugin *O=nullptr)const
+	{
+		daeDocRef doc; getDoc(localURI,doc);
+		return doc!=nullptr?doc->write(O):DAE_ERR_DOCUMENT_DOES_NOT_EXIST;
+	}
+	/**
+	 * Writes doc of @a localURI to @a remoteURI.
+	 */
+	inline daeOK writeDocTo(const daeURI &localURI, const daeURI &remoteURI, daeIOPlugin *O=nullptr)const
+	{
+		daeDocRef doc; getDoc(localURI,doc);		
+		return doc!=nullptr?doc->writeTo(remoteURI,O):DAE_ERR_DOCUMENT_DOES_NOT_EXIST;
+	}
+	
+	/**
+	 * Closes the doc, unloading all memory used by the document-or-archive.
+	 * @return Returns DAE_OK if the document is closed. 
+	 * @note Permission is gotten from @c daePlatform::closeURI().
+	 * @see daeDoc::close() Doxygentation for how to circument thsi procedure.
+	 */
+	inline daeOK closeDoc(const daeURI &URI)
+	{
+		daeDocRef doc; getDoc(URI,doc);		
+		return doc!=nullptr?doc->close():DAE_ERR_DOCUMENT_DOES_NOT_EXIST;
+	}
+	
+	/** 
+	 * @return Returns the @c daeDoc array. 
+	 */
+	NOALIAS_LINKAGE const daeArray<daeDocRef> &getDocs()
+	SNIPPET( return _docs; )
+	/**CONST-PROPOGATING-FORM
+	 * @return Returns the @c daeDoc array. 
+	 */
+	inline const daeArray<const_daeDocRef> &getDocs()const
+	{
+		return (daeArray<const_daeDocRef>&)const_cast<daeArchive*>(this)->getDocs();
+	}
+
+	/**
+	 * @return Returns the total number of documents. 
+	 */
+	inline size_t getDocCount()const{ return getDocs().getCount(); }
+
+	/** 
+	 * @return Returns the @a i'th open document. 
+	 * @note There is no association. This is strictly enumeration.
+	 */
+	inline const daeDocRef &getDoc(size_t i){ return getDocs()[i]; }
+	/**CONST-PROPOGATING-FORM
+	 * @return Returns the @a i'th open document.
+	 * @note There is no association. This is strictly enumeration.
+	 */
+	inline const const_daeDocRef &getDoc(size_t i)const{ return getDocs()[i]; }
+	/**
+	 * Gets a doc matching @a URI, or @c nullptr.
+	 */
+	inline daeDocRef &getDoc(const daeURI &URI, daeDocRef &matchingDoc)
+	{
+		return URI.docLookup2(*this,matchingDoc);
+	}
+	/**CONST-PROPOGATING-FORM
+	 * Gets a doc matching @a URI, or @c nullptr.
+	 */
+	inline const_daeDocRef &getDoc(const daeURI &URI, const_daeDocRef &matchingDoc)const
+	{
+		return URI.docLookup2(*this,matchingDoc);
+	}	
+	/**LEGACY
+	 * Gets a doc matching @a URI, or @c nullptr.
+	 */
+	inline daeDocRef getDoc(const daeURI &URI)
+	{
+		daeDocRef matchingDoc; return URI.docLookup2(*this,matchingDoc);
+	}			
+	/**LEGACY, CONST-PROPOGATING-FORM
+	 * Gets a doc matching @a URI, or @c nullptr.
+	 */
+	inline const_daeDocRef getDoc(const daeURI &URI)const
+	{
+		const_daeDocRef matchingDoc; return URI.docLookup2(*this,matchingDoc);
+	}
+		
+	/**CONST-ONLY
+	 * Gets the base URI used for resolving relative URI references. 
+	 * @return Returns the same @c daeURI& as @c daeDoc::getDocURI().
+	 */
+	inline const daeURI &getBaseURI()const{ return _uri; }
+
+COLLADA_(protected) //INTERNAL	
+
+	/** Type received by @c _setDeleter(). */
+	typedef void(*_deleter_f)(const DAEP::Object*);
+	/** Implements @c daeDOM::setDeleter(). */
+	LINKAGE void _setDeleter(_deleter_f=nullptr);
+
+	/**CIRCULAR-DEPENDENCY 
+	 * This rightly belongs in @c daeDOM; @c _read() calls it. */
+	NOALIAS_LINKAGE static daePlatform &_getPlatform(const daeDOM &DOM);
+	
+#ifdef BUILDING_COLLADA_DOM
+
+COLLADA_(protected) //INVISIBLE
+		/**
+		 * Constructor & Virtual Destructor
+		 */
+		 daeArchive(daeDOM&); virtual ~daeArchive(){}
+
+		/**PURE-OVERRIDE */
+		virtual void __daeDoc__v1__atomize();
+
+		/** Set with @c daeDOM::setDeleter(). */
+		_deleter_f _deleter;
+
+		/**
+		 * Pre-2.5 docs belonged to @c daeDatabase.
+		 */
+		daeArray<daeDocRef> _docs;
+
+		/**
+		 * Removes docs with only a single smart-ref.
+		 */
+		void _compactDocs(size_t *before=nullptr, size_t *after=nullptr);
+
+COLLADA_(public) //INVISIBLE
+
+		/**EXPERIMENTAL
+		 * @c daeURI::docLookup() sets this to its lower-bound.
+		 */
+		mutable size_t _whatsupDoc;
+		/**
+		 * Inserts @a doc at @c _docs[_whatsupDoc]. 
+		 * (@a doc is technically moved from its existing archive,
+		 * and into @c this archive.)
+		 */
+		void _whatsupDocInsert(daeDoc *doc);				
+		/**
+		 * Moves @a doc temporarily into @a daeDOM::_closedDocs.
+		 * This is to keep a changing URI from spoiling lookups.
+		 */
+		inline void _movingDoc(daeDoc *doc)const
+		{
+			const_cast<daeArchive*>(this)->_removeDoc(doc,nullptr); 
+		}
+		/**
+		 * Moves @a doc permanently into @a daeDOM::_closedDocs;
+		 * After which it's all but "destructed." Eg. ~daeDoc().
+		 */
+		void _closedDoc(daeDoc *doc, daeDoc *replacement=nullptr);
+
+COLLADA_(private) //INVISIBLE
+
+		/**PRIVATE SUBROUTINE
+		 * Takes @a doc out of @c _docs, and nothing more.
+		 * @param _ is used by @c _closedDoc to pass the replacement.
+		 * @c _whatsupDoc is used as a hint.
+		 */
+		void _uprootDoc(daeDoc *doc, daeDoc *uprooted_replacement);
+		/**PRIVATE SUBROUTINE 
+		 * Implements _movingDoc() while protecting @a uprooted_replacement. 
+		 */
+		daeDOM *_removeDoc(daeDoc *doc, daeDoc *uprooted_replacement);		
+
+#endif //BUILDING_COLLADA_DOM	
+};
+
+/**
+ * The @c daeDOM class is the core interface via which to interact with the DOM.
+ *
+ * Post-2.5 it is based on the new @c daeArchive class; only because it requires
+ * so much of the same functionality. Conceptually it is more like a virtual or a
+ * pseudo-archive--Although it could be desirable to put it into a special archive
+ * mode one day. (As a possible feature that simulates a completely-closed system.)
+ */
+class daeDOM : public daeArchive
+{	
+	template<class> friend class daeSmartRef;			
+
+COLLADA_(public) //daeSmartRef<T> T factories	
+	/**
+	 * Adds an archive to the database. 
+	 */
+	NOALIAS_LINKAGE daeArchive *_addArchive();
+	/** 
+	 * Adds a document to the database. 
+	 */
+	NOALIAS_LINKAGE daeDocument *_addDocument();
+	/** 
+	 * Adds a generic object to the database.
+	 */
+	NOALIAS_LINKAGE daeObject *_addObject(size_t);
+	/**
+	 * Adds an orphan element to the database. 
+	 */
+	NOALIAS_LINKAGE daeElement *_addElement(daeMeta&);		
+	/**
+	 * Only here because daeGetMeta() is undefined.
+	 * It's also slightly more efficient like this.
+	 */
+	NOALIAS_LINKAGE domAny *_addAny();		
+	/**
+	 * Implements @c daeSmartRef::daeSmartRef(daeDOM&). 
+	 */
+	template<class T> inline T *_add()const
+	{	
+		assert(this!=nullptr);
+		return const_cast<daeDOM*>(this)->_add2<T>(nullptr);
+	}	
+	/**OVERLOAD Adds a generic object to the database. */
+	template<class T> inline T *_add2(...)
+	{
+		_add2_concrete_CTC<T>((T*)nullptr);
+		T *obj(new(_addObject(sizeof(T)))T(*this));
+		obj->__DAEP__Object__unembed(1); return obj;
+	}
+	/**DISABLED: daeDOM/daeElement are friends. */
+	template<class X> inline void _add2_concrete_CTC(daeElement*)
+	{
+		daeCTC<0>("Sanity check. Abstract types.");
+	}
+	/**DISABLED: There's only one DOM per DOM. */	
+	template<class T> inline void _add2_concrete_CTC(daeDOM*)
+	{
+		daeCTC<0>("Shouldn't be. __daeDOM__new__?"); 
+	}
+	/**TEMPLATE-SPECIALIZATION Adds an archive to the database. */
+	template<> inline daeArchive *_add2<daeArchive/*MSVC2010*/>(...)
+	{
+		return _addArchive();
+	}
+	/**TEMPLATE-SPECIALIZATION Adds a document to the database. */
+	template<> inline daeDocument *_add2<daeDocument/*MSVC2010*/>(...)
+	{
+		return _addDocument();
+	}
+	/**OVERLOAD Adds an orphan, concrete element to the database. */
+	template<class T> inline T *_add2(typename T::__COLLADA__Element*)
+	{
+		return (T*)_addElement(daeGetMeta<T>());
+	}
+	/**TEMPLATE-SPECIALIZATION Adds an orphan @c domAny to the database. */
+	template<> inline domAny *_add2<domAny>(domAny::__COLLADA__Element*)
+	{
+		return _addAny(); //Only here because daeGetMeta() is undefined.
+	}	
+
+COLLADA_(public) //OPERATORS
+
+	COLLADA_DOM_OBJECT_OPERATORS(daeDOM)
+
+COLLADA_(public) //CONSTRUCTORS
+	/**STATIC
+	 * Sets the global platform so code can ignore its part in
+	 * the constructor. The global platform is process-wide, so
+	 * don't set this if your code is part of a software library.
+	 */
+	LINKAGE static void setGlobalPlatform(daePlatform *OS)
+	SNIPPET( daeDOM::_globalPlatform = OS; )
+	/**STATIC
+	 * Gets the global platform. If it's gloabal it's everyone's.
+	 */
+	NOALIAS_LINKAGE static daePlatform *getGlobalPlatform()
+	SNIPPET( return daeDOM::_globalPlatform; )
+	
+	NOALIAS_LINKAGE 
+	/**
+	 * Allocates a DOM with @c new. This disables @c setDeleter().
+	 */
+	static daeDOM *__daeDOM__new(daeDatabase_base *DB=nullptr, daePlatform *OS=nullptr);
+	/**
+	 * Default Constructor
+	 *
+	 * There can't be more than one constructor, lest they all be
+	 * exported/implemented separately. (Inline constructors can't
+	 * be used, and historically there'd never been a factory API.)
+	 *
+	 * @param DB If @c nullptr, @c daePlatform::attachDB() is called.
+	 * If still @c nullptr, a private, built-in database is provided.
+	 * (@c daePlatform::getLegacyProfile() may be used to select it.)
+	 * @param OS If @c nullptr @c getGlobalPlatform() is called upon.
+	 * If there's no global platform, a NON-WORKING platform is used.
+	 * (It'd sure be nice to have a default platform; but difficult.)
+	 *
+	 * @param OK Is designed to guarantee the process-share slot was
+	 * established before the user code calls @c openDoc() via a URI.
+	 * Typically this would be the first thing done, and a @c daeURI 
+	 * is an object that needs to have the slot assigned to its tags.
+	 * @c DOM_grant_process_share() is NOT THREAD-SAFE at the moment.
+	 * If @c OK is somehow not @c DAE_OK then @c OS will not be used.
+	 */
+	daeDOM(daeDatabase_base *DB=nullptr, daePlatform *OS=nullptr)
+	#ifdef BUILDING_COLLADA_DOM
+	;
+	#else //This setup is for Visual Studio, since it doesn't call the destructor of automatic objects.
+	{
+		__daeDOM__construct(*this,DB,OS);
+	}
+	/**
+	 * Virtual Destructor for Visual Studio.
+	 */
+	virtual ~daeDOM()
+	{ 
+		__daeDOM__destruct(*this); assert(_uri.empty()&&isUnparentedObject());
+	}	
+	/**
+	 * Visual Studio wants this for its unused vptr.
+	 */
+	virtual DAEP::Model &__DAEP__Object__v1__model()const
+	{
+		return ((DAEP::Object*)this)->__DAEP__Object__v1__model();
+	}
+	#endif
+	/**
+	 * Note this is not so bad, since it should be possible to set up 
+	 * alternative constructors like this, without additional exports.
+	 */
+	LINKAGE static void __daeDOM__construct(daeDOM &_this, daeDatabase_base *DB, daePlatform *OS)
+	SNIPPET( new(&_this) daeDOM(DB,OS); )
+	LINKAGE static void __daeDOM__destruct(daeDOM &_this)
+	SNIPPET( _this.daeDOM::~daeDOM(); )	
+
+	/**
+	 * Sets an API used to delete @c this if the ref-count is brought
+	 * to 0. This can only be done once. If set to @c nullptr nothing
+	 * changes deletion-wise, but future calls are made to trigger an
+	 * @c assert() and or error-handler output.
+	 *
+	 * @param deleter receives the @c daeDOM intact and must call the
+	 * @c daeDOM::~daeDOM() directly or indirectly. The module having
+	 * the definition of @a deleter cannot be unloaded until deletion.
+	 * The intended rationale for using @c setDeleter() is to receive
+	 * notice of the DOM's demise, in order to take action, or delete
+	 * a larger super-object that is containing the @c this @c daeDOM.
+	 */
+	inline void setDeleter(void(*deleter)(daeDOM*)=nullptr)
+	{
+		_setDeleter((daeArchive::_deleter_f)deleter);
+	}
+
+COLLADA_(public) //ACCESSORS & MUTATORS
+	/**
+	 * Gets the database, bound to this DOM, for ever more. 
+	 * @note Databases may be bound to more than one DOM at a time.
+	 * If the DOM "leaves scope," the database may transfer its contents to
+	 * a temporary DOM. In this case, the database remains saddled with the objects.
+	 */
+	NOALIAS_LINKAGE daeDatabase &getDatabase()const
+	SNIPPET( return *_database; )
+	
+	/**CIRCULAR-DEPENDENCY
+	 * Gets the OS-like platform, bound to this DOM, for ever more. 
+	 */
+	inline daePlatform &getPlatform()const{ return _getPlatform(*this); }
+
+	#ifndef COLLADA_NODEPRECATED
+	COLLADA_DEPRECATED("Post-2.5: END-OF-SUPPORT\n\
+	Use getDefaultBaseURI() to get the pre-2.5 meaning of this API.\n\
+	WARNING: When #ifdef COLLADA_NODEPRECATED, daeArchive::getBaseURI() takes its place.")	
+	/**LEGACY Please change your code to getDefaultBaseURI(). */
+	inline void getBaseURI()const;
+	#endif //COLLADA_NODEPRECATED
+
+	/**REPLACES @c daeURI &getBaseURI().
+	 * Gets the base URI used for resolving relative URI references. 
+	 * @remarks This is the "current working directory" in URI form.
+	 */
+	NOALIAS_LINKAGE daeURI &getDefaultBaseURI()
+	SNIPPET( return _closedDocs._uri; )
+	/**CONST-PROPOGATING-FORM
+	 * REPLACES @c daeURI &getBaseURI().
+	 * Gets the base URI used for resolving relative URI references. 
+	 * @remarks This is the "current working directory" in URI form.
+	 */
+	inline const daeURI &getDefaultBaseURI()const
+	{
+		return const_cast<daeDOM*>(this)->getDefaultBaseURI(); 
+	}
+	
+	/**OPTIMIZATION
+	 * This is optimizing @c daeStringRef's prototype-constructor.
+	 * @c _uri will probably stay empty for the foreseeable future.
+	 *
+	 * Gets a DOM-wide special empty URI. That is a blank, zero-sized, 
+	 * -URI, that is used in special circumstances, such as an ultimate
+	 * base URI. (The default-base URI requires a well-defined base also.)
+	 * HISTORICAL NOTES
+	 * In @c daeDoc::_doOperation() there is a bit that detects attempts to
+	 * change this URI, and prevents them. It is initially assigned to docs.
+	 * @see @c daeDoc::attachDocURI().
+	 */										
+	inline const daeURI &getEmptyURI()const{ return _uri; }	
+
+COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
+
+	/**WARNING, LEGACY
+	 * @return Returns the list of ref-resolvers. 
+	 * You can modify the list to add new resolvers.
+	 * @warning BE CAREFUL USING @c new TO INSERT A NEW
+	 * RESOLVER WITHOUT USING @c __DAEP__Object__unembed().
+	 * @c The @C daeSmartRef factory APIs can be used instead.
+	 * Just know that they always use the database's memory pool.
+	 */
+	inline daeRefResolverList &getRefResolvers()
+	{
+		return (daeRefResolverList&)_getRefResolvers();
+	}	
+	/**LEGACY, CONST-PROPOGATING-FORM
+	 * @return Returns the list of immutable ref-resolvers. 
+	 */
+	inline const daeRefResolverList &getRefResolvers()const
+	{
+		return const_cast<daeDOM*>(this)->getRefResolvers();
+	}
+	/**INSURANCE Implements @c getRefResolvers(). */
+	NOALIAS_LINKAGE daeContainerObject<> &_getRefResolvers()
+	SNIPPET( return *_refResolvers._plain_vanilla_this(); )
+
+	 //EUROPEAN 8-BIT ASCII BUSINESS?
+	//The Latin encoding stuff is moved to daeLIBXMLPlugin.
+	//Note, it doesn't have to do with character-sets, but
+	//rather how the in-memory documents are to be encoded.
+	//The library doesn't care; or it shouldn't. Users are
+	//encouraged to use plugins that will meet their needs.
+	#ifndef COLLADA_NODEPRECATED	
+	COLLADA_DEPRECATED("daePlatform::setLegacy")
+	static void setGlobalCharEncoding(void);
+	COLLADA_DEPRECATED("daeLIBXMLPlugin::option_to_use_codec_Latin1")
+	void setCharEncoding(void);	
+	#endif
+
+COLLADA_(public) //PUBLIC METHODS		
+	/**WARNING
+	 * Releases closed docs having no outstanding reference holders.
+	 *
+	 * @warning If thisnote If @c this DOM is closed, this API will not return @c true.
+	 * (Or if it does, it means @c this is no more, and 
+	 *
+	 * @param before Optional counter to add to for each doc considered.
+	 * @param after Optional counter to add to for each doc not released.
+	 * @return Returns @c _closedDocs.empty().
+	 */
+	LINKAGE bool clear_closedDocs(size_t *before=nullptr, size_t *after=nullptr)
+	SNIPPET( _closedDocs._compactDocs(before,after); return _closedDocs._docs.empty(); )
+
+	/**
+	 * This is recommended to remove dependencies on schemas without hard
+	 * closing a @c daeDOM, which is irreversible. This allows the module
+	 * hosting the schema to be unloaded and vice versa; consider process
+	 * termination.
+	 * @note This would be "clear()" but for @c getRefResolvers().clear().
+	 */
+	inline daeOK clear_of_content()
+	{
+		const daeArray<daeDocRef> &docs = getDocs();
+		while(!docs.empty())
+		{
+			daeOK OK = docs.back()->close(); if(OK!=DAE_OK) return OK;
+		}
+		return !clear_closedDocs()?DAE_ERROR:DAE_OK;
+	}
+
+	enum{ __size_on_client_stack=256*sizeof(void*) };
+
+#ifndef BUILDING_COLLADA_DOM
+
+	char __client_padding[__size_on_client_stack-sizeof(daeArchive)];
+
+#else
+
+COLLADA_(private) //INVISIBLE
+		/**
+		 * Virtual Destructor 
+		 */
+		virtual ~daeDOM();
+		
+		/**PURE-OVERRIDE */
+		virtual DAEP::Model &__DAEP__Object__v1__model()const;
+		/**OVERRIDE */
+		virtual void __daeDoc__v1__atomize();
+
+		friend class daeDoc;				
+		friend class daeArchive;
+		friend class daeURI_base;
+		//SUB-OBJECT
+		/**ORDER-OF-INITIALIZATION MATTERS 
+		 * Archive housing closed documents.
+		 * @note @c _closedDocs._uri is housing the working-directory,
+		 * -while @c this->_uri is empty, reflecting an archive model.
+		 * The plan is to have two DOM-modes, and to reverse the URIs
+		 * in the other mode.
+		 *
+		 * @c _closedDocs is not sorted, and is shouldn't be accessed.
+		 * It is used as a temporary floating-archive for docs on the
+		 * move, between URLs, or prior to having a URL. IOW, the doc
+		 * may not necessarily be closed.
+		 *
+		 * When an archive is closed, its own docs stay in the closed
+		 * archive. In this way the closed-docs are like a second DOM.
+		 * (It's required to keep the docs until their references are
+		 * let go of. Unfortunately being corralled means referencing
+		 * them. They could be left to the ether, but still, floating
+		 * docs and @c daeDoc::getArchive() require a local archive.)
+		 */
+		daeArchive _closedDocs;					
+
+		friend class daeStringRef;
+		friend class daeMetaElement;
+		/** The database. Could be reference, but must be modelable. */
+		daeDatabase_base *_database; 		
+		/** Private data pointer belonging to the database. */
+		mutable void *_databaseRejoinder; 
+		/** Call @c daePlatform::detachDB() or @c delete the database. */
+		bool _detachDatabase, _deleteDatabase;		
+		/** The platform. Can be dummy platform if not provided. */
+		daePlatform *_platform;
+		/** The system-wide, user-supplied, default platform. */
+		static daePlatform *_globalPlatform;		
+
+		//SUB-OBJECT
+		/** List of @c daeRef "resolvers." */
+		daeRefResolverList _refResolvers;
+
+		/** Implements @c daeDoc::_write() where @c this is a @c daeDOM*. */
+		daeOK _write_this_DOM(const daeURI&,daeIOPlugin*)const;
+
+#endif //BUILDING_COLLADA_DOM	
+};
+
+#include "./LINKAGE.HPP" //#undef LINKAGE
+		   
+//---.
+}//<-'
+
+#endif //__COLLADA_DOM__DAE_H__
+/*C1071*/

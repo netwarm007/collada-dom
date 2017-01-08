@@ -6,184 +6,216 @@
  *
  */
 
-#include <sstream>
-#include <dae.h>
-#include <dom.h>
-#include <dae/daeDatabase.h>
-#include <dae/daeIOPluginCommon.h>
-#include <dae/daeMetaElement.h>
-#include <dae/daeErrorHandler.h>
-#include <dae/daeMetaElementAttribute.h>
-#ifndef NO_ZAE
-#include <dae/daeZAEUncompressHandler.h>
-#endif
+#include "../../include/ColladaDOM.inl" //PCH
 
-using namespace std;
+COLLADA_(namespace)
+{//-.
+//<-'
 
 daeIOPluginCommon::daeIOPluginCommon()
-    : database(NULL),
-    topMeta(NULL)
+:_encoder(),_decoder(),_readFlags()
 {
+	//1/3 is to give US a heads up
+	daeCTC<(__combined_size_on_client_stack*1/3>=sizeof(*this))>();
 }
 
-daeIOPluginCommon::~daeIOPluginCommon()
+daeOK daeIOPluginCommon::addDoc(daeDOM &DOM, daeDocRef &readDoc)
 {
+	readDoc = daeDocumentRef(DOM); if(readDoc!=nullptr) return DAE_OK;
+
+	assert(readDoc!=nullptr); return DAE_ERR_BACKEND_IO; //Unexpected.
 }
 
-daeInt daeIOPluginCommon::setMeta(daeMetaElement *_topMeta)
+daeOK daeIOPluginCommon::readContent(daeIO &IO, daeContents &content)
 {
-    topMeta = _topMeta;
-    return DAE_OK;
+	_readFlags = daeElement::xs_anyAttribute_is_still_not_implemented;
+
+	bool OK = _read(IO,content);
+
+	/*REFERENCE: THIS IS NO LONGER RELEVANT
+	//#defined in daeZAEUncompressHandler.h
+	#ifdef __COLLADA_DOM__DAE_ZAE_UNCOMPRESS_HANDLER_H__
+	{
+		bool zaeRoot = false;
+		string extractedURI = ""; if(!OK)
+		{
+			daeZAEUncompressHandler zaeHandler(fileURI);
+			if(zaeHandler.isZipFile())
+			{
+				string rootFilePath = zaeHandler.obtainRootFilePath();
+				daeURI rootFileURI(*fileURI.getDOM(),cdom::nativePathToUri(rootFilePath));
+				if(OK=readFromFile(rootFileURI))
+				{
+					zaeRoot = true;	extractedURI = rootFileURI.str();
+				}
+				
+			}
+		}
+	}
+	#else //__COLLADA_DOM__DAE_ZAE_UNCOMPRESS_HANDLER_H__
+	{
+		#if defined(BUILDING_IN_LIBXML) && defined(BUILDING_IN_MINIZIP)
+		#error unexpected: #ifndef __COLLADA_DOM__DAE_ZAE_UNCOMPRESS_HANDLER_H__
+		#endif
+	}
+	#endif //COLLADA_daeZAEUncompressHandler*/
+	
+	if(!OK)
+	{
+		const daeURI *URI = getRequest().remoteURI;
+		std::string msg; if(URI!=nullptr)
+		msg.append("Failed to load '").append(URI->getURI()).append("'.\n");		
+		daeErrorHandler::get()->handleError
+		(!msg.empty()?msg.c_str():"Failed to load XML document from memory.\n");
+		return DAE_ERR_BACKEND_IO;
+	}	
+	return DAE_OK;
 }
 
-void daeIOPluginCommon::setDatabase(daeDatabase* _database)
+daeElement &daeIOPluginCommon::_beginReadElement(daePseudoElement &parent, const daeName &elementName)
 {
-    database = _database;
+	const daeChildRef<> &child = parent.getMeta().pushBackWRT(&parent,elementName);
+	//This is sub-optimal.
+	if(0==child.ordinal())
+	{
+		_readFlags|=_readFlag_unordered;
+		std::ostringstream msg;
+		msg<<"Appended an unordered element named "<<elementName.string<<" at line "
+		<<_errorRow()<<". Could be a schema violation.\n";
+		daeErrorHandler::get()->handleWarning(msg.str().c_str());
+	}
+
+	//Process the attributes
+	for(size_t i=0;i<_attribs.size();i++)
+	{
+		daeName &name = _attribs[i].first, value = _attribs[i].second;
+
+		//NEW: determine if extended ASCII.
+		//(Maybe attributes are so short that this is self-defeating??)
+		daeAttribute *attr = child->getAttributeObject(name);
+		if(attr==nullptr) goto unattributed;
+		//This an old feature request.		
+		//It isn't said why the document isn't just written with a Latin declaration.
+		//NOTE THAT MAKING THE NAMES LATIN WOULDN'T WORK IF THE METADATA ISN'T LATIN.
+		if(_maybeExtendedASCII(*attr))
+		{
+			value = _encoder(value,_CD);
+		}
+		if(!attr->stringToMemoryWRT(child,value)) unattributed:
+		{
+			_readFlags|=_readFlag_unattributed;
+			daeCTC<daeElement::xs_anyAttribute_is_still_not_implemented>();
+			std::ostringstream msg;
+			msg<<"DATA LOSS\n""Could not create an attribute "<<name.string<<" = "<<value.string
+			<<" at line "<<_errorRow()<<".\n""Could be a schema violation.\n"
+			"UNFORTUNATELY THERE ISN'T A SYSTEM IN PLACE TO PRESERVE THE ATTRIBUTE.\n";
+			daeErrorHandler::get()->handleError(msg.str().c_str());
+		}
+	}
+	_attribs.clear(); return *child;
 }
 
-// This function needs to be re-entrant, it can be called recursively from inside of resolveAll
-// to load files that the first file depends on.
-daeInt daeIOPluginCommon::read(const daeURI& uri, daeString docBuffer)
+void daeIOPluginCommon::_readElementText(daeElement &element, const daeHashString &textIn)
 {
-    // Make sure topMeta has been set before proceeding
-    if (topMeta == NULL)
-    {
-        return DAE_ERR_BACKEND_IO;
-    }
+	daeHashString text = textIn;
+	daeCharData *CD = element.getCharDataObject();
+	if(CD!=nullptr)
+	{
+		if(_maybeExtendedASCII(*CD))
+		{
+			text = _encoder(text,_CD);
+		}
+		#ifdef NDEBUG
+		#error And comment/PI peppered text?
+		#endif
+		if(CD->stringToMemoryWRT(&element,text))
+		return;
 
-    // Generate a version of the URI with the fragment removed
-    daeURI fileURI(*uri.getDAE(), uri.str(), true);
+		//It's tempting to default to mixed text, but
+		//for A) there's not parity with attributes.
+		//(Maybe add an xs:anyAttribute?)
+		//And B) if later set, it's impossible to say
+		//if it's a default or unset or what.
+	}
+	else //NEW: assuming mixed-text/author knows best.
+	{
+		element.getContents().insert<' '>(_encode(text,_CD));
+		return;
+	}
 
-    //check if document already exists
-    if ( database->isDocumentLoaded( fileURI.getURI() ) )
-    {
-        return DAE_ERR_COLLECTION_ALREADY_EXISTS;
-    }
-
-    daeElementRef domObject = docBuffer ?
-                              readFromMemory(docBuffer, fileURI) :
-                              readFromFile(fileURI); // Load from URI
-
-#ifdef NO_ZAE
-
-    if (!domObject) {
-        string msg = docBuffer ?
-                     "Failed to load XML document from memory\n" :
-                     string("Failed to load ") + fileURI.str() + "\n";
-        daeErrorHandler::get()->handleError(msg.c_str());
-        return DAE_ERR_BACKEND_IO;
-    }
-
-    // Insert the document into the database, the Database will keep a ref on the main dom, so it won't get deleted
-    // until we clear the database
-
-    daeDocument *document = NULL;
-
-    int res = database->insertDocument(fileURI.getURI(),domObject,&document);
-    if (res!= DAE_OK)
-        return res;
-
-#else
-
-    bool zaeRoot = false;
-    string extractedURI = "";
-    if (!domObject) {
-        daeZAEUncompressHandler zaeHandler(fileURI);
-        if (zaeHandler.isZipFile())
-        {
-            string rootFilePath = zaeHandler.obtainRootFilePath();
-            daeURI rootFileURI(*fileURI.getDAE(), rootFilePath);
-            domObject = readFromFile(rootFileURI);
-            if (!domObject)
-            {
-                string msg = string("Failed to load ") + fileURI.str() + "\n";
-                daeErrorHandler::get()->handleError(msg.c_str());
-                return DAE_ERR_BACKEND_IO;
-            }
-            zaeRoot = true;
-            extractedURI = rootFileURI.str();
-        }
-        else
-        {
-            string msg = docBuffer ?
-                         "Failed to load XML document from memory\n" :
-                         string("Failed to load ") + fileURI.str() + "\n";
-            daeErrorHandler::get()->handleError(msg.c_str());
-            return DAE_ERR_BACKEND_IO;
-        }
-    }
-
-    // Insert the document into the database, the Database will keep a ref on the main dom, so it won't get deleted
-    // until we clear the database
-
-    daeDocument *document = NULL;
-
-    int res = database->insertDocument(fileURI.getURI(),domObject,&document, zaeRoot, extractedURI);
-    if (res!= DAE_OK)
-        return res;
-
-#endif
-
-    return DAE_OK;
+	std::ostringstream msg;
+	_readFlags|=_readFlag_unmixed;
+	msg<<"The DOM was unable to set a value for element of type "<<element.getTypeName()
+	<<" at line "<<_errorRow()<<".\nProbably a schema violation.\n"
+	"(2.5 policy is to add the value as a mixed-text text-node.)\n";
+	daeErrorHandler::get()->handleWarning(msg.str().c_str());
 }
 
+bool daeIOPluginCommon::_maybeExtendedASCII(const daeValue &v)
+{	
+	if(nullptr!=daeIOPluginCommon::_encoder)
+	{
+		switch(v.getType()->per<daeAtom>().getAtomicType())
+		{
+		case daeAtomicType::ENUMERATION:
 
+			//An enum is probably a short string.
+			//With getSimpleType something like the following
+			//could be done. But an enum is very likely to be an xs:string.
+			//return _maybeExtendedASCII(st.getRestriction().getBase());
 
-
-
-
-
-
-
-
-daeElementRef daeIOPluginCommon::beginReadElement(daeElement* parentElement,
-                                                  daeString elementName,
-                                                  const vector<attrPair>& attributes,
-                                                  daeInt lineNumber) {
-    daeMetaElement* parentMeta = parentElement ? parentElement->getMeta() : topMeta;
-    daeElementRef element = parentMeta->create(elementName);
-
-    if(!element)
-    {
-        ostringstream msg;
-        msg << "The DOM was unable to create an element named " << elementName << " at line "
-            << lineNumber << ". Probably a schema violation.\n";
-        daeErrorHandler::get()->handleWarning( msg.str().c_str() );
-        return NULL;
-    }
-
-    // Process the attributes
-    for (size_t i = 0; i < attributes.size(); i++) {
-        daeString name  = attributes[i].first,
-                  value = attributes[i].second;
-        if (!element->setAttribute(name, value)) {
-            ostringstream msg;
-            msg << "The DOM was unable to create an attribute " << name << " = " << value
-                << " at line " << lineNumber << ".\nProbably a schema violation.\n";
-            daeErrorHandler::get()->handleWarning(msg.str().c_str());
-        }
-    }
-
-    if (parentElement == NULL) {
-        // This is the root element. Check the COLLADA version.
-        daeURI *xmlns = (daeURI*)(element->getMeta()->getMetaAttribute( "xmlns" )->getWritableMemory( element ));
-        if ( strcmp( xmlns->getURI(), element->getDAE()->getColladaNamespace() ) != 0 ) {
-            // Invalid COLLADA version
-            daeErrorHandler::get()->handleError("Trying to load an invalid COLLADA version for this DOM build!");
-            return NULL;
-        }
-    }
-
-    return element;
+		case daeAtomicType::EXTENSION: //Could be anything?
+		case daeAtomicType::STRING: case daeAtomicType::TOKEN: return true;
+		}
+	}
+	return false;
 }
 
-bool daeIOPluginCommon::readElementText(daeElement* element, daeString text, daeInt elementLineNumber) {
-    if (element->setCharData(text))
-        return true;
+void daeIOPluginCommon::_push_back_xml_decl(daeContents &content, daeName version, daeName encoding, bool standalone)
+{
+	//The built-in plugins only output UTF-8. 
+	//They are old/unrecommended/unworth time investments.
+	//This is to let users know (in a test environment) they're recoding.
+	assert("UTF-8"==encoding||encoding.empty());
+	encoding = "UTF-8"; 
 
-    ostringstream msg;
-    msg << "The DOM was unable to set a value for element of type " << element->getTypeName()
-        << " at line " << elementLineNumber << ".\nProbably a schema violation.\n";
-    daeErrorHandler::get()->handleWarning(msg.str().c_str());
-    return false;
+	_CD.assign(daeName("xml version=\"")).append(version).push_back('"');
+	if(!encoding.empty())
+	_CD.append(daeName(" encoding=\"")).append(encoding).push_back('"');
+	if(standalone)
+	_CD.append(daeName(" standalone=\"yes\"")); content.insert<'?'>(_CD,0);
 }
+void daeIOPluginCommon::_xml_decl(const daeContents &content, char* &version, char* &encoding, char* &standalone)
+{
+	version = "1.0"; encoding = "UTF-8"; standalone = "";	
+	if(!content.data()->hasText()) 
+	return;
+	daeText &xml_decl = content[0].getKnownStartOfText();
+	if(!xml_decl.isPI_like()
+	 ||"xml "!=daeName(xml_decl.data(),4))
+	return;
+	xml_decl.getText(_CD);
+	for(size_t i=0;i<_CD.size();i++) if(_CD[i]=='"'&&_CD[i-1]!='=')
+	{
+		_CD[i] = '\0';
+		size_t j = i-1; while(j>0&&_CD[j]!='=') j--;
+		if(j>=11&&_CD[j+1]=='"')
+		{
+			char *value = &_CD[j+2]; value[-2] = '\0';
+			#define _(x) \
+			if(0==strcmp(value-1-sizeof(#x),#x)) x = value; else assert(0); break;
+			switch(value[-3])
+			{
+			case 'n': _(version) case 'g': _(encoding) case 'e': _(standalone) break;
+			default: assert(0);
+			}
+			#undef _
+		}
+		else assert(0);
+	}
+}
+
+//---.
+}//<-'
+
+/*C1071*/

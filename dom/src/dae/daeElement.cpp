@@ -6,754 +6,465 @@
  *
  */
 
-#include <iomanip>
-#include <dae/daeElement.h>
-#include <dae/daeArray.h>
-#include <dae/daeMetaAttribute.h>
-#include <dae/daeMetaElementAttribute.h>
-#include <dae/daeMetaElement.h>
-#include <dae/daeDatabase.h>
-#include <dae/daeErrorHandler.h>
-#include <dae/daeURI.h>
-#include <dae/daeUtils.h>
-#include <dae/daeDom.h>
+#include "../../include/ColladaDOM.inl" //PCH
 
-#include <limits>
-#include <iomanip>
+COLLADA_(namespace)
+{//-.
+//<-'
 
-using namespace std;
-
-daeElement* daeElement::simpleAdd(daeString name, int index) {
-    if (daeElementRef elt = _meta->create(name))
-        return add(elt, index);
-    return NULL;
+void DAEP::Element::__COLLADA__atomize()
+{	
+	daeElement &_this = dae(*this);
+	const daeDocument *doc = _this.getDocument(); 
+	daeMeta &meta = _this.getMeta();			
+	_this.__clear2(meta.getContentsWRT(&_this),meta,doc);
+	_this.__atomize2(meta);	
 }
-
-daeElement* daeElement::add(daeString names_, int index) {
-    list<string> names;
-    cdom::tokenize(names_, " ", names);
-    cdom::tokenIter iter = names.begin();
-    daeElement* root = simpleAdd(iter->c_str(), index);
-    if (!root)
-        return NULL;
-
-    iter++;
-    daeElement* elt = root;
-    for (; iter != names.end(); iter++) {
-        elt = elt->simpleAdd(iter->c_str());
-        if (!elt) {
-            removeChildElement(root);
-            return NULL;
-        }
-    }
-
-    return elt;
-}
-
-daeElement* daeElement::add(daeElement* elt, int index) {
-    if (!elt)
-        return NULL;
-    if (elt == this)
-        return this;
-    bool result = (index == -1 ? _meta->place(this, elt) : _meta->placeAt(index, this, elt));
-    return result ? elt : NULL;
-}
-
-daeElement* daeElement::addBefore(daeElement* elt, daeElement* index) {
-    if (!index || !elt || index->getParent() != this)
-        return NULL;
-    return _meta->placeBefore(index, this, elt) ? elt : NULL;
-}
-
-daeElement* daeElement::addAfter(daeElement* elt, daeElement* index) {
-    if (!index || !elt || index->getParent() != this)
-        return NULL;
-    return _meta->placeAfter(index, this, elt) ? elt : NULL;
-}
-
-daeElementRef
-daeElement::createElement(daeString className)
+inline void daeElement::__atomize2(daeMeta &meta)
 {
-    daeElementRef elem = _meta->create(className);
-    // Bug #225 work around
-//	if ( elem != NULL)
-//		elem->ref(); // change premature delete into memory leak.
-    return elem;
-}
+	//If this is called, it should follow the element has been removed.
+	assert(!isContent());		
+	assert(!meta.hasObjectsEmbedded()); //__DAEP__Object__0 assumes so.
+	if(!meta.hasFeaturesWithAtomize())
+	return;
+	DAEP::Model &model = meta.getModel();
+	for(daeFeatureID f=meta._feature_completeID;f!=0;f++) model[f].atomizeWRT(this);	
+}	
+void daeElement::__clear2(daeContents &content, daeMeta &meta, const daeDocument *doc)
+{	
+	if(content.empty()) return;
 
-daeElement* daeElement::createAndPlace(daeString className) {
-    return add(className);
-}
+	//NOTE: This kind of feels like a "clearContentsWRT" API, but it's 
+	//implemented as a daeElement method because the contents array is
+	//used to call it, or can be, and so it isn't quite the same thing.
 
-daeElement* daeElement::createAndPlaceAt(daeInt index, daeString className) {
-    return add(className, index);
-}
+	//This is implementing daeArray<daeContent>::clear().
+	for(size_t i=0;i<content.size();i++) 
+	{
+		daeElement *ch = content[i].getChild();		
+		if(nullptr==ch) 
+		{
+			if(content[i].hasText())
+			i+=content[i].getKnownStartOfText().span()-1;
+		}
+		else //ORDER IS IMPORTANT HERE.
+		{
+			//ALGORITHM
+			//FIRST __clear2() recurses through the descendants,
+			//-so that they're removed at the leaves. This keeps
+			//the database from having to traverse the graph for
+			//every removal.
+			//Then, when there are no more grandchildren, replace
+			//the child with a nullptr placeholder so that the
+			//cursor-stop indices don't have to be managed as the
+			//contents-array is being taken down.
+			//Lastly, child removed, __atomize2() tears down any
+			//types among the attributes that might include refs.
+			//That must be done, so that the destructor can ever
+			//be called. (Because of the ref-counting, destruction
+			//is always a two-pass process. That's what "atomize"
+			//means: the first pass of destruction.
 
-daeBool daeElement::placeElement(daeElement* e) {
-    return add(e) != NULL;
-}
+			daeMeta &meta = ch->getMeta(); //SHADOWING
+			ch->__clear2(meta.getContentsWRT(ch),meta,doc);
 
-daeBool daeElement::placeElementAt(daeInt index, daeElement* e) {
-    return add(e, index) != NULL;
-}
+			//The element must survive its vacation.
+			daeElementRef compact = ch;
+			{
+				//_vacate_operation does this first.
+				//It's done here because the document
+				//is on hand, so no need to look it up.
+				if(meta._daeDocument_typeLookup_enabled) //LEGACY
+				{
+					#ifdef NDEBUG
+					#error Maybe try to bulk erase reoccurrences?
+					#endif
+					if(doc!=nullptr) doc->_typeLookup_self_remove(meta,*ch);
+				}	
 
-daeBool daeElement::placeElementBefore( daeElement *marker, daeElement *element ) {
-    return addBefore(element, marker) != NULL;
-}
+				#ifdef NDEBUG
+				#error Need a mechanism for suppressing notifications.
+				#endif
+				bool notify = true;
+				daeContents_base::_vacate_operation op(content[i]);
+				if(notify) daeNoteChange(op);				
+			}
+			//OPTIMIZATION
+			//The cryptic/hard to search for compacting operator~()
+			//returns true if the object is deleted. If it is being
+			//deleted then __atomize2() will have already been done.
+			if(!~compact) ch->__atomize2(meta);
+		}
+	}
+	//This resets all of the internal counters to 0.
+	meta._clearTOC(this); assert(content._==content.data());
 
-daeBool daeElement::placeElementAfter( daeElement *marker, daeElement *element ) {
-    return addAfter(element, marker) != NULL;
-}
+	//NEW: Pursuing a strategy where the back is all 0s.
+	//(So that increasing the size needn't 0 terminate.)
+	size_t zero_fill = content.size()*sizeof(daeContent);	
+	//Zero/set the special end-pointer to the beginning.
+	memset(content.begin(),0x00,zero_fill);
+	content.getAU()->setInternalCounter(0);
+}	
 
-daeInt daeElement::findLastIndexOf( daeString elementName ) {
-    if ( _meta->getContents() != NULL ) {
-        daeElementRefArray* contents =
-            (daeElementRefArray*)_meta->getContents()->getWritableMemory(this);
-        for ( int i = (int)contents->getCount()-1; i >= 0; --i ) {
-            if ( strcmp( contents->get(i)->getElementName(), elementName ) == 0 ) {
-                return i;
-            }
-        }
-    }
-    return -1;
-}
-
-daeBool
-daeElement::removeChildElement(daeElement* element)
+void daeElement::__grow(daeArray<daeContent> &contents_of_this, size_t minCapacity)
 {
-    // error traps
-    if(element==NULL)
-        return false;
-    if(element->_parent != this)
-        return false;
-
-    return _meta->remove( this, element );
+	daeContents &c = static_cast<daeContents&>(contents_of_this);			
+	//NEW: This is the real reason this is implemented apart from
+	//daeArray.h & daeContent.h. Although getDatabase() is a plus.
+	daeOffset _ = c.cursor()-c.data();
+	//This should be the same logic as daeArray::_grow3(). +1 for 0-terminator.
+	size_t newT = minCapacity<4?4:std::max(c.getCapacity()*2,minCapacity+1);
+	//NEW: This is repurposing bits and pieces of code from all over to
+	//make this simpler to write than it has any right to be.
+	{
+		//This sets a hint to traverse the element's graph when it's migrated.
+		//It's for keeping things like "id" and "sid" lookup tables up-to-date.
+		__DAEP__Element__data.daeContents_capacity_is_nonzero = 1;	
+		//This reAlloc() was added for loaders that tally the number of spaces
+		//in a list, and so can reserve memory in order to avoid reallocations.
+		reAlloc(getDatabase(),c.getAU(),newT,c._element_less_mover);
+		//This makes it so insertion code doesn't generate 0-termination codes.
+		memset(c.end(),0x00,sizeof(daeContent)*(c.getCapacity()-c.size()));		
+	}
+	//Finally repair the pointer-based cursor. (Previously daeCursor
+	//was an offset, and so repair had not been necessary.)
+	c.cursor() = c.data()+_;
 }
 
-void daeElement::setDocument( daeDocument *c, bool notifyDocument ) {
-    if( _document == c )
-        return;
-
-    // Notify our parent document if necessary.
-    if ( _document != NULL && notifyDocument )
-        _document->removeElement(this);
-    _document = c;
-    if ( _document != NULL && notifyDocument )
-        _document->insertElement(this);
-
-    // Notify our attributes
-    daeMetaAttributeRefArray& metaAttrs = getMeta()->getMetaAttributes();
-    for (size_t i = 0; i < metaAttrs.getCount(); i++)
-        metaAttrs[i]->setDocument(this, c);
-
-    // Notify our char data object
-    if (getCharDataObject())
-        getCharDataObject()->setDocument(this, c);
-
-    // Notify our children
-    daeElementRefArray ea;
-    getChildren( ea );
-    for ( size_t x = 0; x < ea.getCount(); x++ ) {
-        // Since inserting and removing elements works recursively in the database,
-        // we don't need to notify it about inserts/removals as we process the
-        // children of this element.
-        ea[x]->setDocument( c, false );
-    }
+daeElement *daeElement::add(daeString list_of_names)
+{
+	daeMeta *meta = getMeta();
+	daeElement *root = nullptr, *out = nullptr;
+	for(daeString p=list_of_names,q=p;*q!='\0';p=q+1)
+	{
+		while(*q!='\0'&&*q!=' ') q++;
+		out = add(meta->createWRT(*this,daeHashString(p,q-p)));		
+		if(out==nullptr) break;
+		if(root==nullptr) root = out;
+	}
+	if(out==nullptr&&root!=nullptr) removeChildElement(root); return out;
 }
 
-void daeElement::deleteCMDataArray(daeTArray<daeCharArray*>& cmData) {
-    for (unsigned int i = 0; i < cmData.getCount(); i++)
-        delete cmData.get(i);
-    cmData.clear();
+int daeElement::_getAttributeIndex(const daePseudonym &name)const
+{
+	//REMINDER: THIS IS IMPLEMENTED BY A LINEAR LOOKUP BECAUSE domAny
+	//NEEDS TO BE ABLE TO DYNAMICALLY ADD ATTRIBUTES TO ITS ATTRIBUTE
+	//ARRAY INSIDE ITS PSEUDO METADATA. OTHERWISE IT WOULD USE A HASH
+	//LOOKUP LIKE THE CHILDREN DO. (OR HYBRID IF SOMEONE PROFILES IT)
+	const daeArray<daeAttribute> &attrs = getMeta()->getAttributes();
+	size_t i;
+	for(i=0;i<attrs.size();i++)
+	if(name==attrs[i]->getName()) return i;		
+	if(_addAnyAttribute(name)) return (int&)i; return -1;
 }
 
-size_t daeElement::getAttributeCount() {
-    return getMeta()->getMetaAttributes().getCount();
+daeAttribute *daeElement::_getAttributeObject(size_t i)const
+{
+	const daeArray<daeAttribute> &attrs = getMeta()->getAttributes();
+	if(i<attrs.size()) return attrs[i]; return nullptr;
+}
+	 
+daeArray<daeStringCP> &daeElement::_getAttribute(daeArray<daeStringCP> &out, size_t i)const
+{
+	daeAttribute *attr = nullptr;
+	attr = getAttributeObject(i); 	
+	if(attr!=nullptr) 
+	attr->memoryToStringWRT(this,out);
+	else out.clear_and_0_terminate(); return out;
+}
+		
+daeOK daeElement::_setAttribute(size_t i, daeString value)
+{
+	daeAttribute *attr = getAttributeObject(i); 		
+	if(attr!=nullptr) return attr->stringToMemoryWRT(this,value,value+strlen(value)); 
+	return DAE_ERR_QUERY_NO_MATCH;
+}
+daeOK daeElement::_setAttribute(size_t i, const daeHashString &value)
+{
+	daeAttribute *attr = getAttributeObject(i); 		
+	if(attr!=nullptr) return attr->stringToMemoryWRT(this,value); 
+	return DAE_ERR_QUERY_NO_MATCH;
+}
+   
+daeArray<daeStringCP> &daeElement::getCharData(daeArray<daeStringCP> &out)const
+{
+	daeCharData *CD = getCharDataObject();
+	if(CD!=nullptr)
+	CD->memoryToStringWRT(this,out);
+	else out.clear_and_0_terminate(); return out;
 }
 
-namespace {
-// A helper function to get the index of an attribute given the attribute name.
-size_t getAttributeIndex(daeElement& el, daeString name) {
-    if (el.getMeta()) {
-        daeMetaAttributeRefArray& metaAttrs = el.getMeta()->getMetaAttributes();
-        for (size_t i = 0; i < metaAttrs.getCount(); i++)
-            if (metaAttrs[i]->getName()  &&  strcmp(metaAttrs[i]->getName(), name) == 0)
-                return i;
-    }
-    return (size_t)-1;
-}
+daeOK daeElement::_setCharData(const daeHashString &value)
+{
+	daeCharData *CD = getCharDataObject();
+	if(CD!=nullptr) return CD->stringToMemoryWRT(this,value); 
+	return DAE_ERR_QUERY_NO_MATCH;
 }
 
-daeMetaAttribute* daeElement::getAttributeObject(size_t i) {
-    daeMetaAttributeRefArray& attrs = getMeta()->getMetaAttributes();
-    if (i >= attrs.getCount())
-        return NULL;
-    return attrs[i];
+daeElementRef daeElement::clone(daeDOM &DOM, clone_Suffix *suffix)const
+{		
+	daeElementRef ret = DOM._addElement(getMeta()); ret->getNCName() = getNCName();
+
+	daeMeta *meta = getMeta();
+	const daeArray<daeAttribute> &attrs = meta->getAttributes();
+	//This is an optimized approach, versus a pure-string based one.
+	if(daeObjectType::ANY==getElementType())
+	{
+		#ifdef NDEBUG
+		#error maybe just give domAny a private copy-constructor?
+		#endif
+		for(size_t i=0;i<attrs.size();i++)
+		{
+			//attrs[i]->copyWRT(ret,this); could be direct, but no big deal for now.
+			ret->_cloneAnyAttribute(attrs[i].getName()); attrs[i]->copyWRT(ret,this);
+		}
+	}
+	else for(size_t i=0;i<attrs.size();i++) attrs[i]->copyWRT(ret,this);
+	daeCharData *CD = getCharDataObject();
+	if(CD!=nullptr) CD->copyWRT(ret,this);
+
+	#ifdef NDEBUG //NOT-THREADSAFE
+	#error what about the hidden-partition?
+	#endif
+	daeContents &dst = meta->getContentsWRT(ret);
+	const daeContents &src = meta->getContentsWRT(this);
+	dst.grow(src.getCapacity()); 
+	dst.getAU()->setInternalCounter(src.size());
+	memcpy(dst.data(),src.data(),src.getCapacity());
+	const daeElement *cp; //Copy the elements one-by-one. NOT-THREADSAFE
+	for(size_t i=0;i<dst.size();i++) if((cp=dst[i].getChild())!=nullptr)
+	new(&dst[i]._child.ref) daeSmartRef<>(cp->clone(DOM,suffix));
+	
+	#ifdef NDEBUG
+	#error would be better if the new id/name were used above to create the new element.
+	#endif
+	if(suffix!=nullptr) suffix->_suffix(ret); return ret;
+}
+void daeElement::clone_Suffix::_suffix(daeElement *clone)
+{		
+	#define _(x) if(x!=nullptr){\
+	int i = clone->getAttributeIndex(#x);\
+	if(i>=0&&!clone->getAttribute(*this,i).empty())\
+	clone->setAttribute(i,append_and_0_terminate(x,x.extent).data()); }
+	_(id)_(name)
+	#undef _
 }
 
-daeMetaAttribute* daeElement::getAttributeObject(daeString name) {
-    return getAttributeObject(getAttributeIndex(*this, name));
+static std::ostream &formatColumns(std::ostream &os, daeString c1, daeString c2)
+{
+	if(c1==nullptr) c1 = ""; 
+	if(c2==nullptr) c2 = "";
+	int w = (int)os.width();
+c2:	int n = strnlen(c1,w);
+	if(n>w) //append ellipses
+	{
+		os.width(0);
+		w-=3;
+		for(int i=0;i<w;i++) os.put(*c1++);		
+		os<<"...";
+	}
+	else os << c1; 
+	if(c2!=nullptr){ c1 = c2; c2 = nullptr; goto c2; }	
+	return os;
+}
+daeArray<daeStringCP> &daeElement::compare_Result::format(daeArray<daeStringCP> &out)
+{
+	out.clear_and_0_terminate();
+	if(elt1==nullptr||elt2==nullptr) return out;
+	daeArray<daeStringCP,256> tmp1,tmp2;
+	daeOStringBuf<1024> buf(out);
+	std::ostream msg(&buf); msg
+	<<std::setw(13)<<std::left<<""
+	<<std::setw(50)<<std::left<<"Element 1"<<"Element 2\n"
+	<<std::setw(13)<<std::left<<""
+	<<std::setw(50)<<std::left<<"---------"<<"---------\n"
+	<<std::setw(13)<<std::left<<"Name"
+	<<std::setw(50)<<std::left,formatColumns(msg,elt1->getNCName(),elt2->getNCName())<<std::endl
+	<<std::setw(13)<<std::left<<"Type"
+	<<std::setw(50)<<std::left,formatColumns(msg,elt1->getTypeName(),elt2->getTypeName())<<std::endl
+	<<std::setw(13)<<std::left<<"id"
+	<<std::setw(50)<<std::left,formatColumns(msg,elt1->getID_id(),elt2->getID_id())<<std::endl
+	<<std::setw(13)<<std::left<<"Attr name"
+	<<std::setw(50)<<std::left,formatColumns(msg,attrMismatch,attrMismatch)<<std::endl
+	<<std::setw(13)<<std::left<<"Attr value"
+	<<std::setw(50)<<std::left,formatColumns
+	(msg,elt1->getAttribute(tmp1,attrMismatch).data()
+	,elt2->getAttribute(tmp2,attrMismatch).data())<<std::endl
+	<<std::setw(13)<<std::left<<"Char data"
+	<<std::setw(50)<<std::left,formatColumns
+	(msg,elt1->getCharData(tmp1).data(),elt2->getCharData(tmp2).data())<<std::endl
+	<<std::setw(13)<<std::left<<"Child count"
+	<<std::setw(50)<<std::left<<elt1->getChildrenCount()<<elt2->getChildrenCount();
+	return out;
 }
 
-std::string daeElement::getAttributeName(size_t i) {
-    if (daeMetaAttribute* attr = getAttributeObject(i))
-        return (daeString)attr->getName();
-    return "";
+namespace //static
+{
+	daeElement::compare_Result compareMatch()
+	{
+		daeElement::compare_Result result;
+		result.compareValue = 0; return result;
+	}
+
+	daeElement::compare_Result nameMismatch(const daeElement &elt1, const daeElement &elt2)
+	{
+		daeElement::compare_Result result;
+		result.elt1 = &elt1; result.elt2 = &elt2;
+		result.compareValue = strcmp(elt1.getNCName(),elt2.getNCName());
+		result.nameMismatch = true; return result;
+	}
+
+	daeElement::compare_Result attrMismatch(const daeElement &elt1, const daeElement &elt2, const daePseudonym &name)
+	{
+		daeElement::compare_Result result;
+		result.elt1 = &elt1; result.elt2 = &elt2;
+		result.compareValue = 
+		strcmp(elt1.getAttribute(name).data(),elt2.getAttribute(name).data());
+		result.attrMismatch = name; return result;
+	}
+
+	daeElement::compare_Result charDataMismatch(const daeElement &elt1, const daeElement &elt2)
+	{
+		daeElement::compare_Result result;
+		result.elt1 = &elt1; result.elt2 = &elt2;
+		result.compareValue = strcmp(elt1.getCharData().data(),elt2.getCharData().data());
+		result.charDataMismatch = true; return result;
+	}
+
+	daeElement::compare_Result childCountMismatch(int a, int b, const daeElement &elt1, const daeElement &elt2)
+	{
+		daeElement::compare_Result result;
+		result.elt1 = &elt1; result.elt2 = &elt2;		
+		result.compareValue = a-b;
+		result.childCountMismatch = true; return result;
+	}
+
+	daeElement::compare_Result compareElementsChildren(const daeElement &elt1, const daeElement &elt2)
+	{
+		//Compare children
+		#ifdef NDEBUG
+		#error should compare the contents arrays
+		#endif
+		daeArray<const_daeElementRef,64> children1, children2;
+		if(elt1.getChildren(children1).size()
+		 !=elt2.getChildren(children2).size())
+		return childCountMismatch(children1.size(),children2.size(),elt1,elt2);
+		for(size_t i=0;i<children1.size();i++)
+		{
+			daeElement::compare_Result result = 
+			daeElement::compareWithFullResult(*children1[i],*children2[i]);
+			if(0!=result.compareValue)
+			return result;
+		}
+
+		return compareMatch();
+	}
+
+	daeElement::compare_Result compareElementsSameType(const daeElement &elt1, const daeElement &elt2)
+	{
+		//Compare attributes 
+		daeMeta &meta = elt1.getMeta();
+		const daeArray<daeAttribute> &attribs = meta.getAttributes();
+		for(size_t i=0;i<attribs.size();i++)
+		if(attribs[i].compareWRT(&elt1,&elt2)!=0)
+		return attrMismatch(elt1,elt2,attribs[i].getName());
+
+		//Compare character data
+		if(meta.getValue()!=nullptr)
+		if(meta.getValue()->compareWRT(&elt1,&elt2)!=0)
+		return charDataMismatch(elt1,elt2);
+
+		return compareElementsChildren(elt1,elt2);
+	}
+
+	daeElement::compare_Result compareElementsDifferentTypes(const daeElement &elt1, const daeElement &elt2)
+	{
+		daeArray<daeStringCP,256> value1, value2;
+
+		//Compare attributes. Be careful because each element could have a
+		//different number of attributes.
+		if(elt1.getAttributeCount()>elt2.getAttributeCount())
+		return attrMismatch(elt1,elt2,elt1.getAttributeName(elt2.getAttributeCount()));
+		if(elt2.getAttributeCount()>elt1.getAttributeCount())
+		return attrMismatch(elt1,elt2,elt2.getAttributeName(elt1.getAttributeCount()));
+		for(size_t i=0;i<elt1.getAttributeCount();i++)
+		{
+			elt1.getAttribute(value1,i);
+			elt2.getAttribute(value2,elt1.getAttributeName(i));
+			if(value1!=value2)
+			return attrMismatch(elt1,elt2,elt1.getAttributeName(i));
+		}
+
+		//Compare character data
+		if(elt1.getCharData(value1)!=elt2.getCharData(value2))
+		return charDataMismatch(elt1,elt2);
+
+		return compareElementsChildren(elt1,elt2);
+	}
+
+} //namespace
+
+daeElement::compare_Result daeElement::compareWithFullResult(const daeElement &elt1, const daeElement &elt2)
+{
+	//Check the element name
+	if(elt1.getNCName()!=elt2.getNCName())
+	return nameMismatch(elt1,elt2);
+
+	//Dispatch to a specific function based on whether or not the types are the same	
+	if(elt1.getMeta()!=elt2.getMeta())
+	return compareElementsDifferentTypes(elt1,elt2);
+	else
+	return compareElementsSameType(elt1,elt2);
 }
 
-daeBool daeElement::hasAttribute(daeString name) {
-    return getAttributeObject(name) != 0;
+#ifndef COLLADA_NODEPRECATED
+const_daeURIRef daeElement::getDocumentURI()const
+{
+	const_daeDocumentRef d = getDocument(); return d==nullptr?nullptr:&d->getDocURI();
 }
-
-daeBool daeElement::isAttributeSet(daeString name) {
-    size_t i = getAttributeIndex(*this, name);
-    if (i != (size_t)-1)
-        return _validAttributeArray[i];
-    return false;
-}
-
-std::string daeElement::getAttribute(size_t i) {
-    std::string value;
-    getAttribute(i, value);
-    return value;
-}
-
-void daeElement::getAttribute(size_t i, std::string& value) {
-    value = "";
-    if (daeMetaAttribute* attr = getAttributeObject(i)) {
-        std::ostringstream buffer;
-#ifdef COLLADA_DOM_DAEFLOAT_IS64
-        buffer << std::setprecision(std::numeric_limits<PLATFORM_FLOAT64>::digits10+1); // set the default precision to daeFloat digit
 #endif
-        attr->memoryToString(this, buffer);
-        value = buffer.str();
-    }
-}
-
-std::string daeElement::getAttribute(daeString name) {
-    std::string value;
-    getAttribute(name, value);
-    return value;
-}
-
-void daeElement::getAttribute(daeString name, std::string& value) {
-    getAttribute(getAttributeIndex(*this, name), value);
-}
-
-daeElement::attr::attr() {
-}
-daeElement::attr::attr(const std::string& name, const std::string& value)
-    : name(name), value(value) {
-}
-
-daeTArray<daeElement::attr> daeElement::getAttributes() {
-    daeTArray<daeElement::attr> attrs;
-    getAttributes(attrs);
-    return attrs;
-}
-
-void daeElement::getAttributes(daeTArray<attr>& attrs) {
-    attrs.clear();
-    for (size_t i = 0; i < getAttributeCount(); i++) {
-        std::string value;
-        getAttribute(i, value);
-        attrs.append(attr(getAttributeName(i), value));
-    }
-}
-
-daeBool daeElement::setAttribute(size_t i, daeString value) {
-    if (daeMetaAttribute* attr = getAttributeObject(i)) {
-        if (attr->getType()) {
-            attr->stringToMemory(this, value);
-            _validAttributeArray.set(i, true);
-            return true;
-        }
-    }
-    return false;
-}
-
-daeBool daeElement::setAttribute(daeString name, daeString value) {
-    return setAttribute(getAttributeIndex(*this, name), value);
-}
-
-// Deprecated
-daeMemoryRef daeElement::getAttributeValue(daeString name) {
-    if (daeMetaAttribute* attr = getAttributeObject(name))
-        return attr->get(this);
-    return NULL;
-}
-
-daeMetaAttribute* daeElement::getCharDataObject() {
-    if (_meta)
-        return _meta->getValueAttribute();
-    return NULL;
-}
-
-daeBool daeElement::hasCharData() {
-    return getCharDataObject() != NULL;
-}
-
-std::string daeElement::getCharData() {
-    std::string result;
-    getCharData(result);
-    return result;
-}
-
-void daeElement::getCharData(std::string& data) {
-    data = "";
-    if (daeMetaAttribute* charDataAttr = getCharDataObject()) {
-        std::ostringstream buffer; // no need to setprecision since this is char data?
-        charDataAttr->memoryToString(this, buffer);
-        data = buffer.str();
-    }
-}
-
-daeBool daeElement::setCharData(const std::string& data) {
-    if (daeMetaAttribute* charDataAttr = getCharDataObject()) {
-        charDataAttr->stringToMemory(this, data.c_str());
-        return true;
-    }
-    return false;
-}
-
-daeBool daeElement::hasValue() {
-    return hasCharData();
-}
-
-daeMemoryRef daeElement::getValuePointer() {
-    if (daeMetaAttribute* charDataAttr = getCharDataObject())
-        return charDataAttr->get(this);
-    return NULL;
-}
-
-void
-daeElement::setup(daeMetaElement* meta)
+ 
+namespace //C++98/03-SUPPORT (C2918)
 {
-    if (_meta)
-        return;
-    _meta = meta;
-    daeMetaAttributeRefArray& attrs = meta->getMetaAttributes();
-    int macnt = (int)attrs.getCount();
-
-    _validAttributeArray.setCount(macnt, false);
-
-    for (int i = 0; i < macnt; i++) {
-        if (attrs[i]->getDefaultValue() != NULL)
-            attrs[i]->copyDefault(this);
-    }
-
-    //set up the _CMData array if there is one
-    if ( _meta->getMetaCMData() != NULL )
-    {
-        daeTArray< daeCharArray *> *CMData = (daeTArray< daeCharArray *>*)_meta->getMetaCMData()->getWritableMemory(this);
-        CMData->setCount( _meta->getNumChoices() );
-        for ( unsigned int i = 0; i < _meta->getNumChoices(); i++ )
-        {
-            CMData->set( i, new daeCharArray() );
-        }
-    }
+	struct daeElement_getChild_f
+	{	const daeElement::matchElement &matcher;
+		void operator()(daeElement *ch){ if(ch!=nullptr&&matcher(ch)) throw(ch); }
+	};
 }
-
-void daeElement::init() {
-    _parent = NULL;
-    _document = NULL;
-    _meta = NULL;
-    _elementName = NULL;
-    _userData = NULL;
-}
-
-daeElement::daeElement() {
-    init();
-}
-
-daeElement::daeElement(DAE& dae) {
-    init();
-}
-
-daeElement::~daeElement()
+daeElement *daeElement::getChild(const matchElement &matcher)
 {
-    if (_elementName) {
-        delete[] _elementName;
-        _elementName = NULL;
-    }
+	daeElement_getChild_f f = { matcher };
+	try{ getContents().for_each_child(f); }
+	catch(daeElement *out){ return out; }return nullptr;
 }
 
-//function used until we clarify what's a type and what's a name for an element
-daeString daeElement::getTypeName() const
+daeElementRef daeElement::getDescendant(const matchElement &matcher)
 {
-    return _meta->getName();
+	//daeContents::for_each_child() isn't up to this.
+	//And even if it could, the refs/locks are multi-level.
+	daeArray<daeElementRef,64> elts; getChildren(elts);
+	for(size_t i=0;i<elts.size();i++)
+	{
+		//Check the current element for a match.
+		if(matcher(elts[i])) return elts[i];
+
+		//Append the element's children to the queue.
+		elts[i]->getChildren(elts);
+	}		  
+	return nullptr;
 }
-daeString daeElement::getElementName() const
+
+const_daeElementRef daeElement::getAncestor(const matchElement &matcher)
 {
-    return _elementName ? _elementName : (daeString)_meta->getName();
-}
-void daeElement::setElementName( daeString nm ) {
-    if ( nm == NULL ) {
-        if ( _elementName ) delete[] _elementName;
-        _elementName = NULL;
-        return;
-    }
-    if ( !_elementName ) _elementName = new daeChar[128];
-    strcpy( (char*)_elementName, nm );
+	const_daeElementRef elt = getParent(); while(elt!=nullptr)
+	{
+		if(matcher(elt)) return elt; elt = elt->getParent();
+	}
+	return nullptr;
 }
 
-daeString daeElement::getID() const {
-    daeElement* this_ = const_cast<daeElement*>(this);
-    if (_meta)
-        if (daeMetaAttribute* idAttr = this_->getAttributeObject("id"))
-            return *(daeStringRef*)idAttr->get(this_);
-    return NULL;
-}
+//---.
+}//<-'
 
-daeElementRefArray daeElement::getChildren() {
-    daeElementRefArray array;
-    getChildren(array);
-    return array;
-}
-
-void daeElement::getChildren( daeElementRefArray &array ) {
-    _meta->getChildren( this, array );
-}
-
-daeSmartRef<daeElement> daeElement::clone(daeString idSuffix, daeString nameSuffix) {
-    // Use the meta object system to create a new instance of this element. We need to
-    // create a new meta if we're cloning a domAny object because domAnys never share meta objects.
-    // Ideally we'd be able to clone the _meta for domAny objects. Then we wouldn't need
-    // any additional special case code for cloning domAny. Unfortunately, we don't have a
-    // daeMetaElement::clone method.
-    bool any = typeID() == getDomAnyID(*getDAE());
-    daeElementRef ret = any ? registerElementAny(*getDAE())->create() : _meta->create();
-    ret->setElementName( _elementName );
-
-    // Copy the attributes and character data. Requires special care for domAny.
-    if (any) {
-        copyElementAny(ret, this);
-    } else {
-        // Use the meta system to copy attributes
-        daeMetaAttributeRefArray &attrs = _meta->getMetaAttributes();
-        for (unsigned int i = 0; i < attrs.getCount(); i++) {
-            attrs[i]->copy( ret, this );
-            ret->_validAttributeArray[i] = _validAttributeArray[i];
-        }
-        if (daeMetaAttribute* valueAttr = getCharDataObject())
-            valueAttr->copy( ret, this );
-    }
-
-    daeElementRefArray children;
-    _meta->getChildren( this, children );
-    for ( size_t x = 0; x < children.getCount(); x++ ) {
-        ret->placeElement( children.get(x)->clone( idSuffix, nameSuffix ) );
-    }
-
-    // Mangle the id
-    if (idSuffix) {
-        std::string id = ret->getAttribute("id");
-        if (!id.empty())
-            ret->setAttribute("id", (id + idSuffix).c_str());
-    }
-    // Mangle the name
-    if (nameSuffix) {
-        std::string name = ret->getAttribute("name");
-        if (!name.empty())
-            ret->setAttribute("name", (name + nameSuffix).c_str());
-    }
-    return ret;
-}
-
-
-// Element comparison
-
-namespace { // Utility functions
-int getNecessaryColumnWidth(const vector<string>& tokens) {
-    int result = 0;
-    for (size_t i = 0; i < tokens.size(); i++) {
-        int tokenLength = int(tokens[i].length() > 0 ? tokens[i].length()+2 : 0);
-        result = max(tokenLength, result);
-    }
-    return result;
-}
-
-string formatToken(const string& token) {
-    if (token.length() <= 50)
-        return token;
-    return token.substr(0, 47) + "...";
-}
-} // namespace {
-
-daeElement::compareResult::compareResult()
-    : compareValue(0),
-    elt1(NULL),
-    elt2(NULL),
-    nameMismatch(false),
-    attrMismatch(""),
-    charDataMismatch(false),
-    childCountMismatch(false) {
-}
-
-string daeElement::compareResult::format() {
-    if (!elt1 || !elt2)
-        return "";
-
-    // Gather the data we'll be printing
-    string name1 = formatToken(elt1->getElementName()),
-           name2 = formatToken(elt2->getElementName()),
-           type1 = formatToken(elt1->getTypeName()),
-           type2 = formatToken(elt2->getTypeName()),
-           id1 = formatToken(elt1->getAttribute("id")),
-           id2 = formatToken(elt2->getAttribute("id")),
-           attrName1 = formatToken(attrMismatch),
-           attrName2 = formatToken(attrMismatch),
-           attrValue1 = formatToken(elt1->getAttribute(attrMismatch.c_str())),
-           attrValue2 = formatToken(elt2->getAttribute(attrMismatch.c_str())),
-           charData1 = formatToken(elt1->getCharData()),
-           charData2 = formatToken(elt2->getCharData()),
-           childCount1 = formatToken(cdom::toString(elt1->getChildren().getCount())),
-           childCount2 = formatToken(cdom::toString(elt2->getChildren().getCount()));
-
-    // Compute formatting information
-    vector<string> col1Tokens = cdom::makeStringArray("Name", "Type", "ID",
-                                                      "Attr name", "Attr value", "Char data", "Child count", 0);
-    vector<string> col2Tokens = cdom::makeStringArray("Element 1", name1.c_str(),
-                                                      type1.c_str(), id1.c_str(), attrName1.c_str(), attrValue1.c_str(),
-                                                      charData1.c_str(), childCount1.c_str(), 0);
-
-    int c1w = getNecessaryColumnWidth(col1Tokens),
-        c2w = getNecessaryColumnWidth(col2Tokens);
-    ostringstream msg;
-    msg << setw(c1w) << left << ""            << setw(c2w) << left << "Element 1" << "Element 2\n"
-        << setw(c1w) << left << ""            << setw(c2w) << left << "---------" << "---------\n"
-        << setw(c1w) << left << "Name"        << setw(c2w) << left << name1 << name2 << endl
-        << setw(c1w) << left << "Type"        << setw(c2w) << left << type1 << type2 << endl
-        << setw(c1w) << left << "ID"          << setw(c2w) << left << id1 << id2 << endl
-        << setw(c1w) << left << "Attr name"   << setw(c2w) << left << attrName1 << attrName2 << endl
-        << setw(c1w) << left << "Attr value"  << setw(c2w) << left << attrValue1 << attrValue2 << endl
-        << setw(c1w) << left << "Char data"   << setw(c2w) << left << charData1 << charData2 << endl
-        << setw(c1w) << left << "Child count" << setw(c2w) << left << childCount1 << childCount2;
-
-    return msg.str();
-}
-
-namespace {
-daeElement::compareResult compareMatch() {
-    daeElement::compareResult result;
-    result.compareValue = 0;
-    return result;
-}
-
-daeElement::compareResult nameMismatch(daeElement& elt1, daeElement& elt2) {
-    daeElement::compareResult result;
-    result.elt1 = &elt1;
-    result.elt2 = &elt2;
-    result.compareValue = strcmp(elt1.getElementName(), elt2.getElementName());
-    result.nameMismatch = true;
-    return result;
-}
-
-daeElement::compareResult attrMismatch(daeElement& elt1, daeElement& elt2, const string& attr) {
-    daeElement::compareResult result;
-    result.elt1 = &elt1;
-    result.elt2 = &elt2;
-    result.compareValue = strcmp(elt1.getAttribute(attr.c_str()).c_str(),
-                                 elt2.getAttribute(attr.c_str()).c_str());
-    result.attrMismatch = attr;
-    return result;
-}
-
-daeElement::compareResult charDataMismatch(daeElement& elt1, daeElement& elt2) {
-    daeElement::compareResult result;
-    result.elt1 = &elt1;
-    result.elt2 = &elt2;
-    result.compareValue = strcmp(elt1.getCharData().c_str(),
-                                 elt2.getCharData().c_str());
-    result.charDataMismatch = true;
-    return result;
-}
-
-daeElement::compareResult childCountMismatch(daeElement& elt1, daeElement& elt2) {
-    daeElement::compareResult result;
-    result.elt1 = &elt1;
-    result.elt2 = &elt2;
-    daeElementRefArray children1 = elt1.getChildren(),
-                       children2 = elt2.getChildren();
-    result.compareValue = int(children1.getCount()) - int(children2.getCount());
-    result.childCountMismatch = true;
-    return result;
-}
-
-daeElement::compareResult compareElementsSameType(daeElement& elt1, daeElement& elt2) {
-    // Compare attributes
-    for (size_t i = 0; i < elt1.getAttributeCount(); i++)
-        if (elt1.getAttributeObject(i)->compare(&elt1, &elt2) != 0)
-            return attrMismatch(elt1, elt2, elt1.getAttributeName(i));
-
-    // Compare character data
-    if (elt1.getCharDataObject())
-        if (elt1.getCharDataObject()->compare(&elt1, &elt2) != 0)
-            return charDataMismatch(elt1, elt2);
-
-    // Compare children
-    daeElementRefArray children1 = elt1.getChildren(),
-                       children2 = elt2.getChildren();
-    if (children1.getCount() != children2.getCount())
-        return childCountMismatch(elt1, elt2);
-    for (size_t i = 0; i < children1.getCount(); i++) {
-        daeElement::compareResult result = daeElement::compareWithFullResult(*children1[i], *children2[i]);
-        if (result.compareValue != 0)
-            return result;
-    }
-
-    return compareMatch();
-}
-
-daeElement::compareResult compareElementsDifferentTypes(daeElement& elt1, daeElement& elt2) {
-    string value1, value2;
-
-    // Compare attributes. Be careful because each element could have a
-    // different number of attributes.
-    if (elt1.getAttributeCount() > elt2.getAttributeCount())
-        return attrMismatch(elt1, elt2, elt1.getAttributeName(elt2.getAttributeCount()));
-    if (elt2.getAttributeCount() > elt1.getAttributeCount())
-        return attrMismatch(elt1, elt2, elt2.getAttributeName(elt1.getAttributeCount()));
-    for (size_t i = 0; i < elt1.getAttributeCount(); i++) {
-        elt1.getAttribute(i, value1);
-        elt2.getAttribute(elt1.getAttributeName(i).c_str(), value2);
-        if (value1 != value2)
-            return attrMismatch(elt1, elt2, elt1.getAttributeName(i));
-    }
-
-    // Compare character data
-    elt1.getCharData(value1);
-    elt2.getCharData(value2);
-    if (value1 != value2)
-        return charDataMismatch(elt1, elt2);
-
-    // Compare children
-    daeElementRefArray children1 = elt1.getChildren(),
-                       children2 = elt2.getChildren();
-    if (children1.getCount() != children2.getCount())
-        return childCountMismatch(elt1, elt2);
-    for (size_t i = 0; i < children1.getCount(); i++) {
-        daeElement::compareResult result = daeElement::compareWithFullResult(*children1[i], *children2[i]);
-        if (result.compareValue != 0)
-            return result;
-    }
-
-    return compareMatch();
-}
-} // namespace {
-
-int daeElement::compare(daeElement& elt1, daeElement& elt2) {
-    return compareWithFullResult(elt1, elt2).compareValue;
-}
-
-daeElement::compareResult daeElement::compareWithFullResult(daeElement& elt1, daeElement& elt2) {
-    // Check the element name
-    if (strcmp(elt1.getElementName(), elt2.getElementName()) != 0)
-        return nameMismatch(elt1, elt2);
-
-    // Dispatch to a specific function based on whether or not the types are the same
-    if ((elt1.typeID() != elt2.typeID())  ||  elt1.typeID() == getDomAnyID(*elt1.getDAE()))
-        return compareElementsDifferentTypes(elt1, elt2);
-    else
-        return compareElementsSameType(elt1, elt2);
-}
-
-
-daeURI *daeElement::getDocumentURI() const {
-    if ( _document == NULL ) {
-        return NULL;
-    }
-    return _document->getDocumentURI();
-}
-
-
-daeElement::matchName::matchName(daeString name) : name(name) {
-}
-
-bool daeElement::matchName::operator()(daeElement* elt) const {
-    return strcmp(elt->getElementName(), name.c_str()) == 0;
-}
-
-daeElement::matchType::matchType(daeInt typeID) : typeID(typeID) {
-}
-
-bool daeElement::matchType::operator()(daeElement* elt) const {
-    return elt->typeID() == typeID;
-}
-
-daeElement* daeElement::getChild(const matchElement& matcher) {
-    daeElementRefArray children;
-    getChildren(children);
-    for (size_t i = 0; i < children.getCount(); i++)
-        if (matcher(children[i]))
-            return children[i];
-
-    return NULL;
-}
-
-daeElement* daeElement::getDescendant(const matchElement& matcher) {
-    daeElementRefArray elts;
-    getChildren(elts);
-
-    for (size_t i = 0; i < elts.getCount(); i++) {
-        // Check the current element for a match
-        if (matcher(elts[i]))
-            return elts[i];
-
-        // Append the element's children to the queue
-        daeElementRefArray children;
-        elts[i]->getChildren(children);
-        size_t oldCount = elts.getCount();
-        elts.setCount(elts.getCount() + children.getCount());
-        for (size_t j = 0; j < children.getCount(); j++)
-            elts[oldCount + j] = children[j];
-    }
-
-    return NULL;
-}
-
-daeElement* daeElement::getAncestor(const matchElement& matcher) {
-    daeElement* elt = getParent();
-    while (elt) {
-        if (matcher(elt))
-            return elt;
-        elt = elt->getParent();
-    }
-
-    return NULL;
-}
-
-daeElement* daeElement::getParent() {
-    return _parent;
-}
-
-daeElement* daeElement::getChild(daeString eltName) {
-    if (!eltName)
-        return NULL;
-    matchName test(eltName);
-    return getChild(matchName(eltName));
-}
-
-daeElement* daeElement::getDescendant(daeString eltName) {
-    if (!eltName)
-        return NULL;
-    return getDescendant(matchName(eltName));
-}
-
-daeElement* daeElement::getAncestor(daeString eltName) {
-    if (!eltName)
-        return NULL;
-    return getAncestor(matchName(eltName));
-}
-
-DAE* daeElement::getDAE() {
-    return _meta->getDAE();
-}
-
-void daeElement::setUserData(void* data) {
-    _userData = data;
-}
-
-void* daeElement::getUserData() {
-    return _userData;
-}
+/*C1071*/

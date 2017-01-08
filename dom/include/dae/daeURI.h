@@ -1,493 +1,1008 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/ 
-
-#ifndef __DAE_URI_H__
-#define __DAE_URI_H__
-
-#include <string>
-#include <dae/daeTypes.h>
-#include <dae/daeElement.h>
-#include <dae/daeUtils.h>
-class DAE;
-
-/**
- * The @c daeURI is a simple class designed to aid in the parsing and resolution
- * of URI references inside COLLADA elements.
- * A @c daeURI is created for every @c anyURL and @c IDREF in the COLLADA schema.
- * For example, the <instance> element has the url= attribute of type @c anyURL, and the 
- * <controller> element has the target= attribute of type @c IDREF.
- * The @c daeURI class contains a URI string; the @c set() method breaks the string into
- * its components including scheme, authority, path (directory), and fragment.
- * It also has the capability to attempt to resolve this reference
- * into a @c daeElement, through the method @c resolveElement().  
- * If a @c daeURI is stored within a @c daeElement, it fills
- * its container field to point to the containing element.
+ * Copyright 2006 Sony Computer Entertainment Inc.
  *
- * The main API on the @c daeURI, @c resolveElement(), uses a @c daeURIResolver
- * to search for the @c daeElement inside a @c daeDatabase.
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
  *
- * URIs are resolved hierarchically, where each URI is resolved based on
- * the following criteria via itself and its element's base URI, which represents the
- * URI of the document that contains the element, retrieved by 
- * <tt>daeElement::getBaseURI().</tt>
- * If no base URI is provided, then the application URI
- * is used as a base.
- *
- * The URI resolution order for the COLLADA DOM is as follows:
- * - Absolute URI is specified (see definition below):
- *   The URI ignores its parent/base URI when validating. 
- * - Relative URI is specified:
- *   The URI uses the base URI to provide the scheme, authority, and base path.
- *    This URI's path is appended to the path given the the base URI.
- *    This URI's file and ID are used.
- * - Each level of URI is resolved in this way against the base URI of the
- *    containing file until the top level is reached.  Then the application URI
- *    is used as the default.
- *
- * <b>Definition of Absolute URI:</b>  
- * For the purposes of the COLLADA DOM, a URI is considered absolute
- * if it starts by specifying a scheme.
- * For example, 
- * - file:///c:/data/foo.dae#myScene is an absolute URI.
- * - foo.dae#myScene is relative.
- * - foo.dae is a top-level file reference and is relative.
- * If the URI does not include a pound sign (#), the <tt><i>fragment</i></tt> is empty.
  */
-class DLLSPEC daeURI
-{
-private:
-	daeElement* internalResolveElement() const;
+
+#ifndef __COLLADA_DOM__DAE_URI_H__
+#define __COLLADA_DOM__DAE_URI_H__
+
+#include "daeRefResolver.h"
+																		
+COLLADA_(namespace)
+{//-.
+//<-'
+
+#ifdef NDEBUG
+#error Maybe make daeURI a derived class?
+#error So the template param is not part of exported function signatures.
+#endif
+//260 is the size of daeURI. 
+//260 cannot change, because of name-mangling.
+template<int size_on_stack> class daeURI_size;
+/**WARNING
+ *
+ * COLLADA C++ URI that initially lives on the stack, until it outgrows it. 
+ *
+ * @warning While it is correct--or intended--for @c daeURI to have URI in
+ * its class name, and it is technically a URI, its features cater to URLs.
+ * It can represent a URI, that can even be resolved into a URL. Resolvers
+ * must manually parse non-URL URIs. A URL-like URI uses an authority-part
+ * that begins with a // sequence. The scheme part of a URL is referred to
+ * as a "protocol", in order to avoid confusion. A URI has a "protocol" if
+ * :// separates its scheme and authority-parts. Note the authority can be
+ * empty. Usually an empty authority resolves to the system's "localhost."
+ */
+typedef daeURI_size<260> daeURI;
+typedef daeSmartRef<daeURI> daeURIRef;
+typedef daeSmartRef<const daeURI> const_daeURIRef;
+
+/**INTERNAL C2335 
+ * Don't know if C2335 is a C++ standard thing, or Visual Studio, but it'd
+ * compiled with a single-argument parameter list.
+ */
+class daeURI_parser_view;
+
+template<int size_on_stack> 
+/**VARIABLE-LENGTH
+ * @c daeURI is a fixed size @c typedef of @c daeURI_size.
+ * @tparam size_on_stack can be any size; 0 is fully dynamic.
+ * (UPDATE: 0 is not fully dynamic, although this might change.)
+ *
+ * COMPILING ISSUES??? MSVC2013 WON'T BUILD	IF daeURI_base HAS
+ * PREVIOUSLY BEEN USED IN friend-DECLATIONS. HOPEFULLY THIS IS
+ * A BUG. IF THIS IS NOT PORTABLE, THIS CLASS WILL BE HARD TO DO.
+ */
+class daeURI_size : public daeURI_base
+{	
+	friend class daeDOM;
+	friend class daeURI_base;
+	template<int> friend class daeURI_size;
 	
-public:
-	/**
-	 * An enum describing the status of the URI resolution process.
-	 * This is pretty much entirely useless now. Just use the various accessors
-	 * to query the state of the uri.
-	 */
-	enum ResolveState{
-		/** No URI specified */
-		uri_empty,
-		/** URI specified but unresolved */
-		uri_loaded,
-		/** Resolution pending */
-		uri_pending,
-		/** Resolution successful */
-		uri_success,
-		/** Failure due to unsupported URI scheme */
-		uri_failed_unsupported_protocol,
-		/** Failure because the file was not found */
-		uri_failed_file_not_found,
-		/** Failure because the fragment was not found */
-		uri_failed_id_not_found,
-		/** Failure due to an invalid fragment */
-		uri_failed_invalid_id,
-		/** A flag specifying that the URI should be resolved locally to its own document */
-		uri_resolve_local,
-		/** A flag specifying that the URI should be resolved using this relative URI */
-		uri_resolve_relative,
-		/** A flag specifying that the URI should be resolved using this absolute URI */
-		uri_resolve_absolute,
-		/** Failure due to an invalid reference */
-		uri_failed_invalid_reference,
-		/** Failure due to an external error */
-		uri_failed_externalization,
-		/** Failure due to missing document */
-		uri_failed_missing_container,
-		/** Failure because automatic loading of a document is turned off */
-		uri_failed_external_document
-	};
-	
-private:
-	// All daeURIs have a pointer to a master DAE that they use to access global information.
-	mutable DAE* dae;
-	
-	/** Resolved version of the URI */
-	std::string uriString;
-
-	/** Original URI before resolution */
-	std::string originalURIString;
-	
-	/** scheme component */
-	std::string _scheme;
-	/** authority component */
-	std::string _authority;
-	/** path component */
-	std::string _path;
-	/** query component */
-	std::string _query;
-	/** fragment component */
-	std::string _fragment;
-	/** Pointer to the element that owns this URI */
-	daeElement* container;
-	
-public:
-	/**
-	 * Constructs a daeURI object that contains no URI reference.
-	 * @param dae The DAE associated with this daeURI.
-	 * current working directory.
-	 */
-	daeURI(DAE& dae);
-	/**
-	 * Destructor
-	 */
-	~daeURI();
-
-	/**
-	 * Constructs a daeURI object from a URI passed in as a string.
-	 * @param dae The DAE associated with this daeURI.
-	 * @param URIString Passed to set() automatically.
-	 * @param nofrag If true, the fragment part of the URI is stripped off before construction.
-	 */
-	daeURI(DAE& dae, const std::string& URIString, daeBool nofrag = false);
-	
-	/**
-	 * Constructs a daeURI object using a <tt><i>baseURI</i></tt> and a <tt><i>uriString.</i></tt> 
-	 * Calls set(URIString), and @c validate(baseURI).
-	 * @param baseURI Base URI to resolve against.
-	 * @param URIString String designating this URI.
-	 */
-	daeURI(const daeURI& baseURI, const std::string& URIString);
-
-	/**
-	 * Constructs a daeURI object based on a simple copy from an existing @c daeURI. 
-	 * @param constructFromURI  URI to copy into this one.
-	 */
-	daeURI(const daeURI& constructFromURI);
-
-	/**
-	 * Constructs a daeURI given a container element and a URI string.
-	 * @param container The container element.
-	 * @param uriString the URI string.
-	 */
-	daeURI(daeElement& container, const std::string& uriString = "");
-
-	// This constructor is for internal DOM purposes only. For client code, use the constructor
-	// that takes only a daeElement instead of this one.
-	daeURI(DAE& dae, daeElement& container, const std::string& uriString = "");
-
-	/**
-	 * Gets the DAE objects associated with this daeURI.
-	 * @return Returns a pointer to the associated DAE. This will never return null.
-	 */
-	DAE* getDAE() const;
-
-	// Returns the fully resolved URI as a string
-	const std::string& str() const;
-	// Returns the URI as originally set (i.e. not resolved against the base URI)
-	const std::string& originalStr() const;
-
-	// Old C string versions of the previous functions
-	daeString getURI() const; // Alias for str()
-	daeString getOriginalURI() const; // Alias for originalStr();
-
-	// Setter function for setting the full uri.
-	void set(const std::string& uriStr, const daeURI* baseURI = NULL);
-	// Setter function for setting the individual uri components.
-	void set(const std::string& scheme,
-	         const std::string& authority,
-	         const std::string& path,
-	         const std::string& query,
-	         const std::string& fragment,
-	         const daeURI* baseURI = NULL);
-
-	// Old C string function. Alias for set().
-	void setURI(daeString uriStr, const daeURI* baseURI = NULL);
-
-	// std::string based component accessors.
-	const std::string& scheme() const;
-	const std::string& authority() const;
-	const std::string& path() const;
-	const std::string& query() const;
-	const std::string& fragment() const;
-	const std::string& id() const; // Alias for fragment()
-
-	// Component setter functions. If you're going to be calling multiple setters, as in
-	//   uri.path(path);
-	//   uri.fragment(frag);
-	// it'd be more efficient to call uri.set once instead.
-	void scheme(const std::string& scheme);
-	void authority(const std::string& authority);
-	void path(const std::string& path);
-	void query(const std::string& query);
-	void fragment(const std::string& fragment);
-	void id(const std::string& id); // Alias for uri.fragment(frag)
-	
-	// Retrieves the individual path components. For example, in a uri of the form
-	// file:/folder/file.dae, dir = /folder/, baseName = file, ext = .dae
-	void pathComponents(std::string& dir, std::string& baseName, std::string& ext) const;
-
-	// Individual path component accessors. If you need access to multiple path
-	// components, calling pathComponents() will be faster.
-	std::string pathDir() const;      // daeURI("/folder/file.dae").pathDir() == "/folder/"
-	std::string pathFileBase() const; // daeURI("/folder/file.dae").pathFileBase() == "file"
-	std::string pathExt() const;      // daeURI("/folder/file.dae").pathExt() == ".dae"
-	std::string pathFile() const;     // daeURI("/folder/file.dae").pathFile() == "file.dae"
-
-	// Path component setter.
-	void path(const std::string& dir, const std::string& baseName, const std::string& ext);
-
-	// Individual path component setters. If you're going to be calling multiple setters,
-	// it'd be more efficient to call set() instead.
-	void pathDir(const std::string& dir);
-	void pathFileBase(const std::string& baseName);
-	void pathExt(const std::string& ext);
-	void pathFile(const std::string& file);
-	
-	// The older C string accessors. Aliases for the std::string based component accessors.
-	daeString getScheme() const;
-	daeString getProtocol() const; // Alias for getScheme()
-	daeString getAuthority() const;
-	daeString getPath() const;
-	daeString getQuery() const;
-	daeString getFragment() const;
-	daeString getID() const; // Alias for getFragment()
-	// Same as getPath(), but puts the result in the destination buffer. This is only here
-	// for backward compatibility. Use getPath() instead.
-	daeBool getPath(daeChar* dest, daeInt size) const;
-
+COLLADA_(protected) //DATA-MEMBER
 	/** 
-	 * Gets the element that this URI resolves to in memory.
-	 * @return Returns a ref to the element.
+	 * Multi-representational string. 
 	 */
-	daeElementRef getElement() const;
+	daeRefString<size_on_stack> _refString;
 
-	// Returns the document that this URI references, or null if the document
-	// hasn't been loaded yet.
-	daeDocument* getReferencedDocument() const;
+COLLADA_(public) //CONSTRUCTORS
+	/**
+	 * Default Constructor
+	 */
+	daeURI_size(){ _00(); }	
+	/**
+	 * Constructor having @c this contained by @a c.
+	 * @param c_str is now required to supply a parent object.
+	 * This is so the constructor is not ambiguous. 
+	 * @c DAEP::InnerValue uses this constructor to supply an
+	 * object. @c c is a @c daeRef_support::__COLLADA__Object.
+	 */
+	daeURI_size(daeBoundaryStringIn c_str, const DAEP::Object *c):daeURI_base(c)
+	{
+		setURI(c_str); 
+	}
+	/**LEGACY
+	 * Constructs a @c daeURI a @a baseURI and a @a URI. 
+	 * Calls @c setURI(URI,&baseURI).
+	 * @param baseURI Base URI to resolve against.
+	 * @param URI The URI string.
+	 */
+	daeURI_size(const daeURI &baseURI, daeBoundaryStringIn URI){ setURI(URI,&baseURI); }
+	 																		
+COLLADA_(public) //STRING CONSTRUCTORS
 	
-	/**
-	 * Gets a pointer to the @c daeElement that contains this URI.
-	 * @return Returns the pointer to the containing daeElmement.
+	template<class T>
+	/**C++98/03 SUPPORT
+	 * If the standard copy-constructor is not available, the compiler
+	 * generates one. Same goes for the assignment operator. Therefore
+	 * the constructors are defined in terms of @c operator=().
+	 * @c remarks Under C++11 these could be deleted and this wouldn't
+	 * be necessary as these would default to @c daeURI_base's.
 	 */
-	inline daeElement* getContainer() const {return(container);};
+	daeURI_size(const T &cp){ daeURI_base::operator=(cp); }
+	/**C++ Non-Default Copy Constructor */
+	daeURI_size(const daeURI_size &cp){ daeURI_base::operator=(cp); }
+	/** This is in support of the const daeObject &c constructor. */
+	daeURI_size(const daeURI_base &cp){ daeURI_base::operator=(cp); }
 
+	//Note: this could be avoided if daeURI used explicit constructors.
+	//However, for openDoc to work and so on, it needs to be converted.
+	#ifdef NDEBUG
+	#error Maybe do this for IDREF and SIDREF for extra-added type safety?
+	#endif
+	template<int ID, class CC, typename CC::_ PtoM>
 	/**
-	 * Sets the pointer to the @c daeElement that contains this URI.
-	 * @param cont Pointer to the containing @c daeElmement.
+	 * This seems unavoidable in order to not write versions for every kind
+	 * of string-like object. Restricting it to @c daeURI could be a useful
+	 * way to introduce type-safety above and beyond what's normal. 
+	 * @remarks C++ prefers this constructor over the object-aware cast due
+	 * to the template based @c daeURI_size::daeURI_size().
 	 */
-	void setContainer(daeElement* container);
-
-	/**
-	 * Gets if this URI resolves to an element that is not contained in the same document as the URI.
-	 * @return Returns true if the URI references an external element. False otherwise.
-	 */
-	daeBool isExternalReference() const;
-	 
-	/**
-	 * Copies the URI specified in <tt><i>from</i></tt> into @c this.
-	 * Performs a simple copy without validating the URI.
-	 * @param from URI to copy from.
-	 */
-	void copyFrom(const daeURI& from);
-
-	/**
-	 * Outputs all components of this URI to stderr.
-	 * Useful for debugging URIs, this outputs each part of the URI separately.
-	 */
-	void print();
-	
-	/**
-	 * Makes the "originalURI" in this URI relative to some other uri
-	 * @param uri the URI to make "this" relative to.
-	 * @note this is experimental and not fully tested, please don't use in critical code yet.
-	 */
-	int makeRelativeTo(const daeURI* uri);
-
-	/**
-	 * Comparison operator.
-	 * @return Returns true if URI's are equal.
-	 */
-	inline bool operator==(const daeURI& other) const {
-		return uriString == other.uriString;
+	daeURI_size(const DAEP::Value<ID,daeURI,CC,PtoM> &cp):daeURI_base(&cp.object())
+	{
+		setURI((daeString)cp);
+	}
+	//SCHEDULED FOR REMOVAL
+	template<class S, class T>	
+	/** In the unlikely event that a schema has an <xs:list itemType="anyURI"> type. */
+	daeURI_size(DAEP::Notice<S,T> &cp):daeURI_base(&cp.agent.object())
+	{
+		setURI((daeString)cp);
 	}
 
-	daeURI& operator=(const daeURI& other);
-	daeURI& operator=(const std::string& uri);
+	template<class T>
+	COLLADA_SUPPRESS_C(4522)
+	/** Pass-through Assignment Operator */
+	daeURI &operator=(const T &cp){ return daeURI_base::operator=(cp); }	
+	COLLADA_SUPPRESS_C(4522)
+	/**C++ Non-Default Assignment Operator */
+	daeURI &operator=(const daeURI_size &cp){ return daeURI_base::operator=(cp); }	
 
-	// These methods are deprecated.
-	void resolveElement(); // Call getElement directly.
-	void validate(const daeURI* baseURI = NULL); // Shouldn't ever need to call this.
-	ResolveState getState() const; 	// Call getElement to see if resolving succeeded.
-	void setState(ResolveState newState); // Don't call this.
+COLLADA_(protected) //PROTECTED daeURI_parser CONSTRUCTOR
+	/**
+	 * This is used by @c daeURI_parser to avoid calling @c _00().
+	 */
+	daeURI_size(const daeObject &c, daeURI_parser_view *URI)
+	//Call the view-constructor on dummy class daeURI_parser_view.
+	:daeURI_base(&c),_refString((daeString)URI)
+	{
+		_setURI((daeString)URI,nullptr); //Won't overwrite itself.
+	}
 
-private:
+COLLADA_(public) //LAZY EVALUATION 
 	/**
-	 * Resets this URI; frees all string references
-	 * and returns <tt><i>state</i></tt> to @c empty.
+	 * @c daeDoc is an incomplete type.
+	 * @return Returns @c true if @c this URI references @a doc. 	 
 	 */
-	void reset();
+	inline bool referencesDoc(const daeDoc &doc)const
+	{	
+		return referencesURI(doc.getDocURI());
+	}
+	/**
+	 * @c daeDoc is an incomplete type.
+	 * @return Returns @c true if @c this URI is based on @a arc. 
+	 */	
+	inline bool transitsDoc(const daeDoc &doc)const
+	{	
+		return transitsURI(doc.getDocURI());
+	}
 
-	/**
-	 * Provides a shared initialization for all constructors
+	/**LEGACY
+	 * @return Returns the document that this URI references, 
+	 * -or @c nullptr if the document hasn't been loaded yet.
+	 * @note Cannot be a @c daeURI_base method because of @c daeDoc::getDocument().
 	 */
-	void initialize();
-public:
-	/**
-	 * Performs RFC2396 path normalization.
-	 * @param path Path to be normalized.
-	 */
-	static void normalizeURIPath(char* path);
+	inline daeDocumentRef getReferencedDocument()const
+	{
+		daeDocRef doc; const daeDOM *DOM = getDOM(); 
+		if(DOM!=nullptr) docLookup2(*DOM,doc); return doc->getDocument(); 
+	}
 };
 
-class daeURIResolver;
-typedef daeTArray<daeURIResolver*> daeURIResolverPtrArray;
+#include "../LINKAGE.HPP" //#define LINKAGE
 
-/**
- * The @c daeURIResolver class is the plugin point for URI resolution.
- * This class is an abstract base class that defines an interface for
- * resolving URIs.
- * Every URI is passed through this list of @c daeURIResolvers for resolution.
- * The list is ordered on a first come, first serve basis, and resolution
- * terminates after any resolver instance resolves the URI.
+/**NOT A BASE-URI. 
+ * This class is not for clients to use. 
+ * @see @c daeURI_size, where it is the base-class.
+ * @note ALL OF @c daeURI's VIRTUAL OVERRIDES BELONG IN THIS CLASS.
  */
-class DLLSPEC daeURIResolver
-{
-public:
+class daeURI_base : public daeRef_support<daeURI_base>
+{														 
+COLLADA_(protected) 	
+
+  //////////////////////////////////////////////////////
+  //REMINDER: don't try to implement constructors here//
+  //that operator= will take as an implicit conversion//
+  //////////////////////////////////////////////////////
+
+	/**
+	 * Default Constructor
+	 */
+	daeURI_base():COLLADA_SUPPRESS_C(4355)daeRef_support(this){}
 	/**
 	 * Constructor
-	 * @param dae The associated dae object.
 	 */
-	daeURIResolver(DAE& dae);
+	explicit daeURI_base(const DAEP::Object *c):daeRef_support(c){}
 
-	/**
-	 * Destructor
+COLLADA_(public) //daeRef methods
+										
+	/** Statically shadows @c daeRef::getRefType(). */
+	static int getRefType(){ return daeRefType::URI; }
+
+	/**PURE-OVERRIDE
+	 * One of @c daeRefType, or negative if registered as a client type.
 	 */
-	virtual ~daeURIResolver();
+	virtual int __daeRef__v1__type()const{ return daeRefType::URI; }
+
+	/**PURE-OVERRIDE
+	 * Gets this URI like reference's text--refreshed; cannot return @c nullptr.
+	 */
+	virtual daeString __daeRef__v1__text()const{ refresh(); return data(); }
+
+COLLADA_(public) //DAEP::Object methods
+
+	/**PURE-OVERRIDE */
+	virtual DAEP::Model &__DAEP__Object__v1__model()const
+	{
+		//daeRefString must be able to switch to dynamic-storage.		
+		static DAEP::Model *om = nullptr; if(om!=nullptr) return *om;
+		static daeAlloc<daeStringCP,0> t; daeModel &m = 
+		getDefaultProcessShare().addModel<1>((daeURI_size<0>*)this,"COLLADA::daeURI_base");				
+		m.addFeature_variant<1>(this,*_this()._refString.getInternalStorage()
+		,"VARIANT //daeRefString::_string").setAllocThunk_offset(t);
+		m.addFeatureComplete();
+		m.setObjectType(daeObjectType::REF); om = &m; return *om; 	
+	}
+
+COLLADA_(private) //DATA-MEMBERS
+
+	template<int> friend class daeURI_size;
+  
+  ////WARNING, STOP!/////////////////////////////////
+  //Don't change or rearrange any of these members,//
+  //without carefully looking over daeURI.cpp.///////
+  ///////////////////////////////////////////////////
+
+	#ifdef NDEBUG	
+	#error Don't use daeShort/daeByte/etc.
+	#error They're for/tied to xs::byte and xs::short.
+	#endif
+	/**DELICATE MACHINERY
+	 * This is the codepoint where the relative-part of the URL
+	 * begins, for purposes of reconstructing the relative URL,
+	 * given a non-relative URL, based on a base URL. 
+	 * @note Relativity is not strictly path-based, owing to the
+	 * modern advent of "protocol-relative" URLs.
+	 * @see @c _rel_backtracks.
+	 */
+	daeShort _rel_half;	
+	/**DELICATE MACHINERY
+	 * ALIGNED behind @c _rel_backtracks 
+	 * (@c _rel_backtracks counts the ../ directives.)
+	 * authority component
+	 * @note The "scheme" is implicitly at position 0.
+	 * @note Non-URL schemes are not readily supported 
+	 * by this scheme. They will appear to be empty, in
+	 * which case, the : must be scanned for manually by
+	 * the resolver.
+	 * (To try to distinguish between URIs and URLs, the 
+	 * scheme is being called "protocol".)
+	 */
+	daeByte _rel_backtracks, _authority;
+	/**DELICATE MACHINERY
+	 * authority component dissected 
+	 * @note The "user" is implicitly at position @c _authority.	 
+	 */
+	daeShort _authority_password, _authority_host, _authority_port;
+	/**DELICATE MACHINERY
+	 * path component 
+	 * @see @c _rel_backtracks Doxygentation pertaining to @c _rel_half. 
+	 */
+	daeShort _path, _path_filename, _path_extension;	
+	/**DELICATE MACHINERY
+	 * query component */
+	daeShort _query;
+	/**DELICATE MACHINERY
+	 * fragment component */
+	daeShort _fragment;
+	/**DELICATE MACHINERY
+	 * code-point count, including the 0 terminating code-point. */
+	daeShort _size;
+	/** UNUSED, ALIGNED
+	 * Must be 0. Maybe it will be a scheme-based enum? Or @c _size 
+	 * might be expanded to 32, or even size_t bits if possible. */
+	daeShort _reserved; inline void _00()
+	{
+		memset(&_rel_half,0x00,intptr_t(&_reserved+1)-intptr_t(&_rel_half));
+	}	
+	inline daeURI &_this()const{ return (daeURI&)*this; }
+
+COLLADA_(private) //OBJECT MEMBERS
+
+	struct _Flags
+	{
+		unsigned int resolved:1,any:1,attached:1; 
+
+		_Flags(){ (unsigned&)*this = 0; }
+	};
+	inline _Flags &_getFlags()const{ return (_Flags&)_getClassTag(); } 
+	
+COLLADA_(public) //OPERATORS
+		
+	COLLADA_DOM_OBJECT_OPERATORS(daeURI)
 	
 	/**
-	 * Sets a flag that tells the URI resolver whether or not to load a separate document if a URI
-	 * being resolved points to one.
-	 * @param load Set to true if you want the URI Resolver to automatically load other documents to
-	 * resolve URIs.
+	 * Cast to any @c daeURI, as the @c size_on_stack is irrelevant.
 	 */
-	static void setAutoLoadExternalDocuments( daeBool load );
+	inline operator daeURI&(){ return static_cast<daeURI&>(*this); }
+	/**CONST-FORM
+	 * Cast to any @c daeURI, as the @c size_on_stack is irrelevant.
+	 */
+	inline operator const daeURI&()const{ return static_cast<const daeURI&>(*this); }
+
+	/**WARNING, LEGACY
+	 * @c std::string Assignment Operator. 
+	 * @warning Pre-2.5 this would have resolved the URI. Post-2.5
+	 * it would logically be good if operator= had identical semantics
+	 * to the constructor. Or would it? But the deciding factor for
+	 * a conditional resolve is the @c daeDoc URIs: They don't require
+	 * resolution--they are automatically resolevd by @c setURI(). 
+	 * That means that sometimes the URI is resolved, like it or not!
+	 * Therefore, a conditional resolve is done, so that the behavior
+	 * can at least be predictable.
+	 */
+	inline daeURI &operator=(daeBoundaryStringIn cp)
+	{
+		bool resolved = getIsResolved();
+		_setURI(cp.c_str); if(resolved!=getIsResolved()) resolve(); return *this;
+	}		
+	/**DEFAULT-ASSIGNMENT OPERATOR
+	 * Luckily @c daeURI_base doesn't have any string converting 
+	 * constructors. Otherwise this would convert string-like arguments
+	 * int @c daeURI.
+	 */
+	inline daeURI &operator=(const daeURI_base &cp)
+	{
+		if(isUnparentedObject()) _reparent(cp->getParentObject());	
+		daeArray<daeStringCP,260> rel; _setURI(cp->getURI_baseless(rel).data());
+		refresh(); return *this;
+	}
+	
+COLLADA_(public) //daeSafeCast() SHORTHANDS
+
+	/** Follows style of daeElement::a(). */
+	template<class T> T *a();
+	/** Pass-Through; Follows style of daeElement::a(). */
+	template<> daeURI *a(){ return (daeURI*)this; }
+	/**CONST-FORM Following style of daeElement::a(). */
+	template<class T> const T *a()const
+	{
+		return const_cast<daeURI*>(this)->a<T>();
+	}
+
+COLLADA_(public) //ACCESSORS & MUTATORS
+	/** 
+	 * Gets the internal @c resolved flag. A resolved URI is considered
+	 * to be in its canonical form. 
+	 * @see @c daePlatform::resolveURI().
+	 */
+	inline bool getIsResolved()const{ return _getFlags().resolved!=0; }
+	/** 
+	 * Sets the internal @c resolved flag. A resolved URI is considered
+	 * to be in its canonical form. 
+	 * @see @c daePlatform::resolveURI().
+	 */
+	inline void setIsResolved(bool flag=true){ _getFlags().resolved = flag?1:0; }
+
+	/** 
+	 * Gets a flag that tells @c daePlatform::openURI() that it
+	 * can resort to opening a pure @c domAny based document.
+	 */
+	inline bool getAllowsAny()const{ return _getFlags().any!=0; }
+	/** 
+	 * Sets a flag that tells @c daePlatform::openURI() that it
+	 * can resort to opening a pure @c domAny based document.
+	 */
+	inline void setAllowsAny(bool flag=true){ _getFlags().any = flag?1:0; }
+
+	/** 
+	 * Gets a flag that makes @c this URI permanently attached to its
+	 * parent object. (@c daeDoc URIs rely on this.)
+	 */
+	inline bool getIsAttached()const{ return _getFlags().attached!=0; }
+	/** 
+	 * Sets a flag that makes @c this URI permanently attached to its
+	 * parent object. (@c daeDoc URIs rely on this.)
+	 */
+	inline void setIsAttached(){ _getFlags().attached = true; }
 
 	/**
-	 * Gets a flag that tells if the URI resolver is set to load an external document if a URI
-	 * being resolved points to one.
-	 * @return Returns true if the resolver will automatically load documents to resolve a URI. 
-	 * False otherwise.
+	 * Sets the pointer to the @c daeObject that contains this ref.
+	 * @param c the containing @c daeObject.
 	 */
-	static daeBool getAutoLoadExternalDocuments();
+	inline daeOK setParentObject(const daeObject *c)
+	{
+		assert(c!=nullptr);
+		daeOK OK(getIsAttached()?DAE_ERR_INVALID_CALL:_reparent(*c));
+		refresh(); return OK;
+	}
+	#ifndef COLLADA_NODEPRECATED
+	COLLADA_DEPRECATED("setParentObject")
+	/**LEGACY
+	 * Sets the pointer to the @c daeElement that contains this ref.
+	 * @param c Pointer to the containing @c daeElmement.
+	 */
+	inline void setContainer(const daeElement *c)
+	{
+		if(setParentObject(c==nullptr?*this:(daeObject&)*c)!=DAE_OK) assert(0);
+	}
+	#endif //COLLADA_NODEPRECATED	
 
 	/**
-	 * Provides an abstract interface for converting a @c daeURI into a @c daeElement
-	 * @param uri @c daeURI to resolve.
-	 * @return Returns the resolved element, or null if resolving failed.
-	 * returns false otherwise.
+	 * This helps to parse backslashes. 
+	 * #define COLLADA_DOM_TOSLASH to change its behavior.
+	 * @see @c resolve_RFC3986::toslash.
 	 */
-	virtual daeElement* resolveElement(const daeURI& uri) = 0;
+	NOALIAS_LINKAGE static daeStringCP toslash(daeStringCP CP)
+	SNIPPET( return COLLADA_DOM_TOSLASH(CP)?'/':CP; )
 
 	/**
-	 * Gets the name of this resolver.
-	 * @return Returns the resolver name as a string.
+	 * @c refresh() replaces "setContainer(getContainer())". 
+	 * @note setContainer is not always a valid operation.
+	 *
+	 * What @c refresh() does is @c setResolved(false) and 
+	 * have the URI resolved again, in case its base changes.
+	 * It's not expected to change the URI appreciably, hence
+	 * it is a @c const expression.
+	 *
+	 * @return Returns @c daePlatform::resolveURI() or if 
+	 * if no DOM is available: @c DAE_ERR_NOT_IMPLEMENTED. 
 	 */
-	virtual daeString getName() = 0;
+	LINKAGE daeOK refresh()const;	
 
-protected:
-	static daeBool _loadExternalDocuments;
-	DAE* dae;
+	/**
+	 * Similar to refresh, but @c getIsResolved() is consulted
+	 * and the URI is resolved against @a DOM, versus @c getDOM().
+	 * @return Returns @c DAE_ERR_INVALID_CALL to indicate no change.
+	 * @note @resolve() does an assertion check if the flag is not set.
+	 * @param DOM @c getDOM() is used if it is @c nullptr or unspecified. 
+	 */
+	LINKAGE daeOK resolve(const daeDOM *DOM=nullptr)const;	
+			 
+	/**SCHEDULED FOR REMOVAL?
+	 * Pre-2.5 this was "reset" and marked as internal, 
+	 * -but it cannot hurt to expose a std::string like method.
+	 */
+	inline void clear(){ setURI(""); }
+
+	//SCHEDULED FOR REMOVAL
+	/** This exists just to implement the old "nofrag" constructor. */
+	inline void clear_fragment()
+	{
+		daeRefString<260> &rs = _this()._refString;
+		if(rs.isView()) rs.setString(*this,rs.getString(),_size);
+		int zt = _fragment; daeString URI = data();
+		if(zt>0&&URI[zt-1]=='#') zt--; _fragment = zt; _size = zt+1; 
+		const_cast<daeStringCP&>(URI[zt]) = '\0';
+	}	
+
+	/**Standard Library support 
+	 * Tells if @c size() is 0.
+	 * If @c clear() exists, then it follows that @c empty() should. 
+	 */
+	inline bool empty()const{ return _size<=1; }
+	/**Standard Library support 
+	 * Gets the size minus, excluding the 0 terminator.
+	 * If @c clear() exists, then it follows that @c size() should. 
+	 */
+	inline size_t size()const{ return _size-1; }
+	/**Standard Library support 
+	 * This is an alternative to writing "getURI().view," which is
+	 * admittedly, kind of a pain in the ass.
+	 */
+	inline daeString data()const{ return ((daeURI&)*this)._refString._varray; }
+
+	/** @return Returns true if the unresolved URI is absolute. */
+	inline bool isAbsoluteURI()const{ return _rel_half==0&&_path!=0; }
+	
+	/** @return Returns true if the unresolved URI is relative. */
+	inline bool isRelativeURI()const{ return _rel_half!=0||_path==0; }	
+
+	/**WARNING
+	 * Setter function for setting/concatenating the URL.
+	 * If @c URL is relative, the full URI is @a baseURL's directory, with @a URL 
+	 * appended to the back. Any ../ directives between the two are stripped away
+	 * along with the corresponding directories of @a baseURL. 
+	 * The relative URL can be reconstructed via @c getURI_baseless(), however it
+	 * is not possible to get @a baseURL back, because A) it may've had a file part,
+	 * and B) the URL may've had ../ parts. The reason for this, is to be able to
+	 * move the URL to a new base/like set of documents.
+	 * 
+	 * @a baseURL should either be resolved, or a strictly correct URL string; As 
+	 * if constructed from a string, then there is no context by which to resolve.
+	 * @return Returns @c DAE_ERR_INVALID_CALL if @a URL won't base on @a baseURL.
+	 */
+	inline daeOK setURI(const daeURI &baseURL, daeBoundaryStringIn URL)
+	{
+		return _setURI(URL,&baseURL);
+	}
+	/**WARNING
+	 * Setter function for setting the URI, noting the URL separators.
+	 * The URI is not altered from @a URI. It is marked as unresolved.
+	 *
+	 * LEGACY 
+	 * This overload permits a base-URL, that is permitted to be @c nullptr.	 
+	 * @baseURL is described in the other @c setURI() overload's Doxygentation.
+	 * @return Returns DAE_ERR_INVALID_CALL if @a baseURL cannot work as the base,
+	 * -where a base is required; or if @c getIsClosed()==true.
+	 */
+	inline daeOK setURI(daeBoundaryStringIn URI, const daeURI *baseURL=nullptr)
+	{
+		return _setURI(URI,baseURL);
+	}
+	/**
+	 * This uses some trickery to avoid doing a double copy. It relies on
+	 * that resolution will normally make a duplicate of the URI in order
+	 * to resolve it. Afterward the duplicate will be its own string, and
+	 * the input string won't be copied. If that's not what happens, then
+	 * @c setURI_and_resolve() takes it upon itself to make the only copy.
+	 *
+	 * @param baseURL is for symmetry. If it's not empty then there'll be
+	 * two copies as normal. There's a little extra overhead on the front,
+	 * -but using this API also avoids calling @c setURI() & @c resolve()
+	 * back-to-back exported APIs.
+	 *
+	 * @return Returns @c void. Returning something is open to discussion. 
+	 */
+	LINKAGE void setURI_and_resolve(daeBoundaryStringIn URI, const daeURI *baseURL=nullptr)
+	SNIPPET
+	(		daeRefString<260> &s = _this()._refString;
+			s.setView(URI.c_str); _setURI(URI.c_str,baseURL); 
+			//refresh is desirable as A) resolved==false B) don't wants assert().
+			refresh(); //resolve(); 
+			if(URI.c_str==s.getString()) s.setString(*this,URI.c_str);
+	)
+
+	template<class T> 
+	/**
+	 * Gets the entire URI to a @a T. 
+	 * @see no-argument form's Doxygentation.
+	 */
+	inline T &getURI(T &io)const
+	{
+		return _getT(io,_this()._refString.getString(),_size); 
+	}	
+	/**LEGACY-SUPPORT
+	 * Gets the URI. 
+	 * Use @c getURI_baseless() to get the relative form.
+	 * Use @c getURI_terminatedCP() to get the terminated size.
+	 * Use @c getURI_terminatorCP() to get the unterminated size.
+	 * (Prefer @c size().)
+	 *
+	 * @return Returns @c daeRefView_0 to be symmetric with the 
+	 * "getURI_" family of APIs and for an expanded feature set.
+	 */
+	inline daeRefView_0 getURI()const
+	{
+		daeRefView_0 o; o.view = _this()._refString.getString();
+		o.extent = _size-1; return o;
+	} 		  	
+
+COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
+				  
+  //////////////////////////////////////////////////////////////////
+  //This section used to have many getters and setters, however in//
+  //2.5 it proved impractical to continue to maintain them all. It//
+  //was not an easily come to decision. It seemed the best course.//
+  //(Originally, many of these had dedicated std::string buffers.)//
+  //////////////////////////////////////////////////////////////////
+
+	/**LOW-LEVEL
+	 * Gets authority component codepoint after :// or the path codepoint. */
+	inline daeUByte getURI_authorityCP()const{ return _authority; }
+	/**LOW-LEVEL
+	 * Gets password subcomponent codepoint after : or the host's @. */
+	inline daeUShort getURI_passwordCP()const{ return _authority_password;  }
+	/**LOW-LEVEL
+	 * Gets host subcomponent codepoint after @ or the port's :. */
+	inline daeUShort getURI_hostCP()const{ return _authority_host;  }
+	/**LOW-LEVEL
+	 * Gets port subcomponent codepoint after : or the path codepoint. */
+	inline daeUShort getURI_portCP()const{ return _authority_port;  }
+	/**LOW-LEVEL
+	 * Gets path component codepoint before / or the query's ?. */
+	inline daeUShort getURI_pathCP()const{ return _path;  } 
+	/**LOW-LEVEL
+	 * Gets filename subcomponent codepoint after / or the query's ?. */
+	inline daeUShort getURI_filenameCP()const{ return _path_filename; }
+	/**LOW-LEVEL
+	 * Gets extension subcomponent codepoint after . or the query's ?. */
+	inline daeUShort getURI_extensionCP()const{ return _path_extension; }	
+	/**LOW-LEVEL
+	 * Gets query component codepoint after ?, or the fragment's #. */
+	inline daeUShort getURI_queryCP()const{ return _query; }
+	/**LOW-LEVEL
+	 * Gets fragment component codepoint after #, or the @c '\0' codepoint. */
+	inline daeUShort getURI_fragmentCP()const{ return _fragment; }
+	/**LOW-LEVEL
+	 * Gets the size of the URI+0 in units of @c daeStringCP codepoints. */
+	inline daeUShort getURI_terminatedCP()const{ return _size; }
+	/**LOW-LEVEL
+	 * Prefer @c size().
+	 * Gets the length of the URI in units of @c daeStringCP codepoints. 
+	 */
+	inline daeUShort getURI_terminatorCP()const{ return _size-1; }
+
+	template<char X> //X can be '?', '#', ':', '/', '@', or '://'.
+	/**LOW-LEVEL
+	 * @see getURI_upto(), which this parallels.
+	 * @note / is equivalent to @c getURI_pathCP().
+	 */
+	inline daeUShort getURI_uptoCP()const
+	{
+		daeString URI = data();		
+		switch(X)
+		{	
+		#define _(X,c) case X: return c-(c>0&&URI[c-1]==X?1:0);
+		_('@',_authority_host)_(':',_authority_port)_('?',_query)_('#',_fragment)
+		#undef _
+		case '/': return _path;
+		//worth it? will generate multi-char compiler warnings
+		case '://': return _authority>2?_authority-3:0;
+		}assert(0); return 0;
+		daeCTC<X=='@'||X==':'||X=='/'||X=='?'||X=='#'||X=='://'>();
+	}	
+	
+	//WARNING: This macro is added for no-argument views. Beware:
+	//daeRefView::operator==() is CASE-SENSITIVE. Often URIs are INSENSITIVE.
+	//(getURI_extensionIs() presents a model for case-insenstive comparison.)
+	//APPENDING: There aren't dae_append directives. To append to std::string
+	//on a single line, do something like URI.getURI_host().append_to(string).
+	#define _(f) \
+	daeRefView f()const{daeRefView o;return f(o);}template<class T>T&f(T&io)const
+	/**WARNING
+	 * Gets the protocol component to a @a T. 
+	 * @warning This is setup to support URL like URIs.
+	 * It will fail if there is not a :// in the URI, and
+	 * just because it is empty, it doesn't mean the URI is
+	 * invalid. This is by design. This is not a naming issue.
+	 * FYI, THE NAME HERE IS "protocol", SINCE IT'S NOT A SCHEME.
+	 *
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_protocol){ return _getURI(io,0,':',std::max(_authority-2,0)); }	
+	/** 
+	 * Gets the authority component to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_authority){ return _getURI(io,_authority,'\0',_path); }		
+	/** 
+	 * Gets the username subcomponent to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_username){ return _getURI(io,_authority,':',_authority_password); }	
+	/** 
+	 * Gets the password subcomponent to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_password){ return _getURI(io,_authority_password,'@',_authority_host); }		
+	/** 
+	 * Gets the getURI_credentials subgroup to a @a T.
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_credentials){ return _getURI(io,_authority,'@',_authority_host); }		
+	/** 
+	 * Gets the host subcomponent to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_host){ return _getURI(io,_authority_host,':',_authority_port); }		
+	/** 
+	 * Gets the port subcomponent to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_port){ return _getURI(io,_authority_port,'\0',_path); }		
+	/** 
+	 * Gets the path component to a @a T.
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_path){ return _getURI(io,_path,'?',_query); }		
+	/** 
+	 * Gets the directory subcomponent to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_directory){ return _getURI(io,_path,'\0',_path_filename); }		
+	/** 
+	 * Gets the filename subgroup to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_filename){ return _getURI(io,_path_filename,'?',_query); }		
+	/** 
+	 * Gets the "base-name" subcomponent to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_filebase){ return _getURI(io,_path_filename,'.',_path_extension); }		
+	/** 
+	 * Gets the extension subcomponent to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_extension){ return _getURI(io,_path_extension,'?',_query); }
+	/**CASE-INSENSITIVE 
+	 * @return Returns @c true if *a ext matches the extension. 
+	 */
+	inline bool getURI_extensionIs(daeBoundaryStringIn ext)const
+	{
+		return _ieq(getURI_extensionCP(),ext)==getURI_uptoCP<'?'>();
+	}	
+	/** 
+	 * Gets the query component to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_query){ return _getURI(io,_query,'#',_fragment); }		
+	/** 
+	 * Gets the fragment component to a @a T. 
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 */
+	_(getURI_fragment){ return _getURI(io,_fragment,'\0',_size); }	
+	#undef _
+	
+	template<class T> //daeArray, std::string
+	/**WARNING
+	 * @warning This one doesn't work on @c daeRefView.
+	 * Gets the path-relative or protocol relative URL.
+	 * If the URL was not constructed from a base URL, then
+	 * the result is simply to copy the URI in its entirety.
+	 */
+	inline T &getURI_baseless(T &io, enum dae_clear clear=dae_clear)const
+	{
+		if(clear) io.clear();
+		for(int i=_rel_backtracks;i-->0;io.append("../",3));
+		daeRef::_getT<dae_append>(io,getURI()+_rel_half,_size-_rel_half); 
+		return io;
+	};
+
+	template<char X, class T> 
+	/**
+	 * Gets ill-defined component groups to a @a T. 
+	 * @tparam X can be '?', '#', ':' or '/'.
+	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 * Here ':' is the port part. It's somewhat cryptic, but there are not
+	 * names for these things! 
+	 * These go "upto" (up to) the separator (whether it exists in the URI
+	 * or not) and so, for example, '/' can be read as ':', but with ports.
+	 * @param from lets you strip off the front. It will be optimized away.
+	 */
+	inline T &getURI_upto(T &io, daeShort from=0)const
+	{
+		switch(X) //<daeUShort> is in case compilers know 0 is never a maximum.
+		{
+		case ':': return _getURI(io,from,':',std::max<daeUShort>(from,_authority_port));
+		case '/': return _getURI(io,from,'\0',std::max<daeUShort>(from,_path));
+		case '?': return _getURI(io,from,'?',std::max<daeUShort>(from,_query)); 
+		case '#': return _getURI(io,from,'#',std::max<daeUShort>(from,_fragment)); 
+		}
+		assert(0); return io; daeCTC<X==':'||X=='/'||X=='?'||X=='#'>();
+	}	
+	template<char X> 
+	/**OVERLOAD
+	 * Gets a temporary @c daeRefView of @c getURI_upto<X>().
+	 * @see two-argument overloads's Doxygentation.
+	 */
+	daeRefView getURI_upto()const{ daeRefView o; return getURI_upto<X>(o); }
+	
+COLLADA_(public) //UTILITIES
+
+	template<class T> //T is daeDocRef or const_daeDocRef
+	/**
+	 * @note @c daeDOM is based on @c daeArchive.
+	 * Looks up a documents, matching this URI, sans-fragment.
+	 * Lookup is confined to @a archive, and may store in @a matchingDoc,
+	 * -one of @c nullptr; @a archive itself; one of @a archive's docs, 
+	 * -or one of any archives housed inside of @a archive, or any
+	 * of such archives's docs.
+	 * @return Returns @a matchingDoc. 
+	 *
+	 * IMPLEMENTATION NOTE
+	 * ===================
+	 * This API sets up @c daeArchive::_whatsupDoc so that the library's
+	 * classes can retrace the lookup. This is less so to accelerate the
+	 * library, and more so to avoid reimplementing the lookup procedure.
+	 */
+	inline T &docLookup(const daeArchive &archive, T &matchingDoc, enum dae_clear clear=dae_clear)const
+	{
+		if(clear!=dae_default) matchingDoc = nullptr;
+		_docLookup(archive,matchingDoc); return matchingDoc;
+	}
+	template<class T> //T is daeDocRef or const_daeDocRef
+	/**
+	 * Does a lookup, and failing that, resolves & retries.
+	 * @see docLookup().
+	 */
+	inline T &docLookup2(const daeArchive &archive, T &matchingDoc)const
+	{
+		matchingDoc = nullptr;
+		_docLookup(archive,matchingDoc); 
+		if(matchingDoc==nullptr&&DAE_OK==resolve(*archive.getDOM()))
+		_docLookup(archive,matchingDoc); return matchingDoc;
+	}
+
+	/**SCOPED-ENUM 
+	 * Options for use with @c resolve_RFC3986().
+	 *
+	 * @c toslash Uses @c daeURI::toslash() to convert the baseless URI.
+	 *
+	 * @c lower Takes ASCII in the scheme and hostname parts, converting
+	 * it to lowercase; unless the ASCII is a percent-encoded hexadecimal 
+	 * digit, in which case RFC3986 calls for uppercase A, B, C, D, E & F.
+	 *
+	 * @c normalize Removes ./.. directives from the path, and may do more.
+	 *
+	 * @c decode Converts percent-encodings into non-ASCII/UTF8 code points.
+	 * THIS IS KEEPING WITH THE LIBRARY'S PENCHANT FOR BINARY REPRESENTATION.
+	 *
+	 * @c rebase bases the URI on @c baseLookup(). Without this, the resulting
+	 * URI is relative (if not an absolute-URL) in which case the caller should
+	 * do this themself after @c resolve_RFC3986() returns.
+	 *
+	 * @c ALL should NOT be ~0, so that callers won't get more than was asked for.
+	 * (It's a default parameter of @c resolve_RFC3986().)
+	 */
+	struct RFC3986{ enum{ toslash=1, lower=2, normalize=4, decode=8, rebase=16, ALL=0x1F }; };
+	/**HELPER 
+	 * @see @c daePlatform::resolveURI().
+	 * @see https://tools.ietf.org/html/rfc3986
+	 * @see @c daeURI_base::RFC3986 Doxygentation.
+	 * This does RFC3986's resolution/canonicalization recommendations.
+	 * @remarks This does not resolve to an element. @c daeRef::get() does.
+	 * @param RFC3986_ops are bitwise options, taken from @c daeURI_base::RFC3986.
+	 * @return Returns the result of @c setURI().
+	 */
+	LINKAGE daeOK resolve_RFC3986(const daeDOM&, int RFC3986_ops=RFC3986::ALL);
+
+	/**HELPER
+	 * This implements some rather convoluted logic for locating the natural base
+	 * of a URL, based on A) its parent object, or B) via @a DOM's default base URL. 
+	 * It's not that tricky, except for the @c this==base cases. It needs to work for
+	 * all URLs.
+	 * @remarks If the URL is an absolute-URL, then the base is not generally required.
+	 * Notice that this isn't looking for xml:base attributes, or doing anything special
+	 * at all. 
+	 * @c daePlatform::resolveURI() needs to implement something like this, so this is to
+	 * ease development of coding a resolver. 
+	 * @see resolve_RFC3986().
+	 * @param base will not be @c nullptr upon return.
+	 * @return Returns @a base.
+	 */
+	LINKAGE const_daeURIRef &baseLookup(const daeDOM &DOM, const_daeURIRef &base)const;
+
+	/**WARNING
+	 * @warning Doesn't say the URIs are resolved!!
+	 * @return Returns @c true if @c this URI references @a cmp. 
+	 */
+	inline bool referencesURI(const daeURI &cmp)const
+	{	
+		return getURI_upto<'#'>()==cmp.getURI_upto<'#'>();
+	}
+	/**WARNING
+	 * @warning Doesn't say the URIs are resolved!!
+	 * @return Returns @c true if @c this URI is based on @a cmp AND not equal.
+	 */	
+	inline bool transitsURI(const daeURI &cmp)const
+	{	
+		daeRefView a = getURI_upto<'#'>(), b = cmp.getURI_upto<'#'>();
+
+		if(b.extent<a.extent) a.extent = b.extent; 
+
+		return a==b&&(0==b.extent||'/'==b[b.extent-1]||'/'==a[b.extent]);
+	}
+
+	/**WARNING, LEGACY
+	 * @warning Doesn't say the URI is resolved!!
+	 * Tells if the URI refers to part of the document that it is part of.
+	 * @remarks This does the inverse of deprecated "isExternalReference".
+	 * It seems same-document-reference is a term-of-art, whereas external-reference,
+	 * -and its logical inverse, are not.
+	 * IMPORTANT
+	 * @return Returns a @dae3ool type, which must be handled with care, because a URI
+	 * can also not have an associated document, in which case the expression is ambiguous.
+	 * (* @c !isSameDocumentReference() for an exernal reference is CORRECT,
+	 * -whereas, @c if(isSameDocumentReference()){...}else{...} is INCORRECT.)
+	 */
+	inline dae3ool isSameDocumentReference()const
+	{	
+		const_daeDocRef doc = getDoc();
+		if(doc!=nullptr) return _path==0?true:_this().referencesDoc(*doc);
+		return dae3ool::is_neither;
+	}			 
+	#ifndef COLLADA_NODEPRECATED
+	/**LEGACY, UNUSED (INTERNALLY)
+	 * Tells if the URI refers to a document other than its own.
+	 */
+	inline bool isExternalReference()const{ return !isSameDocumentReference(); }
+	#endif //COLLADA_NODEPRECATED
+
+COLLADA_(private) //INTERNAL SUBROUTINES
+
+	/** Implements @c setURI() via C-style string. */
+	LINKAGE daeOK _setURI(daeString URI, const daeURI *baseURI=nullptr);	
+	COLLADA_NOINLINE //PRETENDING INVISIBLE
+	/** Implements concatenation phase of @c _setURI(). */
+	void _setURI_concat(const daeURI&, size_t, daeString);
+
+	template<class T> //T can be daeArray or std::string or daeRefView.
+	/** Implements many daeURI methods, with std::string compatible code. */
+	inline T &_getURI(T &str, daeShort pos, daeStringCP sep, daeShort end)const
+	{
+		daeUShort len = end-pos;
+		daeRefView URI = getURI(); if(len==0||URI[len-1]!=sep) len++;
+		daeRef::_getT<dae_clear>(str,URI+pos,len); return str;
+	}
+
+	/** Does case-insensitive comparisons. */
+	inline daeShort _ieq(daeShort i, daeString cmp)const
+	{
+		for(daeString URI=data();*cmp!='\0';)
+		if(tolower(URI[i++])!=tolower(*cmp++)) return -1; return i;
+	}
+	
+	template<int doing_docLookup>
+	/**
+	 * Implements @c docLookup() and doc insertion internally.
+	 * @param reinsert If @c nullptr, it's a matching/lookup procedure.
+	 * @tparam docLookup was added so @c docLookup can work with @c dae_default.
+	 */
+	inline void _docHookup(daeArchive&, daeDocRef &reinsert)const;
+	/** Implements @c docLookup() */
+	LINKAGE void _docLookup(const daeArchive&,const_daeDocRef&)const;
+		
+COLLADA_(public) //daeRef_support traits
+
+	using daeRef_support::_eq;
+	/** Implements @c operator==() without conversion. */
+	inline bool _eq(const daeURI_base *cmp)const
+	{
+		assert(getIsResolved()&&cmp->getIsResolved());
+		return _size==cmp->_size&&0==memcmp(data(),cmp->data(),_size);
+	}
+	/** Implements @c operator>() without conversion. */
+	inline bool _gt(const daeURI_base *cmp)const
+	{
+		assert(getIsResolved()&&cmp->getIsResolved());
+		return strcmp(data(),cmp->data())>0;
+	}
+	/** Implements @c operator>() without conversion. */
+	inline bool _lt(const daeURI_base *cmp)const
+	{
+		assert(getIsResolved()&&cmp->getIsResolved());
+		return strcmp(data(),cmp->data())<0;
+	}	
 };
 
+#include "../LINKAGE.HPP" //#undef LINKAGE
 
-// This is a container class for storing a modifiable list of daeURIResolver objects.
-class DLLSPEC daeURIResolverList {
-public:
-	daeURIResolverList();
-	~daeURIResolverList();
+/**HELPER
+* This is a clever way to use a @c daeURI to parse @a URL.
+* It works by assigning the C-string to the @c daeURI as a 
+* @c daeStringRef, even if it is not actually one. It won't
+* matter. @c _setURI() will not reset the string, since it's
+* the current string, but it will parse it.
+*
+* Such a URI cannot be part of a @c daeDatabase, and so it's
+* safe to use, as long as the C-string pointer remains valid.
+*
+* It's tempting to pass this class to APIs that expect a URI.
+* However, if it is resolved, while it will work, it is small,
+* -and so will almost surely touch the heap.
+*/
+class daeURI_parser : public daeURI_size<0>
+{	
+COLLADA_(public)
+	/**
+	 * This constructor will call @c clear(), and so is suboptimal. 
+	 */
+	daeURI_parser(){}
 
-	daeTArray<daeURIResolver*>& list();
-	daeElement* resolveElement(const daeURI& uri);
+	template<class T>
+	/**
+	 * Constructor, optimized to not call @c clear() unnecessarily. 
+	 */
+	daeURI_parser(const T &URL)
+	//daeURI_parser_view is a dummy class.
+	COLLADA_SUPPRESS_C(4355)
+	:daeURI_size(*this,(class daeURI_parser_view*)daeBoundaryStringIn(URL).c_str){}
 
-private:
-	// Disabled copy constructor/assignment operator
-	daeURIResolverList(const daeURIResolverList& resolverList) { };
-	daeURIResolverList& operator=(const daeURIResolverList& resolverList) { return *this; };
-
-	daeTArray<daeURIResolver*> resolvers;
+	template<class T>
+	/**
+	 * Constructor, optimized to not call @c clear() unnecessarily. 
+	 */
+	daeURI_parser(const daeObject &c, const T &URL)
+	//daeURI_parser_view is a dummy class.
+	:daeURI_size(c,(class daeURI_parser_view*)daeBoundaryStringIn(URL).c_str){}
 };
 
+//---.
+}//<-'
 
-// Helper functions for file path <--> URI conversion
-namespace cdom {
-	// Takes a uri reference and parses it into its components.
-	DLLSPEC bool parseUriRef(const std::string& uriRef,
-	                         std::string& scheme,
-	                         std::string& authority,
-	                         std::string& path,
-	                         std::string& query,
-	                         std::string& fragment);
-
-	// Takes the uri components of a uri ref and combines them.
-	//
-	// The 'forceLibxmlCompatible' param is meant to work around bugs in the file
-	// scheme uri handling of libxml. It causes the function to output a uri
-	// that's fully compatible with libxml. It only modifies file scheme uris,
-	// since uris with other schemes seem to work fine.
-	//
-	// The known libxml uri bugs are as follows:
-	//   1) libxml won't write files when given file scheme URIs with an empty
-	//      authority, as in "file:/home".
-	//   2) libxml won't read or write Windows UNC paths represented with the
-	//      machine name in the authority, as in "file://otherMachine/folder/file.dae"
-	//   3) On Windows, libxml won't read or write paths that don't have a drive
-	//      letter, as in "/folder/file.dae".
-	DLLSPEC std::string assembleUri(const std::string& scheme,
-	                                const std::string& authority,
-	                                const std::string& path,
-	                                const std::string& query,
-	                                const std::string& fragment,
-	                                bool forceLibxmlCompatible = false);
-
-	// A wrapper function for calling assembleUri to create a URI that's compatible
-	// with libxml.
-	DLLSPEC std::string fixUriForLibxml(const std::string& uriRef);
-
-	// This function takes a file path in the OS's native format and converts it to
-	// a URI reference. If a relative path is given, a relative URI reference is
-	// returned. If an absolute path is given, a relative URI reference containing 
-	// a fully specified path is returned. Spaces are encoded as %20. The 'type'
-	// parameter indicates the format of the nativePath.
-	//
-	// Examples - Windows
-	//   nativePathToUri("C:\myFolder\myFile.dae") --> "/C:/myFolder/myFile.dae"
-	//   nativePathToUri("\myFolder\myFile.dae") --> "/myFolder/myFile.dae"
-	//   nativePathToUri("..\myFolder\myFile.dae") --> "../myFolder/myFile.dae"
-	//   nativePathToUri("\\otherComputer\myFile.dae") --> "//otherComputer/myFile.dae"
-	//
-	// Examples - Linux/Mac
-	//   nativePathToUri("/myFolder/myFile.dae") --> "/myFolder/myFile.dae"
-	//   nativePathToUri("../myFolder/myFile.dae") --> "../myFolder/myFile.dae"
-	//   nativePathToUri("/my folder/my file.dae") --> "/my%20folder/my%20file.dae"
-	DLLSPEC std::string nativePathToUri(const std::string& nativePath,
-	                                    systemType type = getSystemType());
-
-	// This function takes a URI reference and converts it to an OS file path. Conversion
-	// can fail if the URI reference is ill-formed, or if the URI contains a scheme other
-	// than "file", in which case an empty string is returned. The 'type' parameter
-	// indicates the format of the returned native path.
-	//
-	// Examples - Windows
-	//   uriToNativePath("../folder/file.dae") --> "..\folder\file.dae"
-	//   uriToNativePath("/folder/file.dae") --> "\folder\file.dae"
-	//   uriToNativePath("file:/C:/folder/file.dae") --> "C:\folder\file.dae"
-	//   uriToNativePath("file://otherComputer/file.dae") --> "\\otherComputer\file.dae"
-	//   uriToNativePath("http://www.slashdot.org") --> "" (it's not a file scheme URI!)
-	//
-	// Examples - Linux/Mac
-	//   uriToNativePath("../folder/file.dae") --> "../folder/file.dae"
-	//   uriToNativePath("file:/folder/file.dae") --> "/folder/file.dae"
-	//   uriToNativePath("http://www.slashdot.org") --> "" (it's not a file scheme URI!)
-	DLLSPEC std::string uriToNativePath(const std::string& uriRef,
-	                                    systemType type = getSystemType());
-
-	DLLSPEC std::string filePathToUri(const std::string& filePath); // Alias for nativePathToUri
-	DLLSPEC std::string uriToFilePath(const std::string& uriRef); // Alias for uriToNativePath
-}
-
-#endif //__DAE_URI_H__
+#endif //__COLLADA_DOM__DAE_URI_H__
+/*C1071*/

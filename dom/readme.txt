@@ -23,6 +23,7 @@ Alex De Pereyra (bug reporting)
 Alberto Luaces (bug reporting)
 Michael Wojcik (Visual Studio 2010 Support)
 Rosen Diankov (patches for 1.5 and cmake support)
+Mick Pearson (2016 rewrite/revival effort)
 
 Apologies if I missed anyone (please let me know!).
 

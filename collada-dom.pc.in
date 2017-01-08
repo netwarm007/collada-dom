@@ -6,7 +6,7 @@ libdir=@CMAKE_INSTALL_PREFIX@/lib@LIB_SUFFIX%
 includedir=@CMAKE_INSTALL_PREFIX@/@COLLADA_DOM_INCLUDE_INSTALL_DIR@
 
 Name: collada-dom
-Description: COLLADA Document Object Model (DOM), 1.4 support=%OPT_COLLADA14%, 1.5 support=%OPT_COLLADA15%
+Description: COLLADA Document Object Model (DOM)
 Version: @COLLADA_DOM_VERSION@
 URL:  http://sourceforge.net/projects/collada-dom
 Libs: -L${libdir} -lcollada-dom@COLLADA_DOM_LIBRARY_SUFFIX@
