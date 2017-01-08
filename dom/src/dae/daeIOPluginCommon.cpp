@@ -19,12 +19,14 @@ void daeIOPluginCommon::__xstruct(int x, int legacy)
 	#ifdef BUILDING_IN_LIBXML
 	case daePlatform::LEGACY_LIBXML:
 	new(this) daeLibXMLPlugin(legacy); return;
+	case ~daePlatform::LEGACY_LIBXML:
+	((daeLibXMLPlugin*)this)->daeLibXMLPlugin::~daeLibXMLPlugin(); return;
 	#endif
 	#ifdef BUILDING_IN_TINYXML
 	case 0: new(this) daeTinyXMLPlugin; return;
+	case ~0:
+	((daeTinyXMLPlugin*)this)->daeTinyXMLPlugin::~daeTinyXMLPlugin(); return;
 	#endif
-	case ~daePlatform::LEGACY_LIBXML:
-	case ~0: this->~daeIOPluginCommon(); return;
 	}
 	assert(0); //Are libraries mismatched?
 }

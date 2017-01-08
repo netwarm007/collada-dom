@@ -268,6 +268,12 @@ COLLADA_(public) //FORMERLY set/getOption()
 	   
 #ifdef BUILDING_COLLADA_DOM
 
+COLLADA_(public)
+		/**
+		 * Virtual Destructor 
+		 */
+		virtual ~daeLibXMLPlugin();
+
 COLLADA_(private) //daeIOPluginCommon methods
 
 		/**PURE-OVERRIDE */
@@ -275,11 +281,7 @@ COLLADA_(private) //daeIOPluginCommon methods
 		/**PURE-OVERRIDE */
 		virtual int _errorRow();
 
-COLLADA_(private)
-		/**
-		 * Virtual Destructor 
-		 */
-		virtual ~daeLibXMLPlugin();
+COLLADA_(private)		
 
 		//STATEFUL
 		bool _saveRawFile;
@@ -353,6 +355,12 @@ COLLADA_(protected) //daeIOPlugin methods
 	
 #ifdef BUILDING_COLLADA_DOM
 
+COLLADA_(public)
+		/**
+		 * Virtual Destructor 
+		 */
+		virtual ~daeTinyXMLPlugin(){ /*NOP*/ }
+
 COLLADA_(private) //daeIOPluginCommon methods
 
 		/**PURE-OVERRIDE */
@@ -360,11 +368,7 @@ COLLADA_(private) //daeIOPluginCommon methods
 		/**PURE-OVERRIDE */
 		virtual int _errorRow();
 
-COLLADA_(private)
-		/**
-		 * Virtual Destructor 
-		 */
-		virtual ~daeTinyXMLPlugin(){ /*NOP*/ }
+COLLADA_(private)		
 
 		//STATELESS
 		TiXmlBase *_err;
