@@ -76,7 +76,7 @@ struct daeAtomicType
 	 * common. They are identical in binary terms.
 	 * @see @c STRING/TOKEN Doxygentation.
 	 */
-	STRING, TOKEN, 	
+	STRING, TOKEN, 
 	};
 
 	daeAtomicType()

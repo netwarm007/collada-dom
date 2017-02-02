@@ -147,42 +147,46 @@ hit: //fill out the request object
 	daeCharData *cd = e.getCharDataObject();
 	if(cd!=nullptr)
 	{
-		req.type = &cd->getType(); 
-		if(!cd->isArrayValue())
+		size_t n = 0;
+		req.type = &cd->getType(); 		
+		req.typeInstance = cd->getWRT(&e);
+		if(cd->isArrayValue())
 		{
-			//Assuming xs:list are daeArray based.
-			assert(t.empty());
-			#ifdef NDEBUG
-			#error This should support daeAtomicType::STRING by 
-			#error setting rangeMin/rangeMax according to spaces.
-			#endif
-			req.rangeMin = req.rangeMax = 0;
-			req.typeInstance = cd->getWRT(&e);
+			const daeAlloc<> *AU =
+			(daeAlloc<>*const&)req.typeInstance;
+			n = AU->getCount();
+			req.typeInstance = AU->getRaw();
+		}
+		else switch(req.type->writer->getAtomicType())
+		{
+		case daeAtomicType::TOKEN: case daeAtomicType::STRING:
+			
+			n = ((daeStringRef&)req.typeInstance).size(); break;
+
+		default: n = 1;	break;
+		}
+
+		//No type instance is returned for empty arrays
+		//nor empty selections, including empty strings.
+		//This resolver isn't used for write operations.
+		if(t.empty()&&n!=0)
+		{
+			req.rangeMin = 0; req.rangeMax = n-1;
 		}
 		else
 		{
-			const daeAlloc<> *AU = (daeAlloc<>*const&)cd->getWRT(&e);
-			size_t n = AU->getCount();
-			if(n!=0)
+			//Note: strings are treated as space separated
+			//lists in terms of their selection. The string
+			//is nullified only if the selection is past the
+			//last codepoint. The caller must parse the lists.
+
+			size_t m = t.select(e.getNCName());
+			if(m<n)
 			{
-				//NOTE: This is being overridden below...
-				req.typeInstance = AU->getRaw();
-				if(t.empty())
-				{
-					req.rangeMin = 0; req.rangeMax = n-1;
-				}
-				else
-				{
-					size_t m = t.select(e.getNCName());
-					if(m<n)
-					{
-						 req.rangeMin = req.rangeMax = m;
-					}
-					else req.typeInstance = nullptr; //!!
-				}				
+				req.rangeMin = req.rangeMax = m;
 			}
-			else req.typeInstance = nullptr;			
-		}
+			else req.typeInstance = nullptr;
+		}						
 	}
 	else req.typeInstance = nullptr; return DAE_OK;
 }

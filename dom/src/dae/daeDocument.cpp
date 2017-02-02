@@ -217,13 +217,14 @@ daeError daeDocument::_write(const daeIORequest &reqO, daeIOPlugin *O)const
   
 //// sid/idLookup //// sid/idLookup //// sid/idLookup //// sid/idLookup //// sid/idLookup 
 
-void daeDocument::_idLookup3(const daeStringRef &id, daeElementRef &match)const
+void daeDocument::_idLookup(daeString ref, daeElementRef &match)const
 {
-	_idMapIter cit = _idMap.find(id); if(cit!=_idMap.end()) match = cit->second;
+	_idMapIter cit = _idMap.find(ref); if(cit!=_idMap.end()) match = cit->second;
 } 
-void daeDocument::_sidLookup(const daeStringRef &sid, daeArray<daeElementRef> &matchingElements)const
+void daeDocument::_sidLookup(daeString ref, daeArray<daeElementRef> &matchingElements)const
 {
-	_sidMapRange range = _sidMap.equal_range(sid);
+	//REMINDER: daeElement::_sidLookup() accesses these directly.
+	_sidMapRange range = _sidMap.equal_range(ref);
 	for(_sidMapIter cit=range.first;cit!=range.second;cit++)	
 	matchingElements.push_back(cit->second);
 }

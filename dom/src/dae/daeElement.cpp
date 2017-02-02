@@ -463,6 +463,37 @@ const_daeElementRef daeElement::getAncestor(const matchElement &matcher)
 	return nullptr;
 }
 
+void daeElement::_sidLookup(daeString ref, daeElementRef &match, const daeDoc *docIn)const
+{
+	const daeDocument *doc = (daeDocument*)docIn;
+	if(doc==nullptr) return; assert(doc==docIn->getDocument());
+
+	//This is a simplified form of daeSIDResolver.cpp's _find() and
+	//_computeDistance() procedures.
+	unsigned minDistance = UINT_MAX;
+	const daeElement *closestElement = nullptr;
+	daeDocument::_sidMapRange range = doc->_sidMap.equal_range(ref);
+	for(daeDocument::_sidMapIter cit=range.first;cit!=range.second;cit++)	
+	{
+		unsigned distance = 0; 
+		const daeElement *e = cit->second; do
+		{
+			if(this==e) 
+			{
+				if(distance<minDistance)
+				{
+					minDistance = distance;	closestElement = e;					
+				}
+				break;
+			}
+			else distance++;
+
+		}while(nullptr!=(e=e->getParentElement()));		
+	}
+	if(closestElement!=nullptr)
+	match = const_cast<daeElement*>(closestElement);
+}
+
 //---.
 }//<-'
 

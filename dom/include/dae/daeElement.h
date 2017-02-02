@@ -156,7 +156,44 @@ class daeElement : public daeObject
 	/**CIRCULAR-DEPENDENCY @c DAEP::Element::__COLLADA__atomize() is exported. */
 	inline void __COLLADA__atomize(){ ((DAEP::Element*)this)->__COLLADA__atomize(); }
 
-COLLADA_(public) //2.5 "daeSafeCast" shorthand
+COLLADA_(public) //non-SIDREF SID lookup
+
+	template<class S, class T> //T is DAEP::Element based
+	/**WARNING, LEGACY-SUPPORT
+	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
+	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF id IS NOT A SMALL STRING.
+	 *
+	 * Looks up the bread-first match for @a sid located under @c this element.
+	 * @remark The 1.4.1 and 1.5.0 COLLADA specifications are inconsistent WRT
+	 * to SID lookup. For example, <texture texture> isn't a SIDRE at all, and
+	 * instead is simply the NCName of the "sid" attribute in <profile_COMMON>.
+	 *
+	 * @param sid The SID to match on.
+	 * @return Returns @a match. Currently @c this element may or may not be
+	 * able to be returned via @a match. If COLLADA or users require this it
+	 * can be arranged. For now callers must not assume one way or the other.
+	 */
+	inline daeSmartRef<T> &sidLookup(const S &sid, daeSmartRef<T> &match, enum dae_clear clear=dae_clear)const
+	{
+		assert(isContent()); return sidLookup<S,T>(sid,match,const_daeDocRef(getDoc()),clear);
+	}
+	template<class S, class T> //T is DAEP::Element based
+	/**WARNING, LEGACY-SUPPORT
+	 * @warning See the fewer arguments form of this method's Doxygentation.
+	 * This form lets the user avoid the other form's @c getDoc() procedure.
+	 * @return Returns @c nullptr via @a match if @a doc==nullptr.
+	 */
+	inline daeSmartRef<T> &sidLookup(const S &sid, daeSmartRef<T> &match, const daeDoc *doc, enum dae_clear clear=dae_clear)const
+	{
+		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 
+		if(clear!=dae_default) match = nullptr;
+		_sidLookup(daeBoundaryStringRef(this,id),(daeElementRef&)match,doc); 		
+		if(nullptr==match->a<T>()) match = nullptr; return match;
+	}
+	/** Implements @c sidLookup(). @a ref is a @c daeStringRef. */
+	LINKAGE void _sidLookup(daeString ref, daeElementRef&, const daeDoc*)const;
+
+COLLADA_(public) //2.5 daeSafeCast-like shorthand
 
 	COLLADA_DOM_OBJECT_OPERATORS(daeElement)
 	/** These sometimes comes in handy since no longer inheriting. */
@@ -678,6 +715,9 @@ COLLADA_(public)
 	 */
 	inline const daeDocument *getDocument()const
 	{
+		#ifdef NDEBUG
+		#error Is isContent() sufficient? Can false==getParentElement()->isContent()?
+		#endif
 		//The isContent() check is really required for routines that try to determine
 		//if an element was removed from a contents-array, because more often than not
 		//that does not change the element's parent object.

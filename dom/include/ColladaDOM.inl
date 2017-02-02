@@ -325,6 +325,25 @@ inline bool operator!=(DAEP::Notice<S,T> &a, DAEP::Notice<U,V> /*&*/b)
 	return a.operator->()==*b.operator->();
 }
 
+template<class S, class T>
+/** @c daeDocument uses this to convert strings into @c daeStringRef if need be. */
+inline const daeStringRef daeBoundaryStringRef(const S &c, const T &str)
+{
+	return daeStringRef(*c,str);
+}
+template<class S>
+/** @c daeDocument uses this to convert strings into @c daeStringRef if need be. */
+inline const daeStringRef &daeBoundaryStringRef(const S&, const daeStringRef &str)
+{
+	return str;
+}
+template<class S, int ID, class T, class CC, typename CC::_ PtoM>
+/** @c daeDocument uses this to convert strings into @c daeStringRef if need be. */
+inline const daeStringRef &daeBoundaryStringRef(const S&, const DAEP::Value<ID,T,CC,PtoM> &str)
+{
+	return str;
+}
+
 //---.
 }//<-'
 

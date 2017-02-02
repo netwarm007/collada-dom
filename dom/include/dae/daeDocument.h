@@ -503,10 +503,15 @@ COLLADA_(public) //LEGACY: old "database" APIs
   /////////////////////////////////////////////////////////////////
   //THESE WON'T WORK IF THE daeDatabase INTERFACE DOESN'T FORWARD// 
   //ID/SID NOTES TO daeDocument::_carry_out_change_of_ID_or_SID()//
+  //The database must also implement small string pooling, and if//
+  //the id/sid strings are too large to qualify they cannot match//
   /////////////////////////////////////////////////////////////////
 
 	template<class S, class T> //T is DAEP::Element based
-	/**LEGACY
+	/**WARNING, LEGACY
+	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
+	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF id IS NOT A SMALL STRING.
+	 *
 	 * Looks up elements by "id" attribute.
 	 * @param id The ID to match on.
 	 * @return Returns @a match.
@@ -515,67 +520,27 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	{
 		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 
 		if(clear!=dae_default) match = nullptr;
-		_idLookup2(id,(daeElementRef&)match,nullptr); 		
+		_idLookup(daeBoundaryStringRef(this,id),(daeElementRef&)match); 		
 		if(nullptr==match->a<T>()) match = nullptr; return match;
 	}
-	#ifdef NDEBUG
-	#error Is this still necessary?
-	#endif
-	template<class T>
-	/**OVERLOAD
-	 * Implements @c idLookup(), extracting @c daeStringRef from @c DAEP::Value.
-	 */
-	inline void _idLookup2(const T &id, daeElementRef &match, typename T::underlying_type*)const
-	{
-		_idLookup2((const typename T::underlying_type&)id,(daeElementRef&)match,nullptr); 
-
-	}
-	template<class T>
-	/**OVERLOAD Implements @c idLookup(). */
-	inline void _idLookup2(const T &id, daeElementRef &match,...)const
-	{
-		//C2794: MSVC2010 fails SFINEA with explict specializations.
-		_idLookup2_MSVC2010(daeStringRef(*this,id),match); 
-	}
-	template<class T>
-	/**OVERLOAD Implements @c idLookup(). */
-	inline void _idLookup2_MSVC2010(const T &id, daeElementRef &match)const
-	{
-		_idLookup3(daeStringRef(*this,id),match); 
-	}
-	template<>
-	/**OVERLOAD, TEMPLATE-SPECIALIZATION Implements @c idLookup(). */
-	inline void _idLookup2_MSVC2010(const daeStringRef &id, daeElementRef &match)const
-	{
-		_idLookup3(id,match); 
-	}
-	
-	template<class T>
-	/**LEGACY
+			
+	template<class S>
+	/**WARNING, LEGACY
+	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
+	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF sid IS NOT A SMALL STRING.
+	 *
 	 * @note This is not very useful on its own. SIDs are not unique. 
-	 * @see daeSIDResolver.
+	 * @see @c daeElement::sidLookup().
+	 * @see @c daeSIDResolver.
 	 * @remark Historically @a matchingElements is cleared.
 	 * @param sid The COLLADA Scoped Identifier (SID) to match on.
 	 * @param matchingElements The array of matching elements.
 	 * @return Returns @a matchingElements.
 	 */
-	inline daeArray<daeElementRef> &sidLookup(const T &sid, daeArray<daeElementRef> &matchingElements, enum dae_clear clear=dae_clear)const
+	inline daeArray<daeElementRef> &sidLookup(const S &sid, daeArray<daeElementRef> &matchingElements, enum dae_clear clear=dae_clear)const
 	{
 		if(clear) matchingElements.clear(); 
-		_sidLookup(daeStringRef(*this,sid),matchingElements); return matchingElements;
-	}
-	template<>
-	/**LEGACY, TEMPLATE-SPECIALIZATION
-	 * @note This is not very useful on its own. SIDs are not unique. 
-	 * @see daeSIDResolver.
-	 * @remark Historically @a matchingElements is cleared.
-	 * @param sid The COLLADA Scoped Identifier (SID) to match on.
-	 * @param matchingElements The array of matching elements.
-	 * @return Returns @a matchingElements.
-	 */
-	inline daeArray<daeElementRef> &sidLookup(const daeStringRef& sid, daeArray<daeElementRef> &matchingElements, enum dae_clear clear/*=dae_clear*/)const
-	{
-		if(clear) matchingElements.clear(); _sidLookup(sid,matchingElements); return matchingElements;
+		_sidLookup(daeBoundaryStringRef(this,sid),matchingElements); return matchingElements;
 	}
 	
   /////////////////////////////////////////////////////////////////
@@ -644,12 +609,12 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	
 COLLADA_(private) //exported indexing methods
 
-	/** Implements @c idLookup(). */
-	LINKAGE void _idLookup3(const daeStringRef&, daeElementRef&)const;	
+	/** Implements @c idLookup(). @a ref is a @c daeStringRef. */
+	LINKAGE void _idLookup(daeString ref, daeElementRef&)const;	
 	/** Implements @c typeLookup(). */
 	LINKAGE void _typeLookup(daeMeta&, daeArray<daeElementRef>&)const;	
-	/** Implements @c sidLookup(). */
-	LINKAGE void _sidLookup(const daeStringRef&, daeArray<daeElementRef>&)const;
+	/** Implements @c sidLookup(). @a ref is a @c daeStringRef. */
+	LINKAGE void _sidLookup(daeString ref, daeArray<daeElementRef>&)const;
 
 COLLADA_(public) //LEGACY-SUPPORT
 	/**LEGACY

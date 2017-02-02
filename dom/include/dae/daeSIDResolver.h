@@ -358,6 +358,10 @@ COLLADA_(private) //DATA-MEMBER
 };
 
 /**WARNING, LEGACY-SUPPORT
+ * @warning COLLADA kind of abuses the "sid" attributes insofar as a
+ * SID can or is required to be looked up in different ways. 
+ * @see daeElement::sidLookup() for non-SIDREF lookups.
+ *
  * @warning Pre-2.5 SIDREF support was either experimental or it had
  * been disabled. Nevertheless, there was a a lot of code just lying
  * around. This resolver is what remains of that code. 

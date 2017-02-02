@@ -127,15 +127,13 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 		daeOffset selected = N>1?rangeMax-rangeMin+1:1;
 		daeOffset o = std::min(N,selected);
 		//REMINDER: these can be equal, in which case switch won't work.
+		//This can be done somewhat better, but the order is roughly in
+		//the likelihood that a type is used, in case it matters at all.
 		int at = getAtomicType();
-		if(at==daeAtomicType::BYTE)		
-		_copy<daeByte>(o,vN);
-		else if(at==daeAtomicType::UBYTE)		
-		_copy<daeUByte>(o,vN);
-		else if(at==daeAtomicType::SHORT)		
-		_copy<daeShort>(o,vN);
-		else if(at==daeAtomicType::USHORT)		
-		_copy<daeUShort>(o,vN);
+		if(at==daeAtomicType::DOUBLE)		
+		_copy<daeDouble>(o,vN);
+		else if(at==daeAtomicType::FLOAT)		
+		_copy<daeFloat>(o,vN);			
 		else if(at==daeAtomicType::INT)		
 		_copy<daeInt>(o,vN);
 		else if(at==daeAtomicType::UINT)		
@@ -143,23 +141,36 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 		else if(at==daeAtomicType::LONG)		
 		_copy<daeLong>(o,vN);
 		else if(at==daeAtomicType::ULONG)		
-		_copy<daeULong>(o,vN);
-		else if(at==daeAtomicType::FLOAT)		
-		_copy<daeFloat>(o,vN);
-		else if(at==daeAtomicType::DOUBLE)		
-		_copy<daeDouble>(o,vN);
-		else if(at==daeAtomicType::BOOLEAN)		
-		_copy<daeBoolean>(o,vN);	
+		_copy<daeULong>(o,vN);					
 		else if(at==daeAtomicType::TOKEN||at==daeAtomicType::STRING)
 		{
-			daeStringCP *e, *p = &_got<daeStringCP>(), *d = p+selected;
-			for(o=0;o<N&&p<d;)
+			//This is here to support anySimpleType (domAny) or union
+			//data. An array of strings is typed, and won't be casted.
+			if(at==type->writer->getAtomicType())
 			{
-				vN[o++] = (T)strtod(&_got<daeStringCP>(),&e);				
-				p = e; while(isspace(*p)&&p<d) p++;
-				if(p==e) break;
+				daeStringRef &s = typeInstance;				
+				daeString *p = s.data(); daeStringCP *e;
+				for(size_t i=o=0;o<N;i++)
+				{
+					double d = strtod(p,&e);
+					if(i>=rangeMin&&e>p) 
+					vN[o++] = (T)d;
+					p = e; while(isspace(*p)) p++;
+					if(p==e) break;
+				}
 			}
+			else o = 0; //A string list?
 		}
+		else if(at==daeAtomicType::BYTE)		
+		_copy<daeByte>(o,vN);
+		else if(at==daeAtomicType::UBYTE)		
+		_copy<daeUByte>(o,vN);
+		else if(at==daeAtomicType::SHORT)		
+		_copy<daeShort>(o,vN);
+		else if(at==daeAtomicType::USHORT)		
+		_copy<daeUShort>(o,vN);
+		else if(at==daeAtomicType::BOOLEAN)		
+		_copy<daeBoolean>(o,vN);	
 		else o = 0; for(daeOffset i=o;i<N;i++) vN[i] = def; return o;
 	}	
 };					
