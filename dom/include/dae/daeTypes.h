@@ -208,8 +208,6 @@ COLLADA_(namespace)
 	typedef const daeArray<const XS::Element> daeTOC;
 	//Pseudonym is neither a proper NCName nor QName.
 	typedef class daeHashString daePseudonym,daeName;
-	//Trying to use this when a 0-terminator is used.
-	typedef daeName daeName_0;
 	class daeRef;
 	class daeRefRequest;
 	class daeRefResolver;
