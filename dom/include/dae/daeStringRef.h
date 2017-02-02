@@ -1076,6 +1076,14 @@ COLLADA_(public) //Ambiguous constructors
 		{
 			_this.string = c_str; _this.extent = c_str==nullptr?0:strlen(c_str);
 		}
+		template<>
+		/**NON-CONST-VARIANT
+		 * C++98 @c std::map and @c std::set constructor
+		 */
+		static void cp(daeHashString &_this, daeStringCP*const &c_str)
+		{
+			_this.string = c_str; _this.extent = c_str==nullptr?0:strlen(c_str);
+		}
 		
 		template<class B, class C>
 		/**
@@ -1121,8 +1129,9 @@ COLLADA_(public) //Non-copy constructors
 	/**
 	 * Default Non-Constructor
 	 * This is for @c daeValue and @c XS::Element.
+	 * NEW: Initializing @c extent=0 so to be safe seems harmless.
 	 */
-	daeHashString(){ /*NOP*/ }
+	daeHashString(){ /*NOP*/ extent = 0; }
 	/**
 	 * Constructor
 	 */

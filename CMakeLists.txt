@@ -149,7 +149,7 @@ if( LIBXML2_FOUND )
   include_directories(${LIBXML2_INCLUDE_DIR})
   add_definitions(${LIBXML2_DEFINITIONS} -DBUILDING_IN_LIBXML)
   message(STATUS "libxml2 found")
-else()
++endif()
 
 pkg_check_modules(minizip minizip)
 if(minizip_FOUND)

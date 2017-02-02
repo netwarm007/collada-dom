@@ -358,7 +358,7 @@ COLLADA_(private) //INTERNALS
 
 		struct _PseudoElement 
 		:
-		public daeElemental<_PseudoElement>, public DAEP::Schema<0>
+		public daeElemental<_PseudoElement>, public DAEP::Schema<2>
 		{
 		COLLADA_(public) //DAEP::Object method
 			/**

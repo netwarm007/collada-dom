@@ -56,6 +56,7 @@ struct daeElementTags
 	 * namespaceTag must be provided to the lookup procedure, in
 	 * case it's necessary to expand the table beyond 255 entries.
 	 * When nameTag is 0, namespaceTag is the the default namespace.
+	 * (@c domAny has issues because it's in the 0th process-share.)
 	 * When namespaceTag is 0, the element is not in a contents-array. 
 	 * (This is to work w/ @c daeMetaElement::createWRT()->placeWRT().)
 	 * When namespaceTag is 1, it is an undefined, document namespace. 
@@ -167,6 +168,13 @@ COLLADA_(public) //2.5 "daeSafeCast" shorthand
 	/** These sometimes comes in handy since no longer inheriting. */
 	operator const DAEP::Element&()const{ return *(DAEP::Element*)this; }
 
+	/**WORKAROUND
+	 * This is now needed by all standard @c daeSmartRef classes since
+	 * many templates use it to let smart-refs stand in for their type.	 
+	 * (That allows consistent use of shorter WYSIWYG smart-ref names.)
+	 */
+	typedef daeElement __COLLADA__T;
+
 	template<class T> 
 	/**WARNING
 	 * @warning 2.5 adds an @c assert() to @c daeSafeCast(). This was
@@ -178,34 +186,34 @@ COLLADA_(public) //2.5 "daeSafeCast" shorthand
 	 * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{.C++}
 	 * domCOLLADA *COLLADA = p->a<domCOLLADA>();
 	 */	
-	inline typename T *a()
+	inline typename T::__COLLADA__T *a()
 	{
-		return daeUnsafe<T>(this)?nullptr:(T*)this; 
+		return daeUnsafe<T>(this)?nullptr:(typename T::__COLLADA__T*)this; 
 	}		
 	template<class T> 
 	/**CONST-FORM 
 	 * @see non-const Doxygentation. 
 	 */
-	const T *a()const
+	const typename T::__COLLADA__T *a()const
 	{
-		return daeUnsafe<daeConstOf<int,T>::type>(this)?nullptr:(T*)this; 
+		return daeUnsafe<T>(this)?nullptr:(typename T::__COLLADA__T*)this; 
 	}	
 	template<class T> 
 	/**ALT-SPELLING
 	 * Just because some words use "an" instead of "a" in English. 
 	 * @see @c a().
 	 */
-	inline T *an()
+	inline typename T::__COLLADA__T *an()
 	{
-		return daeUnsafe<T>(this)?nullptr:(T*)this; 
+		return daeUnsafe<T>(this)?nullptr:(typename T::__COLLADA__T*)this; 
 	}		
 	template<class T> 
 	/**CONST-FORM, ALT-SPELLING
 	 * @see @c a().
 	 */
-	const T *an()const
+	const typename T::__COLLADA__T *an()const
 	{
-		return daeUnsafe<daeConstOf<int,T>::type>(this)?nullptr:(T*)this; 
+		return daeUnsafe<T>(this)?nullptr:(typename T::__COLLADA__T*)this; 
 	}	
 
 COLLADA_(public)	
@@ -654,10 +662,8 @@ COLLADA_(public)
 	 */
 	inline const daeElement *getParentElement()const 
 	{
-		const daeElement &c = static_cast<const daeElement&>(getParentObject());
-		//0x1000000 screens out documents and DOMs. (Its only possible parents.)
-		if(c.getElementTags()<=0x1000000) return nullptr;
-		else assert(c._isElement()); return c; 
+		const daeElement &c = static_cast<const daeElement&>(getParentObject());		
+		return c._isDoc_or_DOM()?nullptr:&c; 
 	}	
 
 	/**LEGACY-SUPPORT

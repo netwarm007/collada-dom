@@ -5,8 +5,8 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
+
 #include "../../include/dae/daeRAII.hpp"
 
 COLLADA_(namespace)

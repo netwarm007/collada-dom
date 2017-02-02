@@ -15,7 +15,7 @@ if($synth=!empty($meta['isSynth']))
 }
 else $longname = getScopedClassName($meta);
 
-global $global_parents, $global_children;
+global $global_parents, $global_children, $abstract; 
 
 if($meta['parent_meta']===NULL)
 {
@@ -92,12 +92,16 @@ daeSmartRef<$const::COLLADA_target_namespace::$longname>
 ob_start(); 
 	
 //Elements (out of order)
-foreach($meta['elements'] as $k=>$ea)
+//abstract elements are included as a form of documentation only
+foreach($meta['elements'] as $k=>$ea) //if(empty($abstract[$k]))
 {
 	$type = guessTypeOfElement(@$ea['type'],$k);
 	$name = getFriendlyName($k); $names[$name] = 1;
+	$head = empty($abstract[$k])?$CONST_FORM:
+"	/**DOCUMENTATION-ONLY
+	 * THIS ABSTRACT TYPE INSTANCE IS DEFINED IN CASE ITS ANNOTATIONS CAN BE OF USE";	
 	echoDoxygen(@$meta['element_documentation'][$k],"\t",
-	(empty($ea['isLocal'])?'':'local__').getFriendlyType($type),$CONST_FORM);
+	(empty($ea['isLocal'])?'':'local__').getFriendlyType($type),$head);
 	$match = explode(':',$type);
 	if(!empty($type)&&2===count($match))
 	{

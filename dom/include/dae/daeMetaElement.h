@@ -754,17 +754,22 @@ COLLADA_(private) //MODEL SETUP IMPLEMENTATION
 		o._destructor = __prototype_destruct<VT>;
 	}	
 	template<class T> 
-	/**NOT-AN-API
+	/**
 	 * This is for destructing the prototypes, since there's no clean way to
 	 * call the full constructor on them, in order to install the destructor.
 	 */
 	static void __prototype_destruct(void *a){ ((T*)a)->~T(); }
 
 	template<class T> 
-	/**NOT-AN-API
+	/**
 	 * Instantiate the compiler's generated default constructor as function pointer.
 	 */
-	static void __placement_new(DAEP::Object *e){ new(e) T; }
+	static void __placement_new(DAEP::Object *e)
+	{			
+		new(e) daeTypic<T::__DAEP__Schema__g1__is_abstract,__abstract_1,T>::type;
+	}
+	/**C++98/03 support */
+	struct __abstract_1{ __abstract_1(){ assert(!"Constructing abstract type?!"); } };
 	
 	friend class XS::Schema; template<class T>
 	/** Stage 2 of initialization-sequence. */

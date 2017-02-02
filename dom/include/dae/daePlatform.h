@@ -9,20 +9,39 @@
 #ifndef __COLLADA_DOM__DAE_PLATFORM_H__
 #define __COLLADA_DOM__DAE_PLATFORM_H__
 
-////////////////////////////
-//Potentially helpful links
-//Should we rely on CMake??
-//https://sourceforge.net/p/predef/wiki/Compilers
-///////////////////////////////////////////
+//Definitions from here down to COLLADA_DOM_INCLUDE
+//are made available for use by COLLADA_DOM_INCLUDE.
+//
+//These macros are meta to the C Preprocessor.
+#define COLLADA_STRINGIZE2(x) #x
+#define COLLADA_STRINGIZE(x) COLLADA_STRINGIZE2(x)
+#define COLLADA_TOKENIZE2(x,y) x##y
+#define COLLADA_TOKENIZE(x,y) COLLADA_TOKENIZE2(x,y)
+//
+//////This injects a configuration file. It's mainly
+	//of use when dependent libraries must all agree.
+	//This will require an environment-variable or a
+	//configuration script. #if 0 helps in that case.
+	#if 0!=COLLADA_DOM_INCLUDE
+	#include COLLADA_DOM_INCLUDE
+	#endif
 
-//If >2 inline 2.x APIs are hidden to users.
+//This macro is expected to be 2 or 3. If 3 the old 
+//2.x APIs are hidden to users. The runtime package
+//defines it to be 3 so the 3 folder is used to get
+//its headers. Essentially 2 is backward compatible.
 #ifndef COLLADA_DOM
 #define COLLADA_DOM 2
 #endif
 
 /**
  * @namespace ColladaDOM_3 
- * ColladaDOM_3 is recent version namespace.
+ * @c ColladaDOM_3 signifies version 2.5 and later.
+ * @c COLLADA is its alias. @c COLLADA_(namespace) 
+ * is needed since aliases can't extend namespaces.
+ * The linker uses this namespace. @c COLLADA is a
+ * logical namespace, so it can be changed without
+ * breaking existing code bases.
  */
 namespace ColladaDOM_3
 {
@@ -88,7 +107,13 @@ namespace COLLADA = ColladaDOM_3;
  */
 #define COLLADA_DOM_PRODUCTION 5
 
-/**2.5 Linkage Macros EXPLAINED**
+/**2.5 Linkage Macros EXPLAINED*********************************
+
+*COLLADA_DOM_INCLUDE
+if defined is the body of a #include directive to be included at
+the top of the core library headers. The included header can use
+any macros that are defined before it is included.
+(THIS IS FOR WHEN LIBRARIES MUST BUILD AGAINST A CONFIGURATION.)
 
 *BUILDING_COLLADA_DOM
 includes all of the data, etc. in the build. Whereas
@@ -247,7 +272,6 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 
 #ifdef BUILDING_COLLADA_DOM
 #include <limits>
-#include <sstream> //can do without
 #include <vector>
 #endif //BUILDING_COLLADA_DOM
 

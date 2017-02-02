@@ -32,10 +32,11 @@ template<class S, class T>
  * is implemented by way of calling back to @c daeSafeCast<T>().
  * @see also @c daeElement::an().
  */
-inline typename daeConstOf<T,S>::type *daeSafeCast(T *e)
+inline typename daeConstOf
+<T,typename S::__COLLADA__T>::type *daeSafeCast(T *e)
 {
 	const daeElement *upcast = *e;
-	if(e!=nullptr) if(daeUnsafe<daeConstOf<int,S>::type>(e))
+	if(e!=nullptr) if(daeUnsafe<S>(e))
 	{
 	#ifndef COLLADA_quiet_daeSafeCast
 	assert(!"daeSafeCast() failed."); //2.5: Alert the user?
@@ -45,6 +46,16 @@ inline typename daeConstOf<T,S>::type *daeSafeCast(T *e)
 }
 /**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
 template<class S> inline bool daeUnsafe(const daeElement *e)
+{
+	return _daeUnsafe2<daeConstOf<int,typename S::__COLLADA__T>::type>(e);
+}
+/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
+template<template<class> class S> inline bool daeUnsafe(const daeElement *e)
+{
+	return _daeUnsafe2<daeConstOf<int,typename S::__COLLADA__T>::type>(e);
+}
+/**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
+template<class S> inline bool _daeUnsafe2(const daeElement *e)
 {	
 	#ifdef COLLADA_dynamic_daeSafeCast
 	return dynamic_cast<const DAEP::Elemental<S>*>(e)==nullptr;
@@ -52,19 +63,17 @@ template<class S> inline bool daeUnsafe(const daeElement *e)
 	return e->getMeta()!=daeGetMeta<S>();
 	#endif
 }
-/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
-template<> inline bool daeUnsafe<domAny>(const daeElement *e)
+/**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
+template<> inline bool _daeUnsafe2<domAny>(const daeElement *e)
 {
-	//Module 0 is reserved for internal types. Even if 
-	//the library is statically linked into the client.
-	return e->getElementTags().moduleTag!=1;
+	return !e->_isAny();
 }
-/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
-template<> inline bool daeUnsafe<daeObject>(const daeElement*){ return false; }
-/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
-template<> inline bool daeUnsafe<daeElement>(const daeElement*){ return false; }
-/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
-template<> inline bool daeUnsafe<DAEP::Element>(const daeElement*){ return false; }
+/**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
+template<> inline bool _daeUnsafe2<daeObject>(const daeElement*){ return false; }
+/**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
+template<> inline bool _daeUnsafe2<daeElement>(const daeElement*){ return false; }
+/**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
+template<> inline bool _daeUnsafe2<DAEP::Element>(const daeElement*){ return false; }
 
 /**
  * Extract the metadata by constructing an uninitialized "elemental"

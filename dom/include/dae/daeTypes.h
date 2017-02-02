@@ -208,6 +208,8 @@ COLLADA_(namespace)
 	typedef const daeArray<const XS::Element> daeTOC;
 	//Pseudonym is neither a proper NCName nor QName.
 	typedef class daeHashString daePseudonym,daeName;
+	//Trying to use this when a 0-terminator is used.
+	typedef daeName daeName_0;
 	class daeRef;
 	class daeRefRequest;
 	class daeRefResolver;
@@ -420,8 +422,11 @@ template<class T, int N> struct daeBoundaryString2<const T (&)[N]>
 //ColladaDOM.inl templates
 template<class S> 
 inline bool daeUnsafe(const daeElement*);
+template<template<class> class S>
+inline bool daeUnsafe(const daeElement*);
 template<class S, class T>
-inline typename daeConstOf<T,S>::type *daeSafeCast(T*);
+inline typename daeConstOf
+<T,typename S::__COLLADA__T>::type *daeSafeCast(T*);
 //PHASING OUT? THESE WERE BYPASSING VIRTUAL-INHERITANCE. BUT IT'S NOT USED.
 //These workaround that C++ requires virtual-base-classes use dynamic_cast.
 //Note: dynamic_cast cannot be of use here, as the types may be incomplete.
@@ -467,8 +472,7 @@ template<int N, class B, class A> struct daeTypic<N,B,A,void>
 	template<int> struct _choice; 
 	template<> struct _choice<0>{ typedef A type; };
 	template<> struct _choice<1>{ typedef B type; };	
-	template<> struct _choice<2>{ typedef void type; };
-	typedef typename _choice<N>::type type;
+	typedef typename _choice<N!=0>::type type;
 };
 
 /**NULLABLE

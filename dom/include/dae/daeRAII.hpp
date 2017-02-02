@@ -50,8 +50,7 @@ struct CloseIO
 	{
 		assert(IO==nullptr);
 		if((IO=io)==nullptr)
-		daeErrorHandler::get()->handleError
-		("No platform provided daeIO.\n""Nor built-in I/O.\n");		
+		daeEH::Error<<"No platform provided daeIO.\n""Nor built-in I/O.";
 		return io;
 	}
 

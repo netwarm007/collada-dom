@@ -72,20 +72,20 @@ COLLADA_(public) //FORWARDING CONSTRUCTORS
 	 * Default Constructor
 	 */
 	daeSIDREF_size(){}	
-	/**
+	/**REQUIRED
 	 * Non-Default Copy Constructor
 	 * @param cp @c cp to copy into this one.
 	 */
-	daeSIDREF_size(const daeSIDREF_size &cp):daeIDREF_base(cp){}
+	daeSIDREF_size(const daeSIDREF_size &cp){ daeIDREF_base::operator=(cp); }
 
 	//Marking explcit, just to be safe.
-	template<class S>
+	template<class T>
 	/** Single Argument Forwarded Constructors */
-	explicit daeSIDREF_size(const S &s):daeIDREF_base(s){}
+	explicit daeSIDREF_size(const T &cp){ daeIDREF_base::operator=(cp); }
 
-	template<class S, class T>
-	/** Two Argument Forwarded Constructors */
-	daeSIDREF_size(const S &s, const T &t):daeIDREF_base(s,t){}
+	template<class T>
+	/** @param c should be the parent object. */
+	daeSIDREF_size(const T &cp, const DAEP::Object *c):daeIDREF_base(c){ daeIDREF_base::operator=(cp); }
 
 COLLADA_(public) //METHODS NAMED AFTER SIDREF
 	
@@ -277,13 +277,13 @@ COLLADA_(public) //SIDREF HELP
 		//terminating after the first slash avoids the initial ID segment.
 		terminate(q);
 		daeString d = terminate.data();
-		while(q<d) if(*q++=='/')
+		while(q<=d) if(*q++=='/') final:
 		{
 			daeHashString s(p,q-p-1); 
 			p = q; NCNames.push_back(s); 
 			assert(NCNames.back().size()==s.size());
 		}
-		return out;
+		if(p<=d) goto final; return out;
 	}
 };
 

@@ -213,36 +213,15 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline size_t size()const{ return strlen(data()); }	
 
-COLLADA_(public) //FORWARDED CONSTRUCTORS
+COLLADA_(public) //CONSTRUCTION
 	/**
 	 * Default Constructor
 	 */
 	daeIDREF_base():COLLADA_SUPPRESS_C(4355)_support(this){}
 	/**
-	 * @a Type Copy Constructor
+	 * Constructor
 	 */
-	daeIDREF_base(const daeIDREF_base &cp){ *this = cp; }
-	
-	template<class T>
-	/**
-	 * Explicit Constructor
-	 */
-	explicit daeIDREF_base(const T &ref)
-	{
-		_this()._refString.setString(*this,daeHashString(ref)); 
-	}
-	template<class T>
-	/**
-	 * Constructor having @c this contained by @a c.
-	 * @param c_str is now required to supply a parent object.
-	 * This is so the constructor is not ambiguous. 
-	 * @c DAEP::InnerValue uses this constructor to supply an
-	 * object. @c c is a @c daeRef_support::__COLLADA__Object.
-	 */
-	daeIDREF_base(const T &ref, const DAEP::Object *c):_support(c)
-	{
-		_this()._refString.setString(*this,daeHashString(ref)); 
-	}
+	explicit daeIDREF_base(const DAEP::Object *c):_support(c){}
 };
 
 template<int size_on_stack> 
@@ -284,21 +263,30 @@ COLLADA_(public) //OPERATORS
 	daeIDREF &operator=(const daeIDREF_size &cp){ return daeIDREF_base::operator=(cp); }	
 
 COLLADA_(public) //FORWARDING CONSTRUCTORS
+
+	////These follow the lead of daeURI_size.
+	////_refString initializes after daeIDREF_base, so operator= is used.
+	////(operator= is likely easier to maintain regardless.)
+
 	/**
 	 * Default Constructor
 	 */
 	daeIDREF_size(){}	
+	/**REQUIRED
+	 * Non-Default Copy Constructor
+	 * @param cp @c cp to copy into this one.
+	 */
+	daeIDREF_size(const daeIDREF_size &cp){ daeIDREF_base::operator=(cp); }
 
 	//Marking explcit, just to be safe.
-	template<class S>
-	/** Single Argument Forwarded Copy Constructor. */
-	explicit daeIDREF_size(const S &s):daeIDREF_base(s){}
-	/** Non-Default Copy Constructor (same as above) */
-	daeIDREF_size(const daeIDREF_size &cp):daeIDREF_base(cp){}
+	template<class T>
+	/** Single Argument Forwarded Constructors */
+	explicit daeIDREF_size(const T &cp){ daeIDREF_base::operator=(cp); }
 
-	template<class S, class T>
-	/** Two Argument Forwarded Copy Constructor. */
-	daeIDREF_size(const S &s, const T &t):daeIDREF_base(s,t){}
+	template<class T>
+	/** @param c should be the parent object. */
+	daeIDREF_size(const T &cp, const DAEP::Object *c):daeIDREF_base(c){ daeIDREF_base::operator=(cp); }
+
 
 COLLADA_(public) //METHODS NAMED AFTER IDREF
 

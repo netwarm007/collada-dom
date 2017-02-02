@@ -5,7 +5,6 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)

@@ -16,11 +16,14 @@ COLLADA_(namespace)
 {//-.
 //<-'
 	
-/**
+/**WARNING
  * COLLADA C++ class for retrieving the results of 
  * reference-based queries.
  * @see @c daeRefResolver.
  *
+ * @warning This is a low-level structure-like object.
+ * @c reset() must be called after it is used. This is
+ * a source of errors. 
  * @warning @c object should not be overwritten unless
  * it's known to have a @c DAE_OK result. This is because
  * if it is not @c nullptr, @c object->getDOM() must be used
@@ -38,7 +41,10 @@ COLLADA_(namespace)
 class daeRefRequest : public daeHashString
 {
 COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
-
+	/**WARNING
+	 * @c typeInstance points to the first element in an array.
+	 * @warning @c typeInstance does not factor in @c rangeMin.
+	 */
 	daeObjectRef object; daeOpaque typeInstance;	
 	/**WARNING
 	 * If @c type is a @c daeAtomicType::STRING the system reserves
@@ -51,24 +57,111 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	 */
 	const daePrototype *type; size_t rangeMin, rangeMax;
 
-	/** Ex: @c req->a<domCOLLADA>() to call @c daeSafeCast(). */
-	const daeElement *operator->(){ return (daeElement*&)object; }
-
+	//SCHEDULED FOR REMOVAL
+	/**
+	 * Ex: @c req->a<domCOLLADA>() to call @c daeSafeCast().
+	 * @remark This just feels wrong. It seems like it will
+	 * definitely be removed or deprecated after some while.
+	 * @return Returns @c nullptr, so -> must be chained so
+	 * to only call a method that will check for @c nullptr.
+	 */
+	inline const daeElement *operator->()const
+	{
+		assert(object==nullptr||object->_isElement());
+		return (daeElement*&)object; 
+	}
+	
 	/** @c nullptr request constructor. */
 	daeRefRequest(size_t extra=sizeof(daeRefRequest))
-	:daeHashString(nullptr,0),rangeMax(extra){}
-
+	:daeHashString(nullptr,0),rangeMax(extra)
+	{}
 	/**
 	 * Constructor with arguments for the URL-like reference.
 	 * The arguments are in the form of a string, that the ref must understand.
 	 * E.g. for SIDREF this can be a profile. If @c nullptr SIDREFs use "profile_COMMON"
 	 */
 	daeRefRequest(daeHashString cp, size_t extra=sizeof(daeRefRequest))
-	:daeHashString(cp),rangeMax(sizeof(*this)){}
+	:daeHashString(cp),rangeMax(sizeof(*this))
+	{}
 
 	/** WARNING: @c reset cannot initialize data beyond @c maxValue. */
 	inline void reset(daeHashString cp, size_t extra=sizeof(daeRefRequest))
-	{ new(this) daeRefRequest(cp,extra); }	
+	{
+		new(this) daeRefRequest(cp,extra); 
+	}
+
+	/**
+	 * @c type can be an array, value, or @c nullptr. It's a minefield.
+	 * This API returns the @c daeAtomicType of @c typeInstance.
+	 * @return Returns @c daeAtomicType::EXTENSION if @c type==nullptr.
+	 */
+	inline int getAtomicType()const
+	{
+		return &typeInstance==nullptr?0:type->writer->per<daeAtom>().getAtomicType();
+	}
+			
+	template<typename daeT>
+	/** Implements @c getScalar(). */
+	inline daeT &_got()const
+	{
+		return ((daeT*)&typeInstance)[rangeMin];
+	}
+	template<typename daeT, typename T>
+	/** Implements @c getVector(). */
+	inline void _copy(daeOffset o, T *q)const
+	{
+		for(const daeT*p=&_got<daeT>();o>0;o--) *q++ = (T)*p++;
+	}
+	#ifdef NDEBUG
+	#error This could support cross-module types by not using daeAtomicType.
+	#endif
+	template<typename T> COLLADA_NOINLINE
+	/**
+	 * This operation is provided because the COLLADA user manual seems
+	 * to suggest that values are to be "cast" or "directly cast" given
+	 * an initial value.
+	 * @see daeRef::get<scalar_type>() and daeRef::get<scalar_type,N>().
+	 */
+	inline daeOffset getVector(daeOffset N, T *vN, T def=T())const
+	{
+		daeOffset selected = N>1?rangeMax-rangeMin+1:1;
+		daeOffset o = std::min(N,selected);
+		//REMINDER: these can be equal, in which case switch won't work.
+		int at = getAtomicType();
+		if(at==daeAtomicType::BYTE)		
+		_copy<daeByte>(o,vN);
+		else if(at==daeAtomicType::UBYTE)		
+		_copy<daeUByte>(o,vN);
+		else if(at==daeAtomicType::SHORT)		
+		_copy<daeShort>(o,vN);
+		else if(at==daeAtomicType::USHORT)		
+		_copy<daeUShort>(o,vN);
+		else if(at==daeAtomicType::INT)		
+		_copy<daeInt>(o,vN);
+		else if(at==daeAtomicType::UINT)		
+		_copy<daeUInt>(o,vN);
+		else if(at==daeAtomicType::LONG)		
+		_copy<daeLong>(o,vN);
+		else if(at==daeAtomicType::ULONG)		
+		_copy<daeULong>(o,vN);
+		else if(at==daeAtomicType::FLOAT)		
+		_copy<daeFloat>(o,vN);
+		else if(at==daeAtomicType::DOUBLE)		
+		_copy<daeDouble>(o,vN);
+		else if(at==daeAtomicType::BOOLEAN)		
+		_copy<daeBoolean>(o,vN);	
+		else if(at==daeAtomicType::TOKEN||at==daeAtomicType::STRING)
+		{
+			daeStringCP *e, *p = &_got<daeStringCP>(), *d = p+selected;
+			for(o=0;o<N&&p<d;)
+			{
+				vN[o++] = (T)strtod(&_got<daeStringCP>(),&e);				
+				p = e; while(isspace(*p)&&p<d) p++;
+				if(p==e) break;
+			}
+		}
+		else o = 0; for(daeOffset i=o;i<N;i++) vN[i] = def; return o;
+	}	
 };					
 
 /**HELPER
@@ -237,7 +330,7 @@ COLLADA_(protected) //RESERVED INTERFACE
 
 COLLADA_(public) //LEGACY QUERY API
 
-	/**LEGACY SUPPORT, CIRCULAR DEPENDENCY
+	/**WARNING, LEGACY-SUPPORT, CIRCULAR DEPENDENCY
 	 * @warning Relies on @c daeDOM::getRefResolvers().
 	 * Goes beyond @c get(), returning either an xs:list dataset, 
 	 * -or, an individual unit of data. (This implements SIDREF.)
@@ -251,15 +344,65 @@ COLLADA_(public) //LEGACY QUERY API
 	//	return dom->getRefResolvers().resolve(*this,req);
 	//	return DAE_ERR_INVALID_CALL;
 	//}
-
-	template<class T> 
-	/**LEGACY SUPPORT 
-	 * @warning Relies on @c daeDOM::getRefResolvers().
-	 * Uses @c daeSafeCast() to get a fragment of type T. 
-	 */	
-	daeSmartRef<T> get()const
+	 
+	template<class T, bool=daeArrayAware<T>::is_class>
+	/**
+	 * This template exists so @c get() can return an element pointer
+	 * or a scalar type (for COLLADA's SIDREF casting specification.)
+	 */
+	struct get_return
 	{
-		daeRefRequest req; get(req); return req->a<T>();
+		typedef typename T::__COLLADA__T *type;		
+
+		static type cast(const daeRefRequest &req, type def)
+		{
+			daeElement* &e = (daeElement*&)req.object;
+			if(e!=nullptr) if(daeUnsafe<T>(e)) 
+			const_cast<daeObjectRef&>(req.object) = def;
+			else assert(e->_isElement()); return (type&)req.object;
+		}
+	};
+	/**PARTIAL-TEMPLATE-SPECIALIZATION
+	 * @c get<T>() uses this return type if T is not a C++ class type.
+	 */
+	template<class Scalar> struct get_return<Scalar,false>
+	{
+		typedef Scalar type; 
+		
+		static type &cast(const daeRefRequest &req, type &out)
+		{
+			req.getVector<Scalar>(1,&out,out); return out;
+		}
+	};
+
+	template<class T> //element or element smart-ref or a scalar type
+	/**LEGACY-SUPPORT 
+	 * Previously "getElement."
+	 * @warning Resolution is based on @c getDOM()->getRefResolvers().
+	 * @see @c daeRefRequest::getVector().
+	 *
+	 * @return If @a T is a class, a pointer copy of @c req.object is
+	 * returned. The pointer is backed by a smart-ref until @a req is
+	 * destructed.
+	 */	
+	typename get_return<T>::type get
+	(//const T //Disable type deduction to enable get() and force <T>.
+	typename get_return<T>::type def=T(), const daeRefRequest &req=daeName())const
+	{
+		get(const_cast<daeRefRequest&>(req)); return get_return<T>::cast(req,def);
+	}	
+	template<typename T, int N, class S> //T can only be scalar types
+	/**
+	 * @warning This form is not strictly type safe. It's designed with
+	 * typical numerical vector classes in mind.
+	 * @tparam N is required.
+	 * @tparam S is a type so that @c sizeof(S)==sizeof(T)*N holds true.	 
+	 * @see daeRefRequest::getVector().
+	 */
+	inline S &get(S &out, T def=T(), const daeRefRequest &req=daeName())const
+	{
+		get(const_cast<daeRefRequest&>(req)); 
+		req.getVector<T>(N,(T*)&out,def); return out; daeCTC<sizeof(S)==sizeof(T)*N>();
 	}
 
 	/**LEGACY SUPPORT 
@@ -286,7 +429,7 @@ COLLADA_(public) //LEGACY QUERY API
 		if(DAE_OK==get(req)&&req.object->_isElement())
 		return (daeElementRef&)req.object;
 		return nullptr;
-	}		
+	}
 
 COLLADA_(public) //OPERATORS
 

@@ -987,7 +987,7 @@ COLLADA_(public) //Standard Library compatibility layer
 	 * Post 2.5 @c push_back() should be used instead of the old @c append() API
 	 * for single argument uses.
 	 */
-	inline void push_back(const S &value){ set(getCount(),value); }
+	inline void push_back(const S &value){ set(size(),value); }
 
 COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
 	/**LEGACY

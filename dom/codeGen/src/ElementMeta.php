@@ -74,7 +74,7 @@ class ElementMeta //antipattern
   
 	function setSubstitutionGroup($subGroup)
 	{
-		$this->bag['substitutionGroup'] = trim($subGroup);
+		$this->bag['substitutionGroup'] = $subGroup;
 	}
 
 	function setRequiresClass()
@@ -86,10 +86,7 @@ class ElementMeta //antipattern
 	{
 		$this->bag['flags']|=self::isAbstract;
 		
-		if(empty($name)) die('die(empty($name))');
-		//this assumes that abstract is for substitutionGroups
-		//and so all children and types will have global names
-		global $abstract; $abstract[$name] = true;
+		if(empty($this->name)) die('die(empty($name))');
 	}
 
 	function setHasChoice() //UNUSED

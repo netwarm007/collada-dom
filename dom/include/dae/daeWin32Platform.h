@@ -55,8 +55,7 @@ __pragma(warning(disable:4351))
 #endif //_DEBUG
 
 #ifndef COLLADA_H
-#define COLLADA_H__FILE__(h) #h
-#define COLLADA_H(h) __pragma(message("COLLADA-DOM: In " COLLADA_H__FILE__(h) " ..."))
+#define COLLADA_H(h) __pragma(message("COLLADA-DOM: In " COLLADA_STRINGIZE(h) " ..."))
 #endif
 
 //Microsoft prefixes these nonstandard APIs

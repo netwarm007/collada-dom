@@ -69,6 +69,10 @@ foreach($classmeta as $k=>$ea)
 class $1; typedef daeSmartRef<$1> $1Ref; typedef dae_Array<$1> $1_Array; typedef daeSmartRef<const $1> const_$1Ref; 
 	",getFriendlyType($k));
 	}
+	else if(!empty($recursive[$k]))
+	{
+		echo 'typedef class ', getFriendlyName($k.'__recursive'), ' ', getFriendlyName($k), ";\n";	
+	}
 	else echo 'class ', getFriendlyName($k), ";\n";	
 }
 

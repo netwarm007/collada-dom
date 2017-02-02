@@ -73,7 +73,35 @@ $_globals['group_types'] = $pop->getElementsByTypeAccordingToName('xsGroup');
 
 //TODO! REVIEW ME!!! //SCHEDULED OBSOLETE
 $_globals['complex_types'] = $pop->getElementsByTypeAccordingToName('xsComplexType');
- 
+
+//THIS MUST BE done prior to calling generate() so the content-model is
+//able to determine if substitutions have plural representations or not
+global $abstract; $abstract = array();
+global $subgroups; $subgroups = array();
+function subgroupsFlatten(& $sg,$tg,$tmpgroups)
+{
+	$sg = empty($sg)?$tg:array_merge($sg,$tg);		
+	foreach($tg as $k=>$ea) if(!empty($tmpgroups[$k]))
+	subgroupsFlatten($sg,$tmpgroups[$k],$tmpgroups);
+}
+function subgroupsPopulate($pop)
+{
+	//NOTE: This could be done in base-types.php, but if so it'd have
+	//to assume that "name" attributes proceed substitutionGroup ones
+	$elements = $pop->getElementsByTypeAccordingToName('xsElement');
+	global $abstract, $subgroups; $tmpgroups = array();
+	foreach($elements as $k=>$ea)
+	{
+		$a = $ea->attributes;
+		if(!empty($a['abstract']))
+		$abstract[$k] = true;
+		if(!empty($a['substitutionGroup']))		
+		$tmpgroups[$a['substitutionGroup']][$k] = true;
+	}
+	//$subgroups holds a flattened list of hierarchical substitutions
+	foreach($tmpgroups as $k=>$ea)		
+	subgroupsFlatten($subgroups[$k],$ea,$tmpgroups);	
+}subgroupsPopulate($pop);
 //prepare types/classmeta for code-gen step
 //NOTE: this was done with getElementsByType
 //in four separate loops, so the gen.log file
@@ -94,16 +122,10 @@ case 'xsComplexType': //echo "COMPLEX TYPES\n";
 	$meta =& $ea->generate($element_context,$global_elements);
 	$classmeta[$meta['element_name']] =& $meta; break;
 }
-//these are being set by setAbstract()
-global $abstract; $abstract = array();
-global $subgroups; $subgroups = array();
-//NOTE: implicates Collada 1.4.1
-//propagate the substitutableWith lists and attributes inherited by type
-foreach($classmeta as $k=>$ea)
-for($sub=$ea['substitutionGroup'];!empty($sub);$sub=$sub['substitutionGroup'])
-{
-	$subgroups[$sub][$k] = $ea; $sub = $classmeta[$sub];
-}
+//this replaces "true" with a link to the metadata object
+foreach($subgroups as& $ea) 
+foreach($ea as $k2 =>& $ea2) $ea2 =& $classmeta[$k2];
+unset($ea); unset($ea2);
 /*Disabling inside domElements.h
 //NEW: add math to domElements.h
 foreach($classmeta as $ea)
@@ -169,9 +191,7 @@ function flattenInheritanceModel(&$meta)
 	}
 	else if($tempAddTo) //merge
 	{
-		//1.5.0 doesn't enter this. This should be removed if this is needed. 
-		//TODO: If the CM is already a sequence, wrapping in one may be overkill.
-		die('die(COLLADA 1.4.1?)');
+		//TODO: If already a sequence, wrapping in one may be overkill.
 		
 		//Reminder: isPlural is set by _elementSet2::generateCM_isPlural()
 		//array_merge_recursive won't do here, as two non-singles is one plural
@@ -192,14 +212,24 @@ function flattenInheritanceModel(&$meta)
 		$tempArray = array();
 		//adding to CM - need to add a starting sequence
 		$tempArray[] = array('name'=>ElementMeta::sequenceCMopening,'minOccurs'=>1,'maxOccurs'=>1);
-		$tempArray = array_merge($tempArray,$cm2);
-		array_pop($tempArray); //remove the last END token
-		$tempArray = array_merge($tempArray,$cm);
+		$tempArray = array_merge($tempArray,$cm2,$cm);
 		//adding to CM - need to add an ending sequence
 		$tempArray[] = array('name'=>ElementMeta::CMclosure,'minOccurs'=>0,'maxOccurs'=>0);	
 		$cm = $tempArray;
 	}	
-}foreach($classmeta as& $ea) flattenInheritanceModel($ea); unset($ea);
+}if(2!==$COLLADA_DOM)
+{
+	$_globals['recursive'] = array(); //$recursive
+	foreach($classmeta as $k =>& $ea) 
+	{
+		flattenInheritanceModel($ea); 
+		if(1===getNameClash($ea['attributes'],$k,1,$ea['elements']))
+		$_globals['recursive'][$k] = true;
+	}
+}
+else foreach($classmeta as& $ea) flattenInheritanceModel($ea); 
+unset($ea);
+
 //MORE POSTPROCESSING--THIS CONVERTS ENUM-BASED UNIONS INTO ENUMS
 foreach($typemeta as $type=>& $meta) if(!empty($meta['union_type']))
 {	

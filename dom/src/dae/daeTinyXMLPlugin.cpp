@@ -78,8 +78,7 @@ bool daeTinyXMLPlugin::_read(daeIO &IO, daeContents &content)
 
 		default: error:
 
-			daeErrorHandler::get()->handleError
-			("In daeTinyXMLPlugin::readFromMemory...\n");
+			daeEH::Error<<"In daeTinyXMLPlugin::readFromMemory...";
 			return false;
 		}
 	}
@@ -88,15 +87,13 @@ bool daeTinyXMLPlugin::_read(daeIO &IO, daeContents &content)
 		doc.LoadFile(IO.getReadFILE()); 
 		if(!doc.RootElement())
 		{
-			daeErrorHandler::get()->handleError
-			("In daeTinyXMLPlugin::readFromFile...\n");
+			daeEH::Error<<"In daeTinyXMLPlugin::readFromFile...";
 			return false;
 		}
 	}
 	else //This is unexpected.
 	{
-		daeErrorHandler::get()->handleError
-		("daeTinyXMLPlugin I/O request is neither FILE, nor memory-string...\n");
+		daeEH::Error<<"daeTinyXMLPlugin I/O request is neither FILE, nor memory-string...";
 		return false;
 	}
 

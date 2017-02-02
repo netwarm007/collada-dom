@@ -35,7 +35,6 @@ class _type
 	{
 		return in_array($type,$this->type);
 	}
-
 }
 
 class _typedData extends _type
@@ -202,8 +201,10 @@ class _elementSet2 extends _elementSet
 	}
 	function generateContentModel2(& $st, _elementSet $element, ElementMeta& $generator, $maxOccurs)
 	{
+		global $subgroups;
+		
 		//NEW: $st is used to properly assign 'isPlural'. $add is used to transclude groups.		
-		$add =& $st[0]; $nonce =& $st[1]; $stack =& $st[2];		
+		$add =& $st[0]; $nonce =& $st[1]; $stack =& $st[2]; 
 		$isPlural = function($name) use(&$st,$stack)
 		{				
 			$named =& $st[$name];
@@ -294,17 +295,46 @@ class _elementSet2 extends _elementSet
 				break;
 			case 'xsElement':
 				//echo "found element!\n";				
-				//!$add is treating group-transcluded elements as if references
-				//(Otherwise they will be circular if inline defined)
 				$name = $generator->addElement($ea,$add);
-				if($add) $generator->addContentModel($name,$minO,$maxO);
-				//if a containing element/group has a maxOccurs>1, then inherit it (will flag as array in code gen)
-				//"isPlural" isn't an attribute, but neither is a composite "maxOccurs"
-				//Note: this was being set prior to addElement so it would be indirectly included
-				//if($maxOccurs>1) $ea->setAttribute('maxOccurs',$maxOccurs);			
-				$el =& $generator->bag['elements'][$name];				
-				if($maxOccurs>1||$maxO>1||$isPlural($name)) $el['isPlural'] = true;
-				else if(!isset($el['isPlural'])) $el['isPlural'] = false;							
+				//$add is treating group-transcluded elements as if references
+				//(Otherwise they will be circular if inline defined)				
+				if($add) $generator->addContentModel($name,$minO,$maxO);								
+				//If not for $subgroups this is just the $isPlural logic below
+				$els =& $generator->bag['elements'];
+				$ea =& $els[$name];
+				$names = array($name =>& $ea);
+				if(!empty($subgroups[$name]))				
+				{
+					$inc =& $generator->bag['#include'];
+					$el_docs =& $generator->bag['element_documentation'];
+					$ea_doc = $el_docs[$name];
+					foreach($subgroups[$name] as $k=>$ea2)
+					{
+						if(empty($els[$k]))
+						{
+							$inc[] = $k;
+							$el =& $els[$k];
+							$el_docs[$k] = $ea_doc; 
+							foreach($ea as $k2=>$ea2)
+							{
+								//these mess with relateClass()
+								if($k2!='ref'&&$k2!='type')
+								$el[$k2] = $ea2;
+							}
+							$names[$k] =& $el;
+						}
+						else $names[$k] =& $els[$k];
+					}
+				}
+				foreach($names as $name =>& $ea)
+				{
+					//if a containing element/group has a maxOccurs>1, then inherit it (will flag as array in code gen)
+					//"isPlural" isn't an attribute, but neither is a composite "maxOccurs"
+					//Note: this was being set prior to addElement so it would be indirectly included
+					//if($maxOccurs>1) $ea->setAttribute('maxOccurs',$maxOccurs);								
+					if($maxOccurs>1||$maxO>1||$isPlural($name)) $ea['isPlural'] = true;
+					else if(!isset($ea['isPlural'])) $ea['isPlural'] = false;							
+				}unset($ea);
 			default: break; //annotations, etc.
 			}			
 		}

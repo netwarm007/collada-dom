@@ -615,7 +615,7 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 	 */
 	inline daeUShort getURI_terminatorCP()const{ return _size-1; }
 
-	template<char X> //X can be '?', '#', ':', '/', '@', or '://'.
+	template<char X> //X can be '://', '@', ':', '/', '.', '?', or '#'.
 	/**LOW-LEVEL
 	 * @see getURI_upto(), which this parallels.
 	 * @note / is equivalent to @c getURI_pathCP().
@@ -627,12 +627,13 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 		{	
 		#define _(X,c) case X: return c-(c>0&&URI[c-1]==X?1:0);
 		_('@',_authority_host)_(':',_authority_port)_('?',_query)_('#',_fragment)
+		_('.',_path_extension)
 		#undef _
-		case '/': return _path;
+		case '/': return _path; 
 		//worth it? will generate multi-char compiler warnings
 		case '://': return _authority>2?_authority-3:0;
 		}assert(0); return 0;
-		daeCTC<X=='@'||X==':'||X=='/'||X=='?'||X=='#'||X=='://'>();
+		daeCTC<X=='@'||X==':'||X=='/'||X=='.'||X=='?'||X=='#'||X=='://'>();
 	}	
 	
 	//WARNING: This macro is added for no-argument views. Beware:
@@ -745,7 +746,7 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 	template<char X, class T> 
 	/**
 	 * Gets ill-defined component groups to a @a T. 
-	 * @tparam X can be '?', '#', ':' or '/'.
+	 * @tparam X can be ':', '/', '.', '?', or '#'.
 	 * @tparam T can be daeRefView, daeArray, std::string, etc.
 	 * Here ':' is the port part. It's somewhat cryptic, but there are not
 	 * names for these things! 
@@ -759,10 +760,11 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 		{
 		case ':': return _getURI(io,from,':',std::max<daeUShort>(from,_authority_port));
 		case '/': return _getURI(io,from,'\0',std::max<daeUShort>(from,_path));
+		case '.': return _getURI(io,from,'.',std::max<daeUShort>(from,_path_extension));
 		case '?': return _getURI(io,from,'?',std::max<daeUShort>(from,_query)); 
 		case '#': return _getURI(io,from,'#',std::max<daeUShort>(from,_fragment)); 
 		}
-		assert(0); return io; daeCTC<X==':'||X=='/'||X=='?'||X=='#'>();
+		assert(0); return io; daeCTC<X==':'||X=='/'||X=='.'||X=='?'||X=='#'>();
 	}	
 	template<char X> 
 	/**OVERLOAD

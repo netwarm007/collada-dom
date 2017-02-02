@@ -467,12 +467,12 @@ COLLADA_(public) //UNADVERTISED METHODS
 	//	return _isData()?&getDOM()->getDatabase():nullptr; 
 	//}
 
-	/** ASSUMES 8-BIT TAGS 
+	typedef int __isX_assume[8==CHAR_BIT];
+	/**
 	 * @return Returns @c true if this object belongs to a database. 
 	 */
-	inline bool _isData()const{ return 0x1000000==(__DAEP__Object__tags&0x1000000); }
-
-	/** ASSUMES 8-BIT TAGS 
+	inline bool _isData()const{ return 0x1000000==(__DAEP__Object__tags&0x1000000); }	
+	/**
 	 * @return Returns @c true if this object is a @c daeDOM object. 
 	 * @note This is faster than accessing __DAEP__Model__genus, and is
 	 * possible because DOM objects are managed by the library exclusively.
@@ -480,8 +480,7 @@ COLLADA_(public) //UNADVERTISED METHODS
 	 * "process share", that belongs to the library, and uses 2 to identify DOMs.
 	 */
 	inline bool _isDOM()const{ return 0x0000200==(__DAEP__Object__tags&0xFF00FF00); }
-
-	/** ASSUMES 8-BIT TAGS
+	/**
 	 * @return Returns @c true if this object is a @c daeDoc object;
 	 * -note that @c daeDOM is a @c daeDoc, and that @c getObjectType()
 	 * differs from @c _isDoc() in-so-far as it reports DOM, and not DOC!!
@@ -494,12 +493,23 @@ COLLADA_(public) //UNADVERTISED METHODS
 	 * of @c daeDocument or @c daeArchive. Hard/Symbolic links are a future feature.
 	 * (that may or may never be.)
 	 */
-	inline bool _isDoc()const{ return 0x0000100==(__DAEP__Object__tags&0xFE00FF00); }
+	inline bool _isDoc()const{ return 0x0000100==(__DAEP__Object__tags&0xFE00FF00); }	
+	/**
+	 * This got complicated when it was determined that @c domAny ill also
+	 * process-share 0, and so have tags similar to @c _isDOM() & @c _isDoc().
+	 * @remarks Later this will have some issues with @c daeElementTags::nameTag.
+	 */
+	inline bool _isAny()const{ return 0x1008000==(__DAEP__Object__tags&0xFF008000); }
+	/**
+	 * @return Returns @c _isDoc()||_isDOM(). Or if a non-element element container.
+	 * @remarks This is the primary motivation for @c _isAny(). @c domAny is in the way.
+	 */
+	inline bool _isDoc_or_DOM()const{ return 0x1008000>__DAEP__Object__tags; }
 
 	/**
 	 * This makes @c a<daeElement>() easier read in keeping with @c isDOM() & @c isDoc().
 	 */
-	inline bool _isElement()const{ return getObjectType()>=daeObjectType::ANY; }
+	inline bool _isElement()const{ return getObjectType()>=daeObjectType::ANY; }	
 
 COLLADA_(public) //OPERATORS
 
@@ -529,6 +539,12 @@ COLLADA_(public) //OPERATORS
 	}
 
 COLLADA_(public) //daeSafeCast() SHORTHANDS
+	/**WORKAROUND
+	 * This is now needed by all standard @c daeSmartRef classes since
+	 * many templates use it to let smart-refs stand in for their type.	 
+	 * (That allows consistent use of shorter WYSIWYG smart-ref names.)
+	 */
+	typedef daeObject __COLLADA__T;
 
 	/** Follows style of daeElement::a(). */
 	template<class T> T *a()

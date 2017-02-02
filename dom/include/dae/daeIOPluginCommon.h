@@ -34,10 +34,11 @@ struct daeLegacyIOPlugins : daeIOEmpty //INTERNAL
 	daeLegacyIOPlugins(int legacy, const daeURI &URI)
 	{
 		//There's room for improvement here.
-		daeErrorHandler::get()->handleError
-		("No platform provided daeIOPlugin.\n"
-		"Nor built-in plugin.\n""Could not read/write document:\n");		
-		daeErrorHandler::get()->handleError(URI.getURI());		
+		daeEH::Error<<
+		"No platform provided daeIOPlugin.\n"
+		"Nor built-in plugin.\n"
+		"Could not read/write document:\n"<<
+		URI.getURI();		
 	}
 };
 #endif //BUILDING_COLLADA_DOM
@@ -63,7 +64,7 @@ COLLADA_(protected) //Visual Studio workaround
 	/**Implements constructors/destructors. */
 	LINKAGE void __xstruct(int x, int legacy=0);
 	
-COLLADA_(public) //These status APIs are new in 2.5
+COLLADA_(public) //These status APIs are new in 2.5.
 
 	enum
 	{
@@ -114,7 +115,9 @@ COLLADA_(public) //These status APIs are new in 2.5
 	/**WARNING
 	 * @return Returns @c true if a read simple content model value
 	 * could not be set because of schema mismatch.
-	 * The text should appear in the contents-array as if mixed-text.
+	 * The text SHOULD appear in the contents-array as if mixed-text.
+	 * UPDATE: Now that mixed-text is implemented, it turns out that
+	 * there are issues (around ambiguities) that make it unsane 
 	 */
 	inline bool getReadUnmixedCharData()
 	{

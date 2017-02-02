@@ -5,7 +5,6 @@
 * http://www.opensource.org/licenses/mit-license.php
 *
 */
-
 #include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
@@ -43,6 +42,8 @@ domAny::_Master::_Master(XS::Schema &xs)
 	
 	//HACK: This assigns domAny to a special 0 process-share.
 	(&pt._getClassTag())[3] = 1;
+	//HACK: _isAny() now needs this to tell it's not Doc/DOM.
+	(&pt._getClassTag())[1] = 0x80;
 	assert(0==pt._getPShare()&&pt._isData()&&!daeUnsafe<domAny>(pt));
 
 	memcpy(&pt._meta,&el,sizeof(el));

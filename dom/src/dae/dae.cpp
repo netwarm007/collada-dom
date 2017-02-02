@@ -5,8 +5,8 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
+
 #include "../../include/dae/daeRAII.hpp"
 #include "../../include/modules/daeSTLDatabase.h"
  
@@ -275,8 +275,7 @@ COLLADA_SUPPRESS_C(4355)
 	if(OS==nullptr)
 	{
 		OS = &dae_cpp_dummyPlatform;
-		daeErrorHandler::get()->handleError
-		("No daePlatform provided. Using dummy to avoid a crash.");
+		daeEH::Error<<"No daePlatform provided. Using dummy to avoid a crash.";
 	}
 	_platform = OS;
 	
@@ -328,9 +327,9 @@ daeDOM::~daeDOM()
 	if(!_isEmbedded()||_closedDocs._docs[0]!=this
 	||1!=_closedDocs._docs.size()||!_docs.empty())
 	{
-		daeErrorHandler::get()->handleWarning
-		("Class daeDOM's \"destructor\" has unreconciled references.\n\
-		This suggests a \"memory leak\" and can precipitate a \"crash.\"");
+		daeEH::Warning<<
+		"Class daeDOM's \"destructor\" has unreconciled references.\n"
+		"This suggests a \"memory leak\" and can precipitate a \"crash.\"";
 	}
 
 	//The database deletes _databaseRejoinder where appropriate.

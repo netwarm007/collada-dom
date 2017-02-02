@@ -5,7 +5,6 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
@@ -84,7 +83,7 @@ daeMetaElement &XS::Schema::_addElement(long long schema, int size, daeFeatureID
 	int genus = 1+int(schema>>48);
 	int attribs = 0x3F&int(schema>>32);
 	//FYI: Thunks are not being assigned to the DAEP::Child features.
-	//domAny has a "value" member even though it'd saying it's MIXED.
+	//domAny has a "value" member even though it's saying it's MIXED.
 	int thunks = attribs, addvalue = 0;
 	if(genus==daeObjectType::ANY||(schema&3)==daeContentModel::SIMPLE) 
 	{

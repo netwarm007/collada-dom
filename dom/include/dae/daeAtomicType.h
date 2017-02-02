@@ -822,15 +822,15 @@ struct daeTypistFP : daeTypist<>
 		{
 		case 'N': if(buf[1]!='a'||buf[2]!='N'||buf[3]!='\0') break;
 		//These could become overwhelming. (Could store a flag?)
-		//daeErrorHandler::get()->handleWarning("NaN encountered while setting an attribute or value\n");
+		//daeEH::Warning<<"NaN encountered while setting an attribute or value";
 		(I&)dst = NaN; return DAE_OK;
 		case 'I': if(buf[1]!='N'||buf[2]!='F'||buf[3]!='\0') break;
 		//These could become overwhelming. (Could store a flag?)
-		//daeErrorHandler::get()->handleWarning("INF encountered while setting an attribute or value\n");
+		//daeEH::Warning<<"INF encountered while setting an attribute or value";
 		(I&)dst = INF; return DAE_OK;
 		case '-': if(buf[1]!='I'||buf[2]!='N'||buf[3]!='F'||buf[4]!='\0') break;
 		//These could become overwhelming. (Could store a flag?)
-		//daeErrorHandler::get()->handleWarning("-INF encountered while setting an attribute or value\n");
+		//daeEH::Warning<<"-INF encountered while setting an attribute or value";
 		(I&)dst = _INF; return DAE_OK;
 		}
 		return DAE_ERR_QUERY_SYNTAX;

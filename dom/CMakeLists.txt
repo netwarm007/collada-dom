@@ -6,7 +6,7 @@ file(GLOB dae_files ${CMAKE_CURRENT_SOURCE_DIR}/src/dae/*.cpp)
 file(GLOB libxmlplugin_files ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/LIBXMLPlugin/*.cpp)
 
 set(COLLADA_BASE_SOURCES ${dae_files} ${libxmlplugin_files})
-set(COLLADA_COMPILE_FLAGS "${EXTRA_COMPILE_FLAGS})
+set(COLLADA_COMPILE_FLAGS "${EXTRA_COMPILE_FLAGS}")
 # create dynamic libraries
 set(COLLADA_COMPILE_FLAGS "${COLLADA_COMPILE_FLAGS} -DEXPORTING_COLLADA_DOM")
 

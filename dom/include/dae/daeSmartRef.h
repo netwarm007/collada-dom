@@ -75,7 +75,7 @@ COLLADA_(public) //Funky constructors
   //operator-not-called-when-using-initialization-syntax-and-why-doe//
   ////////////////////////////////////////////////////////////////////
 
-	template<class U, int N>
+	template<class U, int N> //BOTH class T & U MUST BE DEFINED.
 	/**
 	 * There seems to be a difference between () and = construction.
 	 */
@@ -83,7 +83,7 @@ COLLADA_(public) //Funky constructors
 	{
 		U *u = cp; new(this) daeSmartRef(u); //Doing in body, just to be safe.
 	}
-	template<class U, int N>
+	template<class U, int N> //BOTH class T & U MUST BE DEFINED.
 	/**CONST-FORM
 	 * There seems to be a difference between () and = construction.
 	 */
@@ -92,7 +92,7 @@ COLLADA_(public) //Funky constructors
 		const U *u = cp; new(this) daeSmartRef(u); //Doing in body, just to be safe.
 	}
 
-	template<class U>
+	template<class U> //BOTH class T & U MUST BE DEFINED.
 	/**
 	 * Not entirely sure why this is, but @c COLLADA_DOM_3__struct__daeSmartRef 
 	 * based refs want to use the @c daeSmartRef based constructor without this.
@@ -156,17 +156,30 @@ COLLADA_(public) //Non-factory constructors
 	 */
 	daeSmartRef(U *ptr):_ptr((daeObject*)ptr)
 	{
-		T *upcast = ptr; _ptr->_ref();
+		_upcast(ptr,(T*)nullptr); _ptr->_ref();
 	}			
-
+	/** Implements DAEP::Element branch from DAEP::Object logic. */
+	template<class U> void _upcast(U *ptr, const daeObject*)
+	{
+		daeConstOf<T,DAEP::Object>::type *upcast = ptr;
+	}
+	/** Implements DAEP::Element branch from DAEP::Object logic. */
+	template<class U> void _upcast(U *ptr, const daeElement*)
+	{
+		daeConstOf<T,daeElement>::type *upcast = dae(ptr);
+	}
+	template<class U> void _upcast(U *ptr,...)
+	{
+		T *upcast = ptr; 
+	}
 	template<class U> //BOTH class T & U MUST BE DEFINED.
 	/**
 	 * Copy Constructor that will convert from one template to the other.
 	 * @param smartRef a daeSmartRef to the object to copy from.
 	 */	
-	daeSmartRef(const daeSmartRef<U> &cp) : _ptr((daeObject*&)cp)
+	daeSmartRef(const daeSmartRef<U> &cp) : _ptr((daeObject*&)cp)		
 	{
-		T *upcast = (U*)nullptr; _ptr->_ref();
+		_upcast((U*)nullptr,(T*)nullptr); _ptr->_ref();
 	}
 	/**
 	 * Copy Constructor
@@ -216,6 +229,23 @@ COLLADA_(public) //OPERATORS
 		_ptr->_release();
 		_ptr = (daeObject*)ptr;
 		return *this;
+	}
+	 	
+	template<class U, int N> //BOTH class T & U MUST BE DEFINED.
+	/**
+	 * There seems to be a difference between () and = construction.
+	 */
+	daeSmartRef &operator=(dae_Array<U,N> &cp)
+	{
+		return operator=((U*)cp);
+	}
+	template<class U, int N> //BOTH class T & U MUST BE DEFINED.
+	/**CONST-FORM
+	 * There seems to be a difference between () and = construction.
+	 */
+	daeSmartRef &operator=(const dae_Array<U,N> &cp)
+	{
+		return operator=((const U*)cp);
 	}
 
 	//class T MUST BE DEFINED.

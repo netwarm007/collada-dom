@@ -111,15 +111,9 @@ const std::string &daeZAEUncompressHandler::obtainRootFilePath()
 				//TODO find root file without manifest
 			}
 		}
-		else
-		{
-			daeErrorHandler::get()->handleError("Error extracting archive in daeZAEUncompressHandler::obtainRootFilePath\n");
-		}
+		else daeEH::Error<<"Error extracting archive in daeZAEUncompressHandler::obtainRootFilePath.";
 	}
-	else
-	{
-		daeErrorHandler::get()->handleError("Error creating tmp dir in daeZAEUncompressHandler::obtainRootFilePath\n");
-	}
+	else daeEH::Error<<"Error creating tmp dir in daeZAEUncompressHandler::obtainRootFilePath.";
 
 	boost::filesystem::remove_all(this->getTmpDir());
 	return EMPTY_STRING;
@@ -174,10 +168,10 @@ bool daeZAEUncompressHandler::retrieveRootURIFromManifest(const std::string &tmp
 	}
 
 	if(xmlReader)
-		xmlFreeTextReader(xmlReader);
+	xmlFreeTextReader(xmlReader);
 	if(error)
 	{
-		daeErrorHandler::get()->handleError("Error parsing manifest.xml in daeZAEUncompressHandler::retrieveRootURIFromManifest\n");
+		daeEH::Error<<"Error parsing manifest.xml in daeZAEUncompressHandler::retrieveRootURIFromManifest.";
 		return false;
 	}
 
@@ -225,7 +219,7 @@ bool daeZAEUncompressHandler::extractArchive(unzFile zipFile,const std::string &
 			{
 				if(unzGoToNextFile(zipFile)!=UNZ_OK)
 				{
-					daeErrorHandler::get()->handleError("Error moving to next file in zip archive in daeZAEUncompressHandler::extractArchive\n");
+					daeEH::Error<<"Error moving to next file in zip archive in daeZAEUncompressHandler::extractArchive.";
 					error = true;
 					break;
 				}
@@ -234,7 +228,7 @@ bool daeZAEUncompressHandler::extractArchive(unzFile zipFile,const std::string &
 	}
 	else
 	{
-		daeErrorHandler::get()->handleError("Error getting info for zip archive in daeZAEUncompressHandler::extractArchive\n");
+		daeEH::Error<<"Error getting info for zip archive in daeZAEUncompressHandler::extractArchive.";
 		error = true;
 	}
 	return !error;
@@ -255,7 +249,7 @@ bool daeZAEUncompressHandler::extractFile(unzFile zipFile,const std::string &des
 		{
 			if(!boost::filesystem::create_directories(fs::path(destDir)/currentFileName))
 			{
-				daeErrorHandler::get()->handleError("Error creating dir from zip archive in daeZAEUncompressHandler::extractFile\n");
+				daeEH::Error<<"Error creating dir from zip archive in daeZAEUncompressHandler::extractFile.";
 				error = true;
 			}
 		}
@@ -282,34 +276,32 @@ bool daeZAEUncompressHandler::extractFile(unzFile zipFile,const std::string &des
 				{
 					if(unzCloseCurrentFile(zipFile)==UNZ_CRCERROR)
 					{
-						daeErrorHandler::get()->handleError("CRC error while opening file in zip archive in daeZAEUncompressHandler::extractFile\n");
+						daeEH::Error<<"CRC error while opening file in zip archive in daeZAEUncompressHandler::extractFile.";
 						error = true;
 					}
 					else
 					{
 						if(!checkAndExtractInternalArchive(currentOutFilePath.string()))
-						{
-							error = true;
-						}
+						error = true;						
 					}
 				}
 				else
 				{
-					daeErrorHandler::get()->handleError("Error reading file in zip archive in daeZAEUncompressHandler::extractFile\n");
+					daeEH::Error<<"Error reading file in zip archive in daeZAEUncompressHandler::extractFile.";
 					error = true;
 				}
 
 			}
 			else
 			{
-				daeErrorHandler::get()->handleError("Error opening file in zip archive in daeZAEUncompressHandler::extractFile\n");
+				daeEH::Error<<"Error opening file in zip archive in daeZAEUncompressHandler::extractFile.";
 				error = true;
 			}
 		}
 	}
 	else
 	{
-		daeErrorHandler::get()->handleError("Error getting info for file in zip archive in daeZAEUncompressHandler::extractFile\n");
+		daeEH::Error<<"Error getting info for file in zip archive in daeZAEUncompressHandler::extractFile.";
 		error = true;
 	}
 
@@ -338,13 +330,13 @@ bool daeZAEUncompressHandler::checkAndExtractInternalArchive(const std::string &
 	{
 		if(!extractArchive(zipFile,tmpDir))
 		{
-			daeErrorHandler::get()->handleError("Could not extract internal zip archive in daeZAEUncompressHandler::checkAndExtractInternalArchive\n");
+			daeEH::Error<<"Could not extract internal zip archive in daeZAEUncompressHandler::checkAndExtractInternalArchive.";
 			error = true;
 		}
 	}
 	else
 	{
-		daeErrorHandler::get()->handleError("Could not create temporary directory for extracting internal zip archive in daeZAEUncompressHandler::checkAndExtractInternalArchive\n");
+		daeEH::Error<<"Could not create temporary directory for extracting internal zip archive in daeZAEUncompressHandler::checkAndExtractInternalArchive.";
 		error = true;
 	}
 
@@ -358,7 +350,7 @@ bool daeZAEUncompressHandler::checkAndExtractInternalArchive(const std::string &
 		}
 		else
 		{
-			daeErrorHandler::get()->handleError("Could not remove internal zip archive in daeZAEUncompressHandler::checkAndExtractInternalArchive\n");
+			daeEH::Error<<"Could not remove internal zip archive in daeZAEUncompressHandler::checkAndExtractInternalArchive.";
 			error = true;
 		}
 	}

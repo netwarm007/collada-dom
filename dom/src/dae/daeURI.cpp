@@ -5,8 +5,8 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
+
 #include "../../include/dae/daeRAII.hpp"
 
 COLLADA_(namespace)
@@ -475,12 +475,10 @@ static void daeURI_cpp_RFC3986_decode(daeStringCP *const pp)
 				}
 			}			
 			//There's ample room for improvement here.
-			daeErrorHandler &got = *daeErrorHandler::get();
-			got.handleWarning("Invalid % sequence in URI:\n");
-			got.handleWarning(pp);
-			got.handleWarning("\nAt:\n");
-			got.handleWarning(p);
-			got.handleWarning("\n");
+			daeEH::Warning<<"Invalid % sequence in URI:\n"<<
+			pp<<"\n"
+			"At:\n"<<
+			p;
 		}
 		*q++ = *p++;
 	}
@@ -607,10 +605,9 @@ void daeURI_base::_docHookup(daeArchive &a, daeDocRef &reinsert)const
 		//Could daeURI::getIsUnique() be the idea?
 		a._closedDoc(match,reinsert);
 		//There's ample room for improvement here.
-		daeErrorHandler &got = *daeErrorHandler::get();
-		got.handleWarning("A doc was closed, replaced by an identical URI:\n");
-		got.handleWarning(getURI());
-		got.handleWarning("\n");
+		daeEH::Warning<<
+		"A doc was closed, replaced by an identical URI:\n"<<
+		getURI();
 	}
 	else a._whatsupDocInsert(reinsert);
 } 
@@ -665,8 +662,8 @@ daeOK daeRawResolver::_resolve_exported(const daeElementRef &hit, const daeURI &
 		}	
 		if(source==nullptr||"source"!=source->getNCName())
 		{
-			daeErrorHandler::get()->handleError
-			("daeRawResolver - URI is not <source><technique_common><accessor> embedded.\n");
+			daeEH::Error<<
+			"daeRawResolver - URI is not <source><technique_common><accessor> embedded.";
 			return DAE_ERR_INVALID_CALL;
 		}
 		const_daeElementRef param = accessor->getChild("param");				
@@ -687,7 +684,7 @@ daeOK daeRawResolver::_resolve_exported(const daeElementRef &hit, const daeURI &
 			const_daeDOMRef DOM = a->getDOM();		
 			assert(DOM!=nullptr); /*if(DOM==nullptr) 
 			{
-				daeErrorHandler::get()->handleError("daeRawResolver - URI is not DOM-embedded.\n");
+				daeEH::Error<<"daeRawResolver - URI is not DOM-embedded.";
 				return DAE_ERR_INVALID_CALL;
 			}*/
 			  
@@ -696,8 +693,9 @@ daeOK daeRawResolver::_resolve_exported(const daeElementRef &hit, const daeURI &
 			long byteOffset = strtol(fragment.view,&end,10); 
 			if(end-fragment.view!=fragment.extent)
 			{
-				daeErrorHandler::get()->handleError
-				("daeRawResolver - URI does not have a numeric fragment. Cannot be a file offest.\n");
+				daeEH::Error<<
+				"daeRawResolver - URI does not have a numeric fragment.\n"
+				"Cannot be a file offest.";
 				return DAE_ERR_INVALID_CALL;
 			}	
 
@@ -712,14 +710,8 @@ daeOK daeRawResolver::_resolve_exported(const daeElementRef &hit, const daeURI &
 			 ||nullptr==(rawFile=_rawIO->getWriteFILE()))
 			{
 				if(_rawIO!=nullptr)
-				{
-					daeErrorHandler::get()->handleError("Raw FILE error: ");
-					daeErrorHandler::get()->handleError(uri.getURI());
-				}
-				int new_line = _rawIO==nullptr?1:0;
-				daeErrorHandler::get()->handleError
-				("\n""RAW: Couldn't open secondary I/O channel for daeRawResolve::_resolve_exported.\n"
-				+new_line);			
+				daeEH::Error<<"Raw FILE error: "<<uri.getURI();
+				daeEH::Error<<"RAW: Couldn't open secondary I/O channel for daeRawResolve::_resolve_exported.";
 				return DAE_ERR_BACKEND_IO;		
 			}
 
@@ -769,9 +761,8 @@ daeOK daeRawResolver::_resolve_exported(const daeElementRef &hit, const daeURI &
 
 			if(0!=ferror(rawFile)) type_unknown:
 			{
-				daeErrorHandler::get()->handleError(uri.getURI());
-				daeErrorHandler::get()->handleError
-				("\n""Raw FILE error (ferror) after reading file. Possible data loss. Too late to back out.");
+				daeEH::Error<<uri.getURI()<<"\n"
+				"Raw FILE error (ferror) after reading file. Possible data loss. Too late to back out.";
 			}
 		}
 		req.object = array; //miss

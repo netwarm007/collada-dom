@@ -5,7 +5,6 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
@@ -774,7 +773,7 @@ void daeMeta::_place_operation::uncursorize(void *after, void *before)
 
 			for(rit=ritext-1;rit->hasText()&&rit>iit;)
 			rit-=rit->getKnownEndOfText().counterspan();
-			a = rit>=iit?iit->_child.ordinal:0;
+			a = rit>=iit?iit->_child.ordinal:daeOrdinals;
 		}		
 		else a = rit->_child.ordinal; 
 	}

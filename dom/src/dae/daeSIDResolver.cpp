@@ -5,7 +5,6 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
@@ -80,12 +79,11 @@ typedef struct //daeSIDResolver_cpp
 		unsigned distance = 0; do
 		{
 			//Bail if we're looking for an element in a different profile.
-			if(!profile.empty())
-			{
-				if("technique_common"==e->getNCName()
-				 ||"technique"==e->getNCName()&&profile!=e->getAttribute("profile"))
-				return UINT_MAX;
-			}
+			//Pre-2.5 this worked differently, but the schema is ambiguous
+			//if it is not interpreted this way.
+			if("technique_common"==e->getNCName()&&!profile.empty()
+			 ||"technique"==e->getNCName()&&profile!=e->getAttribute("profile"))
+			return UINT_MAX;			
 			if(e==c) return distance; distance++;
 
 		}while(nullptr!=(e=e->getParentElement())); return UINT_MAX;
@@ -117,7 +115,19 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 		}
 		else if(!NCNames.empty())
 		{
-			cpp.lookup->idLookup(*it++,cpp.scope);
+			//https://www.khronos.org/bugzilla/show_bug.cgi?id=1924
+			//proposes letting / select the top/root fragment.
+			if((it++)->empty()
+			||nullptr==cpp.lookup->idLookup(it[-1],cpp.scope))
+			{								
+				//This does not comport with the manual, but
+				//many examples in the manual, and in the CTS
+				//examples omit the ID.
+				//UPDATE: <texture texture> must work this way
+				//because its type is NCName. But then it can't
+				//be a SIDREF. The schemas are very inconsistent.
+				cpp.scope = cpp.lookup->getRoot();
+			}
 		}
 		if(cpp.scope==nullptr)
 		return DAE_ERR_QUERY_NO_MATCH;

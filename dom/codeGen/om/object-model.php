@@ -178,7 +178,7 @@ class xsElement extends _elementSet2 //require_once('om/xsElement.php');
 		$generator->setName($this->getAttribute('name'));
 		$generator->setContext($element_context);
 		$subGroup = $this->getAttribute('substitutionGroup');
-		if($subGroup!='')
+		if(!empty($subGroup))
 		{
 			//echo "found a subGroup ". $subGroup ."!\n";
 			$generator->setSubstitutionGroup($subGroup);

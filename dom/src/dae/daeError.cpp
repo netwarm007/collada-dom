@@ -5,14 +5,13 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
 {//-.
 //<-'
 
-#define _(x,y) { ##x, #x "  " y },	
+#define _(x,y) { x, #x "  " y },	
 static struct
 {
 	daeError errCode; const char *errString;

@@ -110,9 +110,7 @@ COLLADA_(protected) //daeRefResolver::_resolve
 	COLLADA_DOM_LINKAGE static void _printError(daeError err, daeString uri)
 	COLLADA_DOM_SNIPPET
 	(
-		daeErrorHandler::get()->handleError("daeDefaultURIResolver - Failed to resolve \n");
-		daeErrorHandler::get()->handleError(uri);
-		daeErrorHandler::get()->handleError("\n");
+		daeEH::Error<<"daeDefaultURIResolver - Failed to resolve\n"<<uri;
 	)
 };
 

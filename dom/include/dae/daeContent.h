@@ -2189,16 +2189,32 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline operator Type*()
 	{
-		if(size()==0) return nullptr;
+		if(empty()) return nullptr;
 		const daeContent *got = _content()._get<Name>(_i(0));
 		return got==nullptr?nullptr:(Type*)got->_child.ref;
 	}	
-	/**CONST-FORM
+	/**INTERNAL
+	 * This might be sligtly better done by @c DAEP::Child.
+	 */
+	inline bool __inoperable_ptr()const
+	{
+		return (char*)this-(char*)nullptr<65536&&(Name<0||Name>1);
+	}	
+	/**WARNING, CONST-FORM
 	 * Converts into the first element.
 	 * @return Returns @c nullptr if @c empty().
+	 * @warning This works with @c operator->() to produce
+	 * a @c nullptr result if the source/parent was itself
+	 * a @c nullptr result. 
+	 * This does not apply @c Name is 0 or 1.
+	 * @see @c const variety of operator->().
 	 */
 	inline operator const Type*()const
 	{
+		//FOR BETTER OR WORSE
+		//This seems to facilitate better coding practices.
+		if(__inoperable_ptr()) 
+		return nullptr;
 		return const_cast<dae_Array*>(this)->operator Type*();
 	}	
 
@@ -2210,10 +2226,16 @@ COLLADA_(public) //OPERATORS
 	 * @remarks This is in line with std::unique_ptr semantics.
 	 */
 	inline Type &operator*(){ return *operator[](0); }
-	/**CONST-FORM
-	 * Dereference @c operator->() or @c Type* conversion operator.
+	/**WARNING, CONST-FORM
+	 * Dereferences a the first instance of this child, which 
+	 * must exist.
+	 * @warning This operator does not enjoy deferred pointer
+	 * chain dereferencing semantics; as @c operator->() does.
 	 */
-	inline const Type &operator*()const{ return *operator const Type*(); }
+	inline const Type &operator*()const
+	{
+		return *operator[](0); //return *operator const Type*(); 
+	}
 
 	/** 
 	 * Adds an element when one had not previously existed. 
@@ -2226,13 +2248,28 @@ COLLADA_(public) //OPERATORS
 	 * @see @c operator+ for a non-dangling @c -> alternative.
 	 */
 	inline Type *operator->(){ return +operator[](0); }	
-	/**CONST-FORM
-	 * Gets the first element in the array. 
-	 * Asserts if there is no first element, or it is @c nullptr.
+	/**WARNING, CONST-FORM
+	 * Gets the first element in the array. Caveats follow.
+	 *
+	 * @warning This is the @c const form of this operator.
+	 * At first the idea was to @c assert(!empty()). Still
+	 * code often has to check for @c nullptr not just for
+	 * the element it is interested in, but also every one
+	 * of its parents along the chain. Because the library
+	 * is high-level by nature, it seems best to allow for
+	 * @c nullptr descedents, but only for @c operator->()
+	 * and only for @c const @c dae_Array, and only if the
+	 * @c Name parameter is not 0 and not 1. This behavior
+	 * chains until @c operator const Type*() completes it.
+	 * @see @c operator const Type*().
 	 */
 	inline const Type *operator->()const
 	{
-		assert(0<size());
+		//FOR BETTER OR WORSE
+		//This seems to facilitate better coding practices.
+		if(__inoperable_ptr()||empty()) 
+		return nullptr;	
+		//assert(!empty());
 		const daeContent *got = _content()._get<Name>(_i(0));
 		assert(got!=nullptr); 
 		return (const Type*)got->_child.ref;

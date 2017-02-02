@@ -7,7 +7,7 @@
  *
  */
 
-$COLLADA_DOM = 2; //2 or 3
+$COLLADA_DOM = 3; //2 or 3
 $COLLADA_DOM_GENERATION = 1;
 
 define('indent_CM',true); //debugging aid. Probably best for output
@@ -68,7 +68,7 @@ function getAlias($word)
 $_globals['include_guard'] = ''; //$include_guard
 $_globals['include_list'] = array(); //$include_list
 $_globals['indent'] = ''; //$indent
-$_globals['genus'] = 0; //$genus
+$_globals['genus'] = 1; //$genus
 $_globals['notes'] = 0; //$notes
 if(2===$COLLADA_DOM)
 {
@@ -439,7 +439,7 @@ else //ColladaDOM 3
 	}
 	function getFriendlyName($name) //C identifier mangling
 	{
-		return strtr(getAlias($name),':.-','___');
+		return getAlias(strtr($name,':.-','___'));
 	}		
 	function getNameClash($a,$name,$o,$a2=array())
 	{
@@ -521,20 +521,24 @@ class TypeOfChild
 };
 function layoutTOC(& $meta)
 {
+	global $abstract;
 	$lo =& $meta['laid out']; if(!empty($lo)) return $lo;		
 	$els = $meta['elements'];	
 	$inc = $meta['transcludes'];
 	$plural = 1; $single = 0;
-	foreach($els as $ea)	
+	foreach($els as $k=>$ea) 
+	if(empty($abstract[$k]))
 	if($ea['isPlural']) $plural++; else $single++;		
 	$plural+=ceil($single/32); //bitfield for single count bits	
 	if($plural%2!==0) $plural++; //even number for alignment	
 	$lo = array(); 
-	foreach($els as $k=>$ea)	
-	if($ea['isPlural']) $lo[$plural--] = new TypeOfChild($k,$els,$inc,$meta);				
+	foreach($els as $k=>$ea) 
+	if($ea['isPlural']&&empty($abstract[$k]))
+	$lo[$plural--] = new TypeOfChild($k,$els,$inc,$meta);				
 	$single = -1; 
-	foreach($els as $k=>$ea)	
-	if(!$ea['isPlural']) $lo[$single--] = new TypeOfChild($k,$els,$inc,$meta);
+	foreach($els as $k=>$ea) 
+	if(!$ea['isPlural']&&empty($abstract[$k])) 
+	$lo[$single--] = new TypeOfChild($k,$els,$inc,$meta);
 	return $lo;
 }
 
@@ -882,6 +886,8 @@ function genPartials($in, $i, $hi)
 }
 function echoGroupCM($indent, $pt,& $group, $nc)
 {	
+	//*there might be reason to leave the abstract types
+	//in, but right now there's no member to be bound to
 	global $COLLADA_DOM, $classmeta, $abstract, $subgroups;		
 	$_elem=2==$COLLADA_DOM?'elem':'';	
 	foreach($group['content_model'] as $ea)
@@ -894,7 +900,7 @@ function echoGroupCM($indent, $pt,& $group, $nc)
 		else //map the children to the group's CM
 		{
 			$el = $group['elements'][$name];						
-			if(empty($abstract[$name]))
+			if(empty($abstract[$name])) //*
 			{
 				if(isset($pt[$name])) echo '\\'; //partial?
 				$clash = getNameClash($nc,$name,'__ELEMENT');
@@ -902,9 +908,9 @@ function echoGroupCM($indent, $pt,& $group, $nc)
 '	.addChild(toc->', $_elem, getFriendlyName($name.$clash), ',"', $name, '")';
 			}			
 			if(!empty($el['ref'])&&isset($subgroups[$name]))			
-			foreach($subgroups[$name] as $k2=>$ea2) if(empty($abstract[$name]))
+			foreach($subgroups[$name] as $k2=>$ea2) if(empty($abstract[$k2])) //*
 			{
-				if(isset($pt[$name])) echo '\\'; //partial?
+				if(isset($pt[$k2])) echo '\\'; //partial?
 				$clash = getNameClash($nc,$k2,'__ELEMENT');
 				echo "\n", $indent,
 '	.addChild(toc->', $_elem, getFriendlyName($k2.$clash), ',"', $k2, '")';
@@ -919,11 +925,12 @@ function echoGroupCM($indent, $pt,& $group, $nc)
 }
 function echoContentModelCPP(& $indent,& $meta, $closure_text)
 {	
-	global $COLLADA_DOM, $classmeta, $abstract;
+	//*there might be reason to leave the abstract types
+	//in, but right now there's no member to be bound to
+	global $COLLADA_DOM, $classmeta, $abstract, $subgroups;
 	if($_elem=2==$COLLADA_DOM?'elem':'')
 	$nc = array(); else $nc = $meta['attributes'];
 	
-	global $_globals; //vestigial dae prefix
 	echo "
 	daeCM *cm = nullptr;\n";
 	$curCM = array('cm'=>NULL,'ord'=>0);		
@@ -973,7 +980,7 @@ function echoContentModelCPP(& $indent,& $meta, $closure_text)
 					
 			$el = $meta['elements'][$name];
 			//addCM is repeated only because any one can be abstract
-			if(empty($abstract[$name]))
+			if(empty($abstract[$name])) //*
 			{
 				if(isset($pt[$name])) echo '//'; //partial?
 				$clash = getNameClash($nc,$name,'__ELEMENT');
@@ -982,12 +989,12 @@ function echoContentModelCPP(& $indent,& $meta, $closure_text)
 				,$_elem.getFriendlyName($name.$clash));
 			}
 			if(!empty($el['ref'])&&isset($subgroups[$name]))			
-			foreach($subgroups[$name] as $k2=>$ea2) if(empty($abstract[$name]))
+			foreach($subgroups[$name] as $k2=>$ea2) if(empty($abstract[$k2])) //*
 			{
-				if(isset($pt[$name])) echo '//'; //partial?
+				if(isset($pt[$k2])) echo '//'; //partial?
 				$clash = getNameClash($nc,$k2,'__ELEMENT');
 				echoCode("
-	el.$addCM<XS::Element>(cm,$curOrd,$minOccurs,$maxOccurs).setChild(toc->$1,\"$k2\")"
+	el.$addCM<XS::Element>(cm,$curOrd,$minOccurs,$maxOccurs).setChild(toc->$1,\"$k2\");"
 				,$_elem.getFriendlyName($k2.$clash));				
 			}			
 			$curOrd++;
@@ -1144,7 +1151,7 @@ function echoNotebookCPP()
 	{
 		if(empty($inline[$type]))
 		echoCode("
-		struct $1:__<>{};",strtr($type,'.-','__'));	
+		struct $1:__<>{};",getAlias(strtr($type,'.-','__')));	
 	}
 }
 

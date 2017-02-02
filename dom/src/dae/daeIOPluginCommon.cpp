@@ -5,7 +5,6 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
-
 #include <ColladaDOM.inl> //PCH
 
 COLLADA_(namespace)
@@ -82,10 +81,7 @@ daeOK daeIOPluginCommon::readContent(daeIO &IO, daeContents &content)
 	if(!OK)
 	{
 		const daeURI *URI = getRequest().remoteURI;
-		std::string msg; if(URI!=nullptr)
-		msg.append("Failed to load '").append(URI->getURI()).append("'.\n");		
-		daeErrorHandler::get()->handleError
-		(!msg.empty()?msg.c_str():"Failed to load XML document from memory.\n");
+		daeEH::Error<<"Failed to load "<<(URI!=nullptr?URI->data():"XML document from memory");
 		return DAE_ERR_BACKEND_IO;
 	}	
 	return DAE_OK;
@@ -98,10 +94,11 @@ daeElement &daeIOPluginCommon::_beginReadElement(daePseudoElement &parent, const
 	if(0==child.ordinal())
 	{
 		_readFlags|=_readFlag_unordered;
-		std::ostringstream msg;
-		msg<<"Appended an unordered element named "<<elementName.string<<" at line "
-		<<_errorRow()<<". Could be a schema violation.\n";
-		daeErrorHandler::get()->handleWarning(msg.str().c_str());
+
+		daeEH::Warning<<
+		"Appended an unordered element named "<<
+		elementName<<" at line "<<_errorRow()<<".\n"
+		"(Could be a schema violation.)";
 	}
 
 	//Process the attributes
@@ -124,11 +121,11 @@ daeElement &daeIOPluginCommon::_beginReadElement(daePseudoElement &parent, const
 		{
 			_readFlags|=_readFlag_unattributed;
 			daeCTC<daeElement::xs_anyAttribute_is_still_not_implemented>();
-			std::ostringstream msg;
-			msg<<"DATA LOSS\n""Could not create an attribute "<<name.string<<" = "<<value.string
-			<<" at line "<<_errorRow()<<".\n""Could be a schema violation.\n"
-			"UNFORTUNATELY THERE ISN'T A SYSTEM IN PLACE TO PRESERVE THE ATTRIBUTE.\n";
-			daeErrorHandler::get()->handleError(msg.str().c_str());
+			daeEH::Error<<"DATA LOSS\n"
+			"Could not create an attribute "<<name<<"=\""<<value<<"\""
+			" at line "<<_errorRow()<<".\n"
+			"(Could be a schema violation.)\n"
+			"UNFORTUNATELY THERE ISN'T A SYSTEM IN PLACE TO PRESERVE THE ATTRIBUTE.";
 		}
 	}
 	_attribs.clear(); return *child;
@@ -162,12 +159,13 @@ void daeIOPluginCommon::_readElementText(daeElement &element, const daeHashStrin
 		return;
 	}
 
-	std::ostringstream msg;
 	_readFlags|=_readFlag_unmixed;
-	msg<<"The DOM was unable to set a value for element of type "<<element.getTypeName()
-	<<" at line "<<_errorRow()<<".\nProbably a schema violation.\n"
-	"(2.5 policy is to add the value as a mixed-text text-node.)\n";
-	daeErrorHandler::get()->handleWarning(msg.str().c_str());
+
+	daeEH::Warning<<
+	"The DOM was unable to set a value for element of type "<<
+	element.getTypeName()<<" at line "<<_errorRow()<<".\n"
+	"Probably a schema violation.\n"
+	"(2.5 policy is to add the value as a mixed-text text-node.)";
 }
 
 bool daeIOPluginCommon::_maybeExtendedASCII(const daeValue &v)

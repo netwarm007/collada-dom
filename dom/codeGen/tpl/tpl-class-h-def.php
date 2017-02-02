@@ -32,11 +32,17 @@ if(2===$COLLADA_DOM)
 
 if(NULL===$meta['parent_meta'])
 {
-	if(2===$COLLADA_DOM)
+	if(2!==$COLLADA_DOM)
 	{
-		$classname = getFriendlyType($meta['element_name']);
+		$classname = getFriendlyName($meta['element_name']);
+		
+		if(!empty($recursive[$classname]))
+		{
+			$typedef = $classname;
+			$classname = $typedef.'__recursive';
+		}		
 	}
-	else $classname = getAlias($meta['element_name']);
+	else $classname = getFriendlyType($meta['element_name']);
 }
 else $classname = getIntelliSenseName($meta);
 
@@ -76,8 +82,8 @@ echoClassDoxygentation($indent,$meta);
 echoCode("
 class $1
 : 
-public $baseclass<$1>, public DAEP::Schema<$schema>
-{",$classname);
+public $baseclass<$2>, public DAEP::Schema<$schema>
+{",$classname,isset($typedef)?$typedef:$classname);
 
 if(2===$COLLADA_DOM)
 {
