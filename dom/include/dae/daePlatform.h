@@ -213,30 +213,32 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 //Read this as GNU compilers.
 #include "daeGCCPlatform.h"
 #else
-#ifndef COLLADA_DOM_EXPORT
+#ifndef COLLADA_DOM_EXPORT //__declspec(dllexport)
 #error exotic platform hasn't #define COLLADA_DOM_EXPORT in daePlatform.h
 #endif
-#ifndef COLLADA_DOM_IMPORT
+#ifndef COLLADA_DOM_IMPORT //__declspec(dllimport)
 #error exotic platform hasn't #define COLLADA_DOM_IMPORT in daePlatform.h
 #endif
-#ifndef COLLADA_DEPRECATED
+#ifndef COLLADA_DEPRECATED //__declspec(deprecated)
 #error exotic platform hasn't @define COLLADA_DEPRECATED in daePlatform.h
 #endif
-#ifndef COLLADA_ALIGN
+#ifndef COLLADA_ALIGN //__declspec(align)
 #error exotic platform hasn't @define COLLADA_ALIGN in daePlatform.h
 #endif
-#endif //end	  
-#ifndef COLLADA_NOINLINE
+#endif
+
+#ifndef COLLADA_ASSUME //__assume
+#define COLLADA_ASSUME(x) assert(x);
+#endif
+#ifndef COLLADA_NOALIAS //__declspec(noalias)
+#define COLLADA_NOALIAS
+#endif
+#ifndef COLLADA_NOINLINE //__declspec(noinline)
 #define COLLADA_NOINLINE
-#endif //end
+#endif
 
 #ifndef COLLADA_H
 #define COLLADA_H(__FILE__)
-#endif
-
-#ifndef COLLADA_ASSUME
-//Compiler optimization hint, e.g. __assume(x) on Microsoft's tools.
-#define COLLADA_ASSUME(x) assert(x);
 #endif
 
 #ifdef IMPORTING_COLLADA_DOM
@@ -369,10 +371,6 @@ namespace nick{} namespace name = nick; namespace nick
 #ifndef COLLADA_SUPPRESS_C
 #define COLLADA_SUPPRESS_C(xxxx) //suppress MSVC++ warning
 #endif	
-//WARNING: GCC's PROFILE DOESN'T HAVE COLLADA_NOALIAS SET UP.
-#ifndef COLLADA_NOALIAS
-#define COLLADA_NOALIAS
-#endif
 
 //moving out of compiler specific files
 //and enabling the ability for clients to 

@@ -499,7 +499,7 @@ COLLADA_(public) //GENERATOR-SIDE APIs
 	{
 		//Perhaps _setChild2() should have its body put here?
 		//(For a short while substitution-groups had their own implementation.)
-		_setChild2<typename T::schematic::element>(nul,name);		
+		_setChild2<typename T::XSD::type>(nul,name);		
 	}
 
 COLLADA_(private) //DELICATE-MACHINERY

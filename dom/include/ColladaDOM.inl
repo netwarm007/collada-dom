@@ -329,13 +329,20 @@ template<class S, class T>
 /** @c daeDocument uses this to convert strings into @c daeStringRef if need be. */
 inline const daeStringRef daeBoundaryStringRef(const S &c, const T &str)
 {
-	return daeStringRef(*c,str);
+	return daeStringRef(c,str);
 }
 template<class S>
 /** @c daeDocument uses this to convert strings into @c daeStringRef if need be. */
 inline const daeStringRef &daeBoundaryStringRef(const S&, const daeStringRef &str)
 {
 	return str;
+}
+template<class S>
+/** @c daeDocument uses this to convert strings into @c daeStringRef if need be. */
+inline const daeStringRef &daeBoundaryStringRef(const S&, const daeTokenRef &str)
+{
+	return str; //The following check can be removed if there's a legit reason to.
+	daeCTC<0>("daeTokenRef doesn't normally exist independently of DAEP::Value.");
 }
 template<class S, int ID, class T, class CC, typename CC::_ PtoM>
 /** @c daeDocument uses this to convert strings into @c daeStringRef if need be. */

@@ -732,6 +732,15 @@ COLLADA_(public) //daeDBaseString API
 		(daeString&)def = (daeString)((daeOffset)_string&~daeOffset(1));
 		assert('#'==def[0]); return (daeStringRef&)def;
 	}
+	/**
+	 * This does the inverse of @c getID_fragment().
+	 */
+	const daeStringRef &getID_id
+	(class undefined*_=0,const daeString &def=0)const
+	{
+		(daeString&)def = (daeString)((daeOffset)_string|daeOffset(1));
+		assert('#'==def[-1]); return (daeStringRef&)def;
+	}
 
 COLLADA_(private) //DATA-MEMBER
 

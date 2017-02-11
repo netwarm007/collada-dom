@@ -163,7 +163,7 @@ COLLADA_(public) //non-SIDREF SID lookup
 	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
 	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF id IS NOT A SMALL STRING.
 	 *
-	 * Looks up the bread-first match for @a sid located under @c this element.
+	 * Looks up a breadth-first match for @a sid located under @c this element.
 	 * @remark The 1.4.1 and 1.5.0 COLLADA specifications are inconsistent WRT
 	 * to SID lookup. For example, <texture texture> isn't a SIDRE at all, and
 	 * instead is simply the NCName of the "sid" attribute in <profile_COMMON>.
@@ -173,7 +173,7 @@ COLLADA_(public) //non-SIDREF SID lookup
 	 * able to be returned via @a match. If COLLADA or users require this it
 	 * can be arranged. For now callers must not assume one way or the other.
 	 */
-	inline daeSmartRef<T> &sidLookup(const S &sid, daeSmartRef<T> &match, enum dae_clear clear=dae_clear)const
+	inline daeSmartRef<T> &sidLookup(const S &sid, const daeSmartRef<T> &match=daeSmartRef<T>(), enum dae_clear clear=dae_clear)const
 	{
 		assert(isContent()); return sidLookup<S,T>(sid,match,const_daeDocRef(getDoc()),clear);
 	}
@@ -186,9 +186,10 @@ COLLADA_(public) //non-SIDREF SID lookup
 	inline daeSmartRef<T> &sidLookup(const S &sid, daeSmartRef<T> &match, const daeDoc *doc, enum dae_clear clear=dae_clear)const
 	{
 		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 
-		if(clear!=dae_default) match = nullptr;
-		_sidLookup(daeBoundaryStringRef(this,id),(daeElementRef&)match,doc); 		
-		if(nullptr==match->a<T>()) match = nullptr; return match;
+		daeSmartRef<T> &nc_match = const_cast<daeSmartRef<T>&>(match);
+		if(clear!=dae_default) nc_match = nullptr;
+		_sidLookup(daeBoundaryStringRef(*this,id),(daeElementRef&)match,doc); 		
+		if(nullptr==match->a<T>()) nc_match = nullptr; return nc_match;
 	}
 	/** Implements @c sidLookup(). @a ref is a @c daeStringRef. */
 	LINKAGE void _sidLookup(daeString ref, daeElementRef&, const daeDoc*)const;
@@ -733,6 +734,7 @@ COLLADA_(public)
 	NOALIAS_LINKAGE const_daeURIRef getDocumentURI()const;
 	#endif //COLLADA_NODEPRECATED
 				
+	//OLD CLUNKY STUFF
 	//These are helper structures to let the XML hierarchy search functions know when we've
 	//found a match. You can implement a custom matcher by inheriting from this structure,
 	//just like matchName and matchType.
@@ -845,6 +847,11 @@ COLLADA_(public)
 		return getAncestor(matchName(named)); 
 	}
 	/**LEGACY
+	 * @remarks "getParent" isn't in conflict with @c getParentElement()
+	 * because they belong to two different families of APIs. 
+	 * Technically @c getParent() is a query API; it's just functionally 
+	 * the exact same thing.
+	 *
 	 * Returns the parent element.
 	 * @remarks Post-2.5 returns @c const types for upstream "getter" APIs. 
 	 */

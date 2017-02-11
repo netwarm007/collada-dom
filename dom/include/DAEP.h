@@ -609,21 +609,15 @@ class Schematic
 {
 COLLADA_(private)
 	/**
-	 * __COLLADA__Element should be defined by @a T.
+	 * @note Assuming can ignore @c const qualifier.
 	 * __COLLADA__T is defined by @c daeSmartRef<T>.
 	 */
-	typedef typename T::__COLLADA__T::__COLLADA__Element _;
+	typedef typename T::__COLLADA__T _;
 
 COLLADA_(public)
 
 	/** The generated class, accessed via pointers. */
-	typedef _ element;
-
-	#ifdef NDEBUG
-	#error daeSmartRef will not do here for ColladaDOM 3.
-	#endif
-	/** This is a type suitable for constructing @a T. */
-	typedef daeSmartRef<_> element_type;
+	typedef typename _::__COLLADA__Element type;
 
 	/**
 	 * This is a type-ID for an element type, that is valid for
@@ -921,10 +915,9 @@ COLLADA_(public) //MAYBE PORTABLE
 	static const int name = ID;		
 	static const bool is_element = true;
 	static const bool is_content = false;			
-	typedef DAEP::Schematic<T> schematic;
+	typedef DAEP::Schematic<T> schematic, XSD;
 	static const bool is_child_nonplural = ID<0;
 	static const bool is_children_plural = ID>0;
-	typedef T advertised_type; typedef EBO underlying_type;
 	typedef DAEP::Note<typename CC::notestart,CC::_No-ID+1> note;
 													
 COLLADA_(public) //PUBLIC UTILITIES		

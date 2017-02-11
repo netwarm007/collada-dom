@@ -381,7 +381,7 @@ COLLADA_(private)
 		DBase::_destructing(_(Document,doc)); doc.~daeDocument(); 
 		DBase::_destructed(_(Document,doc));
 	}	
-	virtual	daeAlloc<> &_v1_new(size_t newT, const daeAlloc<> &AU, const daeObject &obj)
+	virtual	daeAlloc<> &_v1_new(size_t &newT, const daeAlloc<> &AU, const daeObject &obj)
 	{
 		//Here the DB uses AU to allocate/return 
 		//a newT-or-larger-sized AU of the same type.

@@ -77,6 +77,8 @@ daeDocument::daeDocument(daeDOM *DOM):daeDoc(DOM,daeDocType::HARDLINK)
 	assert(!e._isElement());
 	assert(e.getNCName().string==_daePseudoElement_);
 	e.__DAEP__Element__data.is_document_daePseudoElement = 1; 	
+	//This is to be sure !_isAny() and that it's not a system object.
+	assert(0!=e._getPShare()&&!e._isAny());
 }
 daeDocument::~daeDocument() //VERY SKETCHY
 {

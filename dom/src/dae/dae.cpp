@@ -237,6 +237,9 @@ daeDoc::daeDoc(daeDOM *DOM, int dt)
 { 	
 	_uri.setIsAttached();
 	_uri.__DAEP__Object__embed_subobject(this);
+	//daeURI is not a system object.
+	//This is to ensure that only system objects are 0.
+	assert(0!=_uri._getPShare());
 
 	_getClassTag() = dt; 	
 	(&_getClassTag())[1] = 1;

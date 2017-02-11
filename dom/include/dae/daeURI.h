@@ -107,31 +107,6 @@ COLLADA_(public) //STRING CONSTRUCTORS
 	/** This is in support of the const daeObject &c constructor. */
 	daeURI_size(const daeURI_base &cp){ daeURI_base::operator=(cp); }
 
-	//Note: this could be avoided if daeURI used explicit constructors.
-	//However, for openDoc to work and so on, it needs to be converted.
-	#ifdef NDEBUG
-	#error Maybe do this for IDREF and SIDREF for extra-added type safety?
-	#endif
-	template<int ID, class CC, typename CC::_ PtoM>
-	/**
-	 * This seems unavoidable in order to not write versions for every kind
-	 * of string-like object. Restricting it to @c daeURI could be a useful
-	 * way to introduce type-safety above and beyond what's normal. 
-	 * @remarks C++ prefers this constructor over the object-aware cast due
-	 * to the template based @c daeURI_size::daeURI_size().
-	 */
-	daeURI_size(const DAEP::Value<ID,daeURI,CC,PtoM> &cp):daeURI_base(&cp.object())
-	{
-		setURI((daeString)cp);
-	}
-	//SCHEDULED FOR REMOVAL
-	template<class S, class T>	
-	/** In the unlikely event that a schema has an <xs:list itemType="anyURI"> type. */
-	daeURI_size(DAEP::Notice<S,T> &cp):daeURI_base(&cp.agent.object())
-	{
-		setURI((daeString)cp);
-	}
-
 	template<class T>
 	COLLADA_SUPPRESS_C(4522)
 	/** Pass-through Assignment Operator */
@@ -348,6 +323,31 @@ COLLADA_(public) //OPERATORS
 		if(isUnparentedObject()) _reparent(cp->getParentObject());	
 		daeArray<daeStringCP,260> rel; _setURI(cp->getURI_baseless(rel).data());
 		refresh(); return *this;
+	}
+
+	//Note: this could be avoided if daeURI used explicit constructors.
+	//However, for openDoc to work and so on, it needs to be converted.
+	#ifdef NDEBUG
+	#error Maybe do this for IDREF and SIDREF for extra-added type safety?
+	#endif
+	template<int ID, class CC, typename CC::_ PtoM>
+	/**
+	 * This seems unavoidable in order to not write versions for every kind
+	 * of string-like object. Restricting it to @c daeURI could be a useful
+	 * way to introduce type-safety above and beyond what's normal. 
+	 * @remarks C++ prefers this constructor over the object-aware cast due
+	 * to the template based @c daeURI_size::daeURI_size().
+	 */
+	inline daeURI &operator=(const DAEP::Value<ID,daeURI,CC,PtoM> &cp)
+	{
+		setParentObject(&cp.object()); setURI((daeString)cp); return *this;
+	}
+	//SCHEDULED FOR REMOVAL
+	template<class S, class T>	
+	/** In the unlikely event that a schema has an <xs:list itemType="anyURI"> type. */
+	inline daeURI &operator=(const DAEP::Notice<S,T> &cp)
+	{
+		setParentObject(&cp.agent.object()); setURI((daeString)cp); return *this;
 	}
 	
 COLLADA_(public) //daeSafeCast() SHORTHANDS

@@ -616,7 +616,6 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * HISTORICAL NOTES
 	 * In @c daeDoc::_doOperation() there is a bit that detects attempts to
 	 * change this URI, and prevents them. It is initially assigned to docs.
-	 * @see @c daeDoc::attachDocURI().
 	 */										
 	inline const daeURI &getEmptyURI()const{ return _uri; }	
 

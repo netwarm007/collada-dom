@@ -120,13 +120,15 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 			if((it++)->empty()
 			||nullptr==cpp.lookup->idLookup(it[-1],cpp.scope))
 			{								
+				/*THIS SEEMS AMBIGUOUS daeElement::sidLookup
+				//IS A BETTER FIT FOR THESE KINDS OF LOOKUPS.
 				//This does not comport with the manual, but
 				//many examples in the manual, and in the CTS
 				//examples omit the ID.
 				//UPDATE: <texture texture> must work this way
 				//because its type is NCName. But then it can't
 				//be a SIDREF. The schemas are very inconsistent.
-				cpp.scope = cpp.lookup->getRoot();
+				cpp.scope = cpp.lookup->getRoot();*/
 			}
 		}
 		if(cpp.scope==nullptr)

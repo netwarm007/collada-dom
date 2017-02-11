@@ -46,7 +46,7 @@ COLLADA_(namespace)
 	namespace xs
 	{
 		//These are defined last below.
-		//DAEP::xs neesd to using this.
+		//DAEP::xs needs to using this.
 	};
 	//Refs default to the "ref" attribute.
 	namespace xml
@@ -102,6 +102,50 @@ COLLADA_(namespace)
 		{
 			typedef daeURI type; 
 		};
+
+		#if COLLADA_UPTR_MAX==0xFFFFFFFF || defined(COLLADA_DOM_INT32_long_long)
+		template<class Note, class Unsigned>
+		/**TEMPLATE-SPECIALIZATION, LEGACY-SUPPORT
+		 * 64 bit values should not be used on 32 bit systems. If a value requires
+		 * 64 bits this specialization can still be overriden.
+		 * @note 64 bit @c size_t is standard on 64 bit systems, for better or worse.
+		 */
+		struct Cognate<signed long long,Note,Note,Unsigned>
+		{
+			typedef signed COLLADA_DOM_INT32 type; 
+		};
+		template<class Note, class Unsigned>
+		/**TEMPLATE-SPECIALIZATION, LEGACY-SUPPORT
+		 * 64 bit values should not be used on 32 bit systems. If a value requires
+		 * 64 bits this specialization can still be overriden.
+		 * @note 64 bit @c size_t is standard on 64 bit systems, for better or worse.
+		 */
+		struct Cognate<unsigned long long,Note,Note,Unsigned>
+		{
+			typedef unsigned COLLADA_DOM_INT32 type; 
+		};
+		#else
+		template<class Unsigned>
+		/**PARTIAL-TEMPLATE-SPECIALIAZTION 
+		 * COLLADA is ridiculous for using 64-bit indices. There's never a reason
+		 * to do that, as datasets can always be partitioned if they truly needed
+		 * BILLIONS of datapoints!
+		 */
+		struct Container<long long,Unsigned>
+		{
+			typedef signed COLLADA_DOM_INT32 type; 
+		};
+		template<class Unsigned>
+		/**PARTIAL-TEMPLATE-SPECIALIAZTION 
+		 * COLLADA is ridiculous for using 64-bit indices. There's never a reason
+		 * to do that, as datasets can always be partitioned if they truly needed
+		 * BILLIONS of datapoints!
+		 */
+		struct Container<unsigned long long,Unsigned>
+		{
+			typedef unsigned COLLADA_DOM_INT32 type; 
+		};
+		#endif
 
 		template<int N, class Unsigned>
 		/**PARTIAL-TEMPLATE-SPECIALIAZTION 

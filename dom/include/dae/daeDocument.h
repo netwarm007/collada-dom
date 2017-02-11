@@ -175,18 +175,14 @@ COLLADA_(public)
 	 */
 	inline bool isClosed()const
 	{
-		//daeArchive is based on daeDoc/not yet defined here.
-		for(daeArchive *p=_archive;;p=((daeDoc*)p)->_archive) 
-		if(p==((daeDoc*)p)->_archive) 
-		return !((daeObject*)p)->_isDOM(); return false;
+		union{ void *p; daeDoc *P; }; //daeArchive is derived from daeDoc.
+		for(p=_archive;p!=P->_archive;p=P->_archive); return !P->_isDOM();
 	}
 
 	/**LEGACY-SUPPORT
 	 * Writes doc to its archive/document's URI.
 	 * If @c this is a @c daeDOM its docs are written. The library does this unless
 	 * @a O implements @c daeIOPlugin::writeDOM() or the default I/O plugin does so.
-	 * @return Returns @c false if unwritten and @c COLLADA_NOLEGACY is not defined.
-	 * Othewise a daeError code is returned.
 	 */
 	inline daeOK write(daeIOPlugin *O=nullptr)const{ return _write(_uri,O); }
 	/**WARNING, LEGACY-SUPPORT
@@ -198,22 +194,20 @@ COLLADA_(public)
 	 * Writes doc to @a URI.
 	 * @param URI If @c this is a @c daeDOM then @a URI is taken to be its base-URI,
 	 * -or only its base is considered. A DOM's natural base is the empty URI.
-	 * @return Returns @c false if unwritten and @c COLLADA_NOLEGACY is not defined.
-	 * Othewise a @c daeError code is returned.
 	 */
 	inline daeOK writeTo(const daeURI &URI, daeIOPlugin *O=nullptr)const{ return _write(URI,O); }								
 	
 	/**WARNING
 	 * Gets the doc's URI that is used to locate it within the DOM's doc-tree. 
 	 * @warning If a doc is created via @c daeSmartRef's @c daeDOM base constructors,
-	 * -then the doc uses @c daeDOM::getEmptyURI(). @c attachDocURI() must be called.
+	 * -then the doc uses @c daeDOM::getEmptyURI(). 
 	 * The URIs are doc-aware; meaning altering a doc's URI, relocates it in the DOM.
 	 */
 	inline daeURI &getDocURI(){ return _uri; }
 	/**WARNING, CONST-FORM 
 	 * Gets the doc's URI that is used to locate it within the DOM's doc-tree. 
 	 * @warning If a doc is created via @c daeSmartRef's @c daeDOM base constructors,
-	 * -then the doc uses @c daeDOM::getEmptyURI(). @c attachDocURI() must be called.
+	 * -then the doc uses @c daeDOM::getEmptyURI(). 
 	 * The URIs are doc-aware; meaning altering a doc's URI, relocates it in the DOM.
 	 */
 	inline const daeURI &getDocURI()const{ return _uri; }
@@ -380,13 +374,13 @@ COLLADA_(private) //INTERNALS
 			COLLADA_WORD_ALIGN
 			COLLADA_DOM_N(0,0) 
 			/**NO-NAMES
-				* These elements are invalid according to the schema. They may be user-defined 
-				* additions and substitutes.
-				*/
+			 * These elements are invalid according to the schema. They may be user-defined 
+			 * additions and substitutes.
+			 */
 			DAEP::Child<1,daeElement/*xsAny*/,_,(_::_)&_::_N> unnamed;
 			/**
-				* Children, mixed-text, comments & processing-instructions.
-				*/
+			 * Children, mixed-text, comments & processing-instructions.
+			 */
 			DAEP::Value<2,daeContents,_,(_::_)&_::content> content;
 		};	  
 		struct _Pseudo
@@ -516,14 +510,15 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	 * @param id The ID to match on.
 	 * @return Returns @a match.
 	 */
-	inline daeSmartRef<T> &idLookup(const S &id, daeSmartRef<T> &match, enum dae_clear clear=dae_clear)const
+	inline daeSmartRef<T> &idLookup(const S &id, const daeSmartRef<T> &match=daeSmartRef<T>(), enum dae_clear clear=dae_clear)const
 	{
 		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 
-		if(clear!=dae_default) match = nullptr;
-		_idLookup(daeBoundaryStringRef(this,id),(daeElementRef&)match); 		
-		if(nullptr==match->a<T>()) match = nullptr; return match;
+		daeSmartRef<T> &nc_match = const_cast<daeSmartRef<T>&>(match);
+		if(clear!=dae_default) nc_match = nullptr;
+		_idLookup(daeBoundaryStringRef(*this,id),(daeElementRef&)nc_match); 		
+		if(nullptr==match->a<T>()) nc_match = nullptr; return nc_match;
 	}
-			
+
 	template<class S>
 	/**WARNING, LEGACY
 	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
@@ -540,7 +535,7 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	inline daeArray<daeElementRef> &sidLookup(const S &sid, daeArray<daeElementRef> &matchingElements, enum dae_clear clear=dae_clear)const
 	{
 		if(clear) matchingElements.clear(); 
-		_sidLookup(daeBoundaryStringRef(this,sid),matchingElements); return matchingElements;
+		_sidLookup(daeBoundaryStringRef(*this,sid),matchingElements); return matchingElements;
 	}
 	
   /////////////////////////////////////////////////////////////////

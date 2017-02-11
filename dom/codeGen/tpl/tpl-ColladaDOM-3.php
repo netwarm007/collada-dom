@@ -95,13 +95,14 @@ ob_start();
 //abstract elements are included as a form of documentation only
 foreach($meta['elements'] as $k=>$ea) //if(empty($abstract[$k]))
 {
+	$local__ = empty($ea['isLocal'])?'':'local__';
 	$type = guessTypeOfElement(@$ea['type'],$k);
 	$name = getFriendlyName($k); $names[$name] = 1;
 	$head = empty($abstract[$k])?$CONST_FORM:
 "	/**DOCUMENTATION-ONLY
 	 * THIS ABSTRACT TYPE INSTANCE IS DEFINED IN CASE ITS ANNOTATIONS CAN BE OF USE";	
 	echoDoxygen(@$meta['element_documentation'][$k],"\t",
-	(empty($ea['isLocal'])?'':'local__').getFriendlyType($type),$head);
+	($local__).getFriendlyType($type),$head);
 	$match = explode(':',$type);
 	if(!empty($type)&&2===count($match))
 	{
@@ -112,7 +113,9 @@ foreach($meta['elements'] as $k=>$ea) //if(empty($abstract[$k]))
 	else if(1<count($gc=$global_children[$k])
 		  ||1<count(@$global_parents[reset($gc)?key($gc):0])) 
 	{			
+		if(!$local__)
 		$meta2 =@@ $classmeta[$type];
+		else $meta2 = NULL;
 		if(empty($meta2))
 		$meta2 =@@ $meta['classes'][$k];
 		if(empty($meta2))

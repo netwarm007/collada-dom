@@ -1575,6 +1575,17 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 		insert(index,4); set(index,one); set(index+1,two); set(index+2,three); set(index+4,four);
 	}
 
+	template<class S>
+	/**LEGACY
+	 * Gets one values from the array at the specified location.
+	 * @param index The position in the array to start getting.
+	 * @param one Variable to store the first value.
+	 * @return Returns The number of elements retrieved.
+	 */
+	inline int get1at(size_t index, S &one)const
+	{
+		if(index>=getCount()) return 0; one = get(index); return 1;
+	}
 	template<class S, class T>
 	/**LEGACY
 	 * Gets two values from the array at the specified location.
@@ -1583,11 +1594,11 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param two Variable to store the second value.
 	 * @return Returns The number of elements retrieved.
 	 */
-	inline daeInt get2at(size_t index, S &one, T &two)
+	inline int get2at(size_t index, S &one, T &two)const
 	{
-		daeInt retVal = 0; size_t iN = getCount();
+		int retVal = 0; size_t iN = getCount();
 		if(index<iN){ one = get(index); retVal++; }
-		if(index+1<iN){ two = get(index+1); retVal++; }return retVal;
+		if(++index<iN){ two = get(index); retVal++; }return retVal;
 	}
 	template<class S, class T, class U>
 	/**LEGACY
@@ -1598,12 +1609,12 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param three Variable to store the third value.
 	 * @return Returns The number of elements retrieved.
 	 */
-	inline daeInt get3at(size_t index, S &one, T &two, U &three)
+	inline int get3at(size_t index, S &one, T &two, U &three)const
 	{
-		daeInt retVal = 0; size_t iN = getCount();
+		int retVal = 0; size_t iN = getCount();
 		if(index<iN){ one = get(index); retVal++; }
-		if(index+1<iN){ two = get(index+1); retVal++; }
-		if(index+2<iN){ three = get(index+2); retVal++; }return retVal;
+		if(++index<iN){ two = get(index); retVal++; }
+		if(++index<iN){ three = get(index); retVal++; }return retVal;
 	}
 	template<class S, class T, class U, class V>
 	/**LEGACY
@@ -1615,13 +1626,13 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param four Variable to store the fourth value.
 	 * @return Returns The number of elements retrieved.
 	 */
-	inline daeInt get4at(size_t index, S &one, T &two, U &three, V &four)
+	inline int get4at(size_t index, S &one, T &two, U &three, V &four)const
 	{
-		daeInt retVal = 0; size_t iN = getCount();
+		int retVal = 0; size_t iN = getCount();
 		if(index<iN){ one = get(index); retVal++; }
-		if(index+1<iN){ two = get(index+1); retVal++; }
-		if(index+2<iN){ three = get(index+2); retVal++; }
-		if(index+3<iN){ four = get(index+3); retVal++; }return retVal;
+		if(++index<iN){ two = get(index); retVal++; }
+		if(++index<iN){ three = get(index); retVal++; }
+		if(++index<iN){ four = get(index); retVal++; }return retVal;
 	}
 
 	#ifdef NDEBUG

@@ -274,13 +274,11 @@ COLLADA_(public) //OPERATORS
 	/**
 	 * @warning Might generate double-const warnings.
 	 * Post-2.5 implicit conversion to const reference.
-	 * (char&) is because MVSC2013 wants to be recursive. (It doesn't normally.)
 	 */
 	inline operator daeSmartRef<const T>&(){ return *(daeSmartRef<const T>*)this; }
 	/**CONST-FORM
 	 * @warning Might generate double-const warnings.
 	 * Post-2.5 implicit conversion to const reference.
-	 * (char&) is because MVSC2013 wants to be recursive. (It doesn't normally.)
 	 */
 	inline operator const daeSmartRef<const T>&()const{ return *(daeSmartRef<const T>*)this; }
 
