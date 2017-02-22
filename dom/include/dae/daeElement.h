@@ -158,7 +158,7 @@ class daeElement : public daeObject
 
 COLLADA_(public) //non-SIDREF SID lookup
 
-	template<class S, class T> //T is DAEP::Element based
+	template<class S, class T> //T is DAEP::Element or daeElement based
 	/**WARNING, LEGACY-SUPPORT
 	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
 	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF id IS NOT A SMALL STRING.
@@ -173,11 +173,11 @@ COLLADA_(public) //non-SIDREF SID lookup
 	 * able to be returned via @a match. If COLLADA or users require this it
 	 * can be arranged. For now callers must not assume one way or the other.
 	 */
-	inline daeSmartRef<T> &sidLookup(const S &sid, const daeSmartRef<T> &match=daeSmartRef<T>(), enum dae_clear clear=dae_clear)const
+	inline daeSmartRef<T> &sidLookup(const S &sid, daeSmartRef<T> &match, enum dae_clear clear=dae_clear)const
 	{
 		assert(isContent()); return sidLookup<S,T>(sid,match,const_daeDocRef(getDoc()),clear);
-	}
-	template<class S, class T> //T is DAEP::Element based
+	}	
+	template<class S, class T> //T is DAEP::Element or daeElement based
 	/**WARNING, LEGACY-SUPPORT
 	 * @warning See the fewer arguments form of this method's Doxygentation.
 	 * This form lets the user avoid the other form's @c getDoc() procedure.
@@ -186,10 +186,19 @@ COLLADA_(public) //non-SIDREF SID lookup
 	inline daeSmartRef<T> &sidLookup(const S &sid, daeSmartRef<T> &match, const daeDoc *doc, enum dae_clear clear=dae_clear)const
 	{
 		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 
-		daeSmartRef<T> &nc_match = const_cast<daeSmartRef<T>&>(match);
-		if(clear!=dae_default) nc_match = nullptr;
-		_sidLookup(daeBoundaryStringRef(*this,id),(daeElementRef&)match,doc); 		
-		if(nullptr==match->a<T>()) nc_match = nullptr; return nc_match;
+		if(clear!=dae_default) match = nullptr;
+		_sidLookup(daeBoundaryStringRef(*this,sid),(daeElementRef&)match,doc); 		
+		if(nullptr==dae(match)->a<T>()) match = nullptr; return match;
+	}
+	template<class S, class T> //S is DAEP::Element or daeElement based
+	/**WARNING, LEGACY-SUPPORT
+	 * @warning See the 2 or 3 arguments form of this method's Doxygentation.
+	 * This is a single-argument shorthand with @a S being explicitly stated.	 
+	 */
+	inline daeSmartRef<typename S::__COLLADA__T> &sidLookup(const T &sid,
+	class undefined*_=0,const daeSmartRef<typename S::__COLLADA__T>&def=nullptr)const
+	{
+		return sidLookup(sid,const_cast<daeSmartRef<typename S::__COLLADA__T>&>(def));
 	}
 	/** Implements @c sidLookup(). @a ref is a @c daeStringRef. */
 	LINKAGE void _sidLookup(daeString ref, daeElementRef&, const daeDoc*)const;
@@ -837,14 +846,23 @@ COLLADA_(public)
 	 * Searches up through the XML hiearchy and returns a matching element.
 	 * @remarks Post-2.5 returns @c const types for upstream "getter" APIs. 
 	 */
-	NOALIAS_LINKAGE const_daeElementRef getAncestor(const matchElement &matcher);
+	NOALIAS_LINKAGE const_daeElementRef getAncestor(const matchElement &matcher)const;
 	/**LEGACY
 	 * Searches up through the XML hiearchy and returns a matching element.
 	 * @remarks Post-2.5 returns @c const types for upstream "getter" APIs. 
 	 */
-	inline const_daeElementRef getAncestor(const daePseudonym &named)
+	inline const_daeElementRef getAncestor(const daePseudonym &named)const
 	{
 		return getAncestor(matchName(named)); 
+	}
+	template<class T>
+	/**LEGACY SUPPORT 
+	 * Calls @c getAncestor() vis-a-vis @c daeGetMeta(). 
+	 */
+	inline daeSmartRef<const typename T::__COLLADA__T> getAncestor()const
+	{
+		const_daeElementRef &o = getAncestor(matchMeta(daeGetMeta<T>()));
+		return *(daeSmartRef<const typename T::__COLLADA__T>*)&o;
 	}
 	/**LEGACY
 	 * @remarks "getParent" isn't in conflict with @c getParentElement()
@@ -855,7 +873,18 @@ COLLADA_(public)
 	 * Returns the parent element.
 	 * @remarks Post-2.5 returns @c const types for upstream "getter" APIs. 
 	 */
-	inline const daeElement *getParent()const{ return getParentElement(); }
+	inline const daeElement *getParent()const
+	{
+		return getParentElement(); 
+	}
+	template<class T>
+	/**LEGACY SUPPORT 
+	 * Calls @c getParent() vis-a-vis @c daeGetMeta(). 
+	 */
+	inline const typename T::__COLLADA__T *getParent()const
+	{
+		return getParentElement()->a<T>(); 
+	}
 
 	/**WARNING, LEGACY
 	 * SOFT-DEPRECATED: Prefer @c getNCName().	 

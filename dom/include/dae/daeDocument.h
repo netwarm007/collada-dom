@@ -501,7 +501,7 @@ COLLADA_(public) //LEGACY: old "database" APIs
   //the id/sid strings are too large to qualify they cannot match//
   /////////////////////////////////////////////////////////////////
 
-	template<class S, class T> //T is DAEP::Element based
+	template<class S, class T> //T is DAEP::Element or daeElement based
 	/**WARNING, LEGACY
 	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
 	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF id IS NOT A SMALL STRING.
@@ -510,13 +510,27 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	 * @param id The ID to match on.
 	 * @return Returns @a match.
 	 */
-	inline daeSmartRef<T> &idLookup(const S &id, const daeSmartRef<T> &match=daeSmartRef<T>(), enum dae_clear clear=dae_clear)const
+	inline daeSmartRef<T> &idLookup(const S &id, daeSmartRef<T> &match, enum dae_clear clear=dae_clear)const
 	{
-		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 
-		daeSmartRef<T> &nc_match = const_cast<daeSmartRef<T>&>(match);
-		if(clear!=dae_default) nc_match = nullptr;
-		_idLookup(daeBoundaryStringRef(*this,id),(daeElementRef&)nc_match); 		
-		if(nullptr==match->a<T>()) nc_match = nullptr; return nc_match;
+		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 		
+		if(clear!=dae_default) match = nullptr;
+		_idLookup(daeBoundaryStringRef(*this,id),(daeElementRef&)match); 		
+		if(nullptr==dae(match)->a<T>()) match = nullptr; return match;
+	}
+	template<class S, class T> //S is DAEP::Element or daeElement based
+	/**WARNING, LEGACY
+	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
+	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF id IS NOT A SMALL STRING.
+	 *
+	 * This is a single-argument shorthand with @a S being explicitly stated.
+	 * Looks up elements by "id" attribute.
+	 * @param id The ID to match on.
+	 * @return Returns @a def.
+	 */
+	inline daeSmartRef<typename S::__COLLADA__T> &idLookup(const T &id,
+	class undefined*_=0,const daeSmartRef<typename S::__COLLADA__T>&def=nullptr)const
+	{
+		return idLookup(id,const_cast<daeSmartRef<typename S::__COLLADA__T>&>(def));
 	}
 
 	template<class S>

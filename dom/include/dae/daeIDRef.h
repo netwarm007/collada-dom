@@ -95,6 +95,9 @@ COLLADA_(private) //OBJECT MEMBERS
 
 	struct _Flags
 	{
+		#ifdef NDEBUG
+		#error Add string-ref support via a ref-release flag.
+		#endif
 		unsigned global:1; _Flags(){ (unsigned&)*this = 0; }
 	};
 	inline _Flags &_getFlags()const{ return (_Flags&)_support::_getClassTag(); } 
@@ -121,7 +124,24 @@ COLLADA_(public) //OPERATORS
 	/** 
 	 * String assignment @c operator=().
 	 */
-	inline Type &operator=(daeHashString cp){ _this()._refString.setString(*this,cp); return *this; }
+	inline Type &operator=(const daeHashString &cp)
+	{
+		_this()._refString.setString(*this,cp); return *this; 
+	}
+
+	template<int ID, class T, class CC, typename CC::_ PtoM>
+	/**
+	 * This seems unavoidable in order to not write versions for every kind
+	 * of string-like object. Restricting it to @c daeURI could be a useful
+	 * way to introduce type-safety above and beyond what's normal. 
+	 * @remarks C++ prefers this constructor over the object-aware cast due
+	 * to the template based @c daeURI_size::daeURI_size().
+	 */
+	inline Type &operator=(const DAEP::Value<ID,T,CC,PtoM> &cp)
+	{
+		setParentObject(dae(&cp.object())); const daeStringRef &ref = cp;
+		_this()._refString.setString(*this,daeHashString(ref)); return *this;
+	}
 
 	/**
 	 * Cast to any @c daeIDREF_size, as the @c size_on_stack parameter is irrelevant.

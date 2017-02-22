@@ -448,6 +448,10 @@ inline daeElement &dae(const DAEP::Element &r){ return (daeElement&)r; }
 template<class T>
 /**WARNING @warning CONST-CAST. */
 inline daeElement *dae(const daeSmartRef<T> &r){ T *p = r; return dae(p); }
+/**WARNING @warning CONST-CAST. */
+inline daeObject *dae(const daeObjectRef &r){ return (daeObject*&)r; }
+/**WARNING @warning CONST-CAST. */
+inline daeObject *dae(const const_daeObjectRef &r){ return (daeObject*&)r; }
 	
 //Many legacy APIs take it upon themselves to clear (or not clear) arrays.
 //Rather than doubling the number of APIs, this enum is added as a default.

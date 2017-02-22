@@ -65,7 +65,7 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	 * @return Returns @c nullptr, so -> must be chained so
 	 * to only call a method that will check for @c nullptr.
 	 */
-	inline const daeElement *operator->()const
+	inline daeElement *operator->()const
 	{
 		assert(object==nullptr||object->_isElement());
 		return (daeElement*&)object; 
@@ -85,7 +85,7 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	{}
 
 	/** WARNING: @c reset cannot initialize data beyond @c maxValue. */
-	inline void reset(daeHashString cp, size_t extra=sizeof(daeRefRequest))
+	inline void reset(daeHashString cp=nullptr, size_t extra=sizeof(daeRefRequest))
 	{
 		new(this) daeRefRequest(cp,extra); 
 	}
@@ -99,6 +99,10 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	{
 		return &typeInstance==nullptr?0:type->writer->per<daeAtom>().getAtomicType();
 	}
+	/**
+	 * @return Returns @c daeAtomicType::EXTENSION!=getAtomicType().
+	 */
+	inline int isAtomicType()const{ return daeAtomicType::EXTENSION!=getAtomicType(); }
 			
 	template<typename daeT>
 	/** Implements @c getScalar(). */
@@ -367,9 +371,12 @@ COLLADA_(public) //LEGACY QUERY API
 
 		static type cast(const daeRefRequest &req, type def)
 		{
+			#ifdef NDEBUG
+			#error There's a slim chance of false positives.
+			#endif 
 			daeElement* &e = (daeElement*&)req.object;
 			if(e!=nullptr) if(daeUnsafe<T>(e)) 
-			const_cast<daeObjectRef&>(req.object) = def;
+			const_cast<daeObjectRef&>(req.object) = dae(def);
 			else assert(e->_isElement()); return (type&)req.object;
 		}
 	};
@@ -782,7 +789,7 @@ COLLADA_(public) //Accessors & Mutators
 	 * This form leverages @c daeHashString. Note, the philosophy on "size"
 	 * differs.
 	 */
-	inline void setString(const daeObject &c, daeHashString str)
+	inline void setString(const daeObject &c, const daeHashString &str)
 	{
 		setString(c,str.string,str.extent+1,'\0');
 	}

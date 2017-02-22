@@ -2401,7 +2401,6 @@ COLLADA_(public) //QUESTIONABLE LEGACY OPERATORS (2)
 template<class Type, int Name>
 /**INTERNAL, PARTIAL-SPECIALIZATION
  * This specialization implements arrays that can have more than one child.
- * @note @c DAEP::Schematic is here because of longstanding MSVC EBO rules.
  */
 class dae_Array_base<Type,Name,false> 
 {
@@ -2490,7 +2489,6 @@ template<class Type, int Name>
  * Users may want to disable this ability, however it's provided in case
  * users wish to, or need to, deviate from the XSD schema that was used 
  * to generate their classes--and so code can treat them as-if arrays.
- * @note @c DAEP::Schematic is here because of longstanding MSVC EBO rules.
  */
 class dae_Array_base<Type,Name,true> 
 {	

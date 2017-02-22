@@ -753,11 +753,15 @@ COLLADA_(public)
 			*this = (daeArray&)swap;
 		}
 	}
-	/**LEGACY
-	 * Copy Constructor
+	/**LEGACY-SUPPORT
+	 * Explicit Copy Constructor
 	 * This constructor assumes the AU is @c daeAlloc::localThunk().
+	 * 
+	 * @remarks 2.5 marks this as @c explicit to try to limit cases
+	 * where arrays are created via copy accidentally when they are
+	 * being passed via const-reference.
 	 */
-	daeArray(const daeArray<T> &cpy){ *new(this)daeArray = cpy; }
+	explicit daeArray(const daeArray<T> &cpy){ *new(this)daeArray = cpy; }
 	/**LEGACY
 	 * Constructor that takes one element and turns into an array.
 	 * This constructor assumes the AU is @c daeAlloc::localThunk().
@@ -1584,7 +1588,8 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 */
 	inline int get1at(size_t index, S &one)const
 	{
-		if(index>=getCount()) return 0; one = get(index); return 1;
+		if(index>=getCount()) return 0; 
+		COLLADA_SUPPRESS_C(4244) one = get(index); return 1;
 	}
 	template<class S, class T>
 	/**LEGACY
@@ -1596,9 +1601,8 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 */
 	inline int get2at(size_t index, S &one, T &two)const
 	{
-		int retVal = 0; size_t iN = getCount();
-		if(index<iN){ one = get(index); retVal++; }
-		if(++index<iN){ two = get(index); retVal++; }return retVal;
+		if(1!=get1at(index++,one)) return 0;
+		if(1!=get1at(index++,two)) return 1; return 2;
 	}
 	template<class S, class T, class U>
 	/**LEGACY
@@ -1611,10 +1615,9 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 */
 	inline int get3at(size_t index, S &one, T &two, U &three)const
 	{
-		int retVal = 0; size_t iN = getCount();
-		if(index<iN){ one = get(index); retVal++; }
-		if(++index<iN){ two = get(index); retVal++; }
-		if(++index<iN){ three = get(index); retVal++; }return retVal;
+		if(1!=get1at(index++,one)) return 0;
+		if(1!=get1at(index++,two)) return 1;
+		if(1!=get1at(index++,three)) return 2; return 3;
 	}
 	template<class S, class T, class U, class V>
 	/**LEGACY
@@ -1628,11 +1631,10 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 */
 	inline int get4at(size_t index, S &one, T &two, U &three, V &four)const
 	{
-		int retVal = 0; size_t iN = getCount();
-		if(index<iN){ one = get(index); retVal++; }
-		if(++index<iN){ two = get(index); retVal++; }
-		if(++index<iN){ three = get(index); retVal++; }
-		if(++index<iN){ four = get(index); retVal++; }return retVal;
+		if(1!=get1at(index++,one)) return 0;
+		if(1!=get1at(index++,two)) return 1;
+		if(1!=get1at(index++,three)) return 2; 
+		if(1!=get1at(index++,four)) return 3; return 4;
 	}
 
 	#ifdef NDEBUG

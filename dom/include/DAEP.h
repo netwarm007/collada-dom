@@ -615,9 +615,18 @@ COLLADA_(private)
 	typedef typename T::__COLLADA__T _;
 
 COLLADA_(public)
-
-	/** The generated class, accessed via pointers. */
+	/**
+	 * The generated class, accessed via pointers. 
+	 */
 	typedef typename _::__COLLADA__Element type;
+
+	/**
+	 * This is a way to form a C++ reference to a
+	 * cursor-array inside of the contents-arrays
+	 * for this @c type for a given name BUT ONLY
+	 * if that name is non-singular.
+	 */
+	typedef dae_Array<type> content;	
 
 	/**
 	 * This is a type-ID for an element type, that is valid for
@@ -667,17 +676,14 @@ COLLADA_(public)
 	= !(is_group||is_abstract||allows_any||allows_any_attribute||is_all);
 };
 /**EXPERIMENTAL, TEMPLATE-SPECIALIZATION
- * Satisfy dae_Array<daeElement>.
- * @note Schematic<DAEP::Element> is not implemented.
- * @note @c dae_Array<daeElement> (@c dae_Array<>) and @c xs::any (@c xsAny)
- * rely on this.
+ * @c xs::any (@c xsAny) requires this.
  */ 
 template<> class Schematic<daeElement>
 { 
 COLLADA_(public)
 
 	/** The generated class, accessed via pointers. */
-	typedef daeElement element;
+	typedef daeElement type;
 	/** This means this is a placeholder for one or more concrete types. */
 	static const bool is_abstract = true;	
 };
@@ -963,8 +969,8 @@ template<class NC> //Non-class
  *
  * DAEP Class wraps a nonclass so DAEP InnerValue can be based on it.
  *
- * It's not an inner-class so templates don't have to satisfy all of
- * DAEP InnerValue's template parameters.
+ * @note The RT package is using this in order to turn some C arrays 
+ * into something that work inside of @c std::vector like containers.
  */
 class Class
 { 	
@@ -978,12 +984,19 @@ COLLADA_(public)
 	Class():wrapped_value(){}
 	Class(const NC &v):wrapped_value(v){}		
 	template<class Type> Class(const DAEP::Proto<Type>&)
-	:wrapped_value(wrapped_value){}
+	:wrapped_value(wrapped_value){ /*NOP*/ }
 	NC &operator=(const NC &v){ return wrapped_value = v; }
-	NC *operator&(){ return &wrapped_value; }
-	const NC *operator&()const{ return &wrapped_value; }
-	operator NC&(){ return wrapped_value; }
-	operator const NC&()const{ return wrapped_value; }	
+	/** 
+	 * This removes const-ness because A) it's not required by
+	 * DAEP Value, and B) for C arrays it creates an ambiguity
+	 * for Visual Studio 2010. It could be something about C++.
+	 */
+	operator NC&()const{ return const_cast<NC&>(wrapped_value); }
+	//Seems alright to remove so RT::Matrix can be DAEP::Class.
+	/**
+	 * This exists so to convert the pointer to the type of NC.
+	 */
+	//NC *operator&()const{ return const_cast<NC*>(&wrapped_value); }		
 };
 template<class NC> //Non-class
 /**PARTIAL-TEMPLATE SPECIALIZAITION
@@ -991,6 +1004,46 @@ template<class NC> //Non-class
  * a class is DAEP Class or is not.
  */
 class Class<Class<NC>> : public Class<NC>{};
+
+template<class T>
+/**
+ * This is used by @c DAEP::InnerValue::operator->*() to not convert
+ * strings to @c daeStringRef types, because doing so would demand a
+ * trip to the database's small string-table, or would result in the
+ * system's string-table being used, which is a considerably greater
+ * peril.
+ */
+class Default
+{
+	typedef const T type; 
+};
+template<class T, int N>
+/**PARTIAL-TEMPLATE SPECIALIZATION 
+ * Assuming this is a string-literal.
+ */
+class Default<T[N]>
+{
+	typedef const T *const type; 
+};
+template<class T, int N>
+/**PARTIAL-TEMPLATE SPECIALIZATION 
+ * Arrays should return a reference always--or fail. This also makes
+ * the "size on stack" argument decay so that it is not a hinderance.
+ * @todo Add something to cover @c daeBinary.
+ */
+class Default<daeArray<T,N>>
+{
+	typedef const daeArray<T> &type;
+};
+template<int ID, class T, class CC, typename CC::_ PtoM>
+/**PARTIAL-TEMPLATE SPECIALIZATION 
+ * If both arguments are DAEP Value then the underlying types should
+ * match.
+ */
+class Default<DAEP::Value<ID,T,CC,PtoM>>
+{	
+	typedef const typename DAEP::Value<ID,T,CC,PtoM>::underlying_type &type;
+};
 
 template<int ID, class T, class CC, typename CC::_ PtoM, class EBO=
 typename daeTypic<daeArrayAware<T>::is_class,T,DAEP::Class<T>>::type>
@@ -1112,7 +1165,7 @@ COLLADA_(public) //GENERIC PROGRAMMING GUARANTEES
 
 COLLADA_(public) //CHANGE-NOTICE GUARANTEES	
 	
-	template<class,class> friend class Notice;	
+	template<class,class> friend class InnerChange;	
 
 	template<class S>
 	/** It seems these must all be separate. */
@@ -1136,49 +1189,86 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 	 */
 	inline operator typename DAEP::NoConcern<note,underlying_type>::type&(){ return value; } 		
 
-	/**EXPERIMENTAL 
+	/**
 	 * @return Returns a @c const pointer to @c this. Its type is of @c value.
 	 * @note Using -> is not consistent with pointer semantics. The usage has
 	 * more to do with accessing methods and members the inner class may have.
 	 */
-	inline const underlying_type *operator->()const{ return &value; }
-	/**EXPERIMENTAL 
+	inline const underlying_type *operator->()const
+	{
+		return (underlying_type*)&value; //Removed operator &from DAEP::Class.
+	}
+	/**
 	 * @return Returns a @c const pointer if this value should not be changed
 	 * without notifice.
 	 * @note Using -> is not consistent with pointer semantics. The usage has
 	 * more to do with accessing methods and members the inner class may have.
 	 */
-	inline typename DAEP::NoConcern<note,underlying_type>::type *operator->(){ return &value; }
+	inline typename DAEP::NoConcern<note,underlying_type>::type *operator->()
+	{
+		return (underlying_type*)&value; //Removed operator &from DAEP::Class.
+	}
+
+	template<class T>
+	/**
+	 * Select between two DAEP Value given that the first is @c nullptr based.
+	 * Or:
+	 * Provide a default end to a chain @c const @c DAEP::Child::operator->().
+	 *
+	 * @todo A version that permits two DAEP Value arguments to be @c nullptr.
+	 *
+	 * @note This was created initially to simulate the "ternary operator" in
+	 * the pickle that it cannot find a common type between two DAEP Value as
+	 * they are templated wrappers, which confuses type deduction (Though the
+	 * C++ standard is a little vague on if compilers should look for matched
+	 * conversion to reference operators or not--MSCVC 2015 doesn't do that.)
+	 * IT'S VALUE to extract a DAEP Value from potentially @c nullptr objects
+	 * is a more common scenario, which should make the operator not uncommon.
+	 */
+	inline typename DAEP::Default<T>::type operator->*(const T &other)const
+	{
+		if(&object()==nullptr) return other; return value;
+	}
 
 	/**
 	 * This is the type of __COLLADA__Atom. 
 	 */
-	typedef typename daeAtomOf<EBO>::type atom;	
+	typedef typename daeAtomOf<EBO>::type atom, __COLLADA__Atom;	
+
+	/**
+	 * This is for @c daeHashString. It's a common API, but isn't implemented
+	 * unless @c underlying_type implements @c size(). Not for the time being.
+	 */
+	size_t size()const{ return value.size(); }
+	/**
+	 * This is for @c daeHashString. It's a common API, but isn't implemented
+	 * unless @c underlying_type implements @c data(). Not for the time being.
+	 */
+	const atom *data()const{ return value.data(); }
 
 	template<class I>
-	/**EXPERIMENTAL
-	 * Convert into a per-item agent of change.
-	 *
-	 * @remarks IT WOULD PROBABLY BE AN IMPROVEMENT IF THERE
-	 * WERE NOT PER-ITEM CHANGE NOTICE LOGIC. Perhaps if the
-	 * @c COLLADA_DOM_NOTE stuff was placed in front of each
-	 * generated class? While it's nice to postpone template
-	 * instantiation of DAEP Concern specializations; That's
-	 * probably not helpful because of C++'s "One Definition 
-	 * Rule." (ODR.)
+	/**CONST-FORM
+	 * Gets @c underlying_type::operator[] or equivalent.
 	 */
-	inline DAEP::Notice<type,atom> operator[](const I &i)
+	inline const atom &operator[](const I &i)const
 	{
-		return DAEP::Notice<type,atom>(this,value[i]); 
+		return value[i]; 
 	} 
 	template<class I>
-	/**CONST-FORM
-	 * This implements @c __COLLADA__Object for array elements.
-	 * It's also consistent with the non-const form.
+	/**
+	 * Gets @c underlying_type::operator[] or equivalent.
+	 *
+	 * @return Returns a @c const C++ reference if @c this DAEP Value
+	 * must issues a notification-of-change. Item level notifications
+	 * were implemented at first. It seemed like in hindsight that it
+	 * was prone to misunderstandings that a loop would generate more
+	 * than one notice; that it could be pathalogical on the database
+	 * end; and a lot of duplicate code to maintain here, which would 
+	 * just be more for users to learn for very little practical gain.
 	 */
-	inline DAEP::Notice<type,const atom> operator[](const I &i)const
+	inline typename DAEP::NoConcern<note,atom>::type &operator[](const I &i)
 	{
-		return DAEP::Notice<type,const atom>(this,value[i]); 
+		return value[i]; 
 	} 
 
 	template<class S> 
@@ -1194,8 +1284,8 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 	 */
 	inline type &operator=(const S &rvalue)\
 	{
-		DAEP::Notice<type,underlying_type> lvalue((type*)this,value);		
-		lvalue = rvalue; return *(type*)this;
+		struct _{ static void f(underlying_type &lv,const S &rv){ lv = rv; } };
+		DAEP::InnerChange<type,S> cn(*(type*)this,_::f,rvalue); return *(type*)this;
 	}
 };
 
@@ -1289,12 +1379,17 @@ COLLADA_(public) using InnerValue::operator=; //C2679
 /**
  * @class COLLADA::DAEP::Change
  *
- * A DAEP Change is issued by a DAEP Notice, in the event
- * that a change is made, and a DAEP Concern exists for	a
- * DAEP Note.
+ * When a change-notice is sent to a database it arrives
+ * via an object of this type. The database can use this
+ * window to examine the DAEP Object prior to the change.
+ * Calling @c carry_out_change() should apply the change.
+ * @see @c DAEP::Concern
+ * @see @c DAEP::InnerChange
+ * @see @c daeNoteChange()
  *
- * This is as far as the library goes concerning events.
- * The note-of-change is sent to the database interface.
+ * @remarks Presently changes are managed internally and
+ * are triggered by C++'s assignment operators on values
+ * whitelisted with @c DAEP::Concern.
  */
 class Change
 {
@@ -1352,18 +1447,11 @@ COLLADA_(public)
 	virtual void carry_out_change()const{ assert(0); }
 };
 
-//SCHEDULED FOR REMOVAL? 
-//It seems like a good idea to merge the change-notices
-//business into into InnerValue and define the [] logic
-//in terms of a "DAEP::Iterator" class that is a list &
-//item pair. The iterator would simply be const so that
-//per-item change notices would be impossible. It seems
-//like per-item notices are a hazard and not worthwhile.
-template<class S, class T>
+template<class S, class U>
 /**
- * @class COLLADA::DAEP::Notice
+ * Formerly "DAEP::Notice."
  *
- * A DAEP Notice dispatches change-notices. It's mainly
+ * A InnerChange dispatches change-notices. It's mainly
  * an extension of DAEP Value. It should be ignored for
  * the most part. 
  *
@@ -1371,118 +1459,40 @@ template<class S, class T>
  * unit can decide for itself to suppress notifications.
  * This is done by specializing DAEP Concern's template.
  */
-class Notice
+class InnerChange : public DAEP::Change
 {
-	T &value;
+COLLADA_(private) 
+	/**SCHEDULED FOR REMOVAL, C++98 SUPPORT
+	 * C++98 will not locally define template arguments.
+	 */
+	typedef void (*Operator)(typename S::underlying_type&,const U&);
 
+	S &lvalue; Operator op; const U &rvalue; mutable bool b;
+
+	template<class>
+	/** Dispatches change-notice. */
+	void _issue_change_if(...)
+	{
+		_object = (daeObject*)&lvalue.object();
+		kind_of_change = S::is_content?DAEP::CONTENT:DAEP::ATTRIBUTE;
+		daeMeta &m = dae(lvalue.object())->getMeta();
+		daeAttribute &v = S::is_content?*m.getValue():m.getAttributes()[S::name];
+		daeNoteChange(*this,v);		
+	}
+	template<class SFINAE>
+	/** Suppresses change-notice. */
+	void _issue_change_if(typename DAEP::Concern<SFINAE>::VOID*){}	
+	
 COLLADA_(public) 
 
-	const S &agent;
-
-	typedef typename S::note note;
-
-	Notice(const S *a, T &v):agent(*a),value(v){}
-	
-	template<class Note, class U>
-	/** Dispatches change-notice. */
-	void _do(U &u,...)
+	InnerChange(S &lv, Operator op, const U &rv)
+	:lvalue(lv),op(op),rvalue(rv),b()
 	{
-		u._object = (daeObject*)&agent.object();
-		u.kind_of_change = S::is_content?DAEP::CONTENT:DAEP::ATTRIBUTE;
-		daeMeta &m = dae(agent.object())->getMeta();
-		daeAttribute &v = S::is_content?*m.getValue():m.getAttributes()[S::name];
-		daeNoteChange(u,v);		
+		_issue_change_if<typename S::note::concern>(nullptr);
+		if(!b) op(lvalue.value,rvalue);
 	}
-	template<class Note, class U>
-	/** Suppresses change-notice. */
-	void _do(U&,typename DAEP::Concern<Note>::VOID*){}	
 
-//COLLADA_(private)
-
-	template<class U>
-	/** Implements @c operator=() etc. */
-	struct _operation : public DAEP::Change
-	{
-		//This is not a template argument to support C++98/03.
-		void(*op)(T&,const U&);
-
-		//Notice is used in place of T only to get around the
-		//"private" accessor from inside the global operators.
-		Notice &lv; const U &rv; mutable bool b;
-
-		~_operation(){ if(!b) op(lv.value,rv); } 
-
-		_operation(void(*op)(T&,const U&), Notice &lv, const U &rv)
-		:op(op),lv(lv),rv(rv),b(){};
-
-		virtual void carry_out_change()const{ op(lv.value,rv); b = true; }
-	};
-
-COLLADA_(public) //InnerValue-like operators
-
-	template<class S>
-	/** It seems these must all be separate. */
-	inline operator S*()const{ return value; }
-	template<class S>
-	/** It seems these must all be separate. */
-	inline operator S()const{ return __to<S>(nullptr); } 	
-	/** Implements @a S conversion operator. */
-	template<class S> S __to(typename S::__COLLADA__Object*)const
-	{
-		//If this fails, user code is probably using a wrong type.
-		//NOTE: This designed to convert daeURI, daeIDREF, and daeSIDREF.
-		return S(value,(typename S::__COLLADA__Object*)&agent.object());
-	}
-	/** Implements @a S conversion operator. */
-	template<class S> S __to(...)const{ return value; }
-
-	/**WARNING
-	 * This brings along with it non-assignment operators.
-	 *
-	 * @warning Refer to the @c DAEP::InnerValue operator
-	 * that corresponds to this operator for a workaround.
-	 *
-	 * @return Returns a non-const reference to the value 
-	 * if change-notices aren't generated by DAEP Concern.
-	 */
-	inline operator typename DAEP::NoConcern<note,T>::type&(){ return value; } 		
-
-	/**EXPERIMENTAL 
-	 * @return Returns a @c const pointer to @c this. Its type is of @c value.
-	 * @note Using -> is not consistent with pointer semantics. The usage has
-	 * more to do with accessing methods and members the inner class may have.
-	 */
-	const T *operator->()const{ return &value; }
-	/**EXPERIMENTAL 
-	 * @return Returns a @c const pointer if this value should not be changed
-	 * without notifice.
-	 * @note Using -> is not consistent with pointer semantics. The usage has
-	 * more to do with accessing methods and members the inner class may have.
-	 *
-	 * @remarks "::pointer" cannot be returned because it forces the template
-	 * to be instantiated immediately, in order to figure out the return type.
-	 */
-	typename DAEP::NoConcern<note,T>::type *operator->(){ return &value; }
-
-COLLADA_(public) //OPERATORS
-
-	template<class U> 
-	/**
-	 * All assignment operators are supported, defined outside of the 
-	 * template, because that produces significantly smaller MSVC2015
-	 * precompiled-header intermediary files. (This is a real problem
-	 * that effects all versions of Visual Studio.)
-	 * @note The difference was discovered while == and != were being
-	 * added, in order to support the ColladaDOM 3 style scoped enums.
-	 * @see @c COLLADA_DOM_GLOBAL_ASSIGNMENT_OPERATORS_NOT_INCLUDED &
-	 * ColladaDOM.inl -=,+=,/=,%=,*=,<<=,>>=,&=,|=,^=,++,-- operators.
-	 */
-	inline Notice &operator=(const U &rvalue)
-	{
-		struct _{ static void f(T &lv, const U &rv){ lv = rv; } };
-		_operation<U> op(_::f,*this,rvalue);
-		_do<note>(op,nullptr); return *this;
-	}	
+	virtual void carry_out_change()const{ op(lvalue.value,rvalue); b = true; }
 };
 
 /**

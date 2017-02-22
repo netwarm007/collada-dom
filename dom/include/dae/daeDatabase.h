@@ -87,7 +87,7 @@ COLLADA_(private) //VIRTUAL METHOD TABLE
 	}
 	
 	template<class T>
-	inline daeAlloc<T> &_new(size_t newT, const daeAlloc<T> &AU, const daeObject &obj)
+	inline daeAlloc<T> &_new(size_t &newT, const daeAlloc<T> &AU, const daeObject &obj)
 	{
 		/*if(_vN_>=0)*/ return (daeAlloc<T>&)_v1_new(newT,AU,obj);
 	}
@@ -111,7 +111,7 @@ COLLADA_(private) //VIRTUAL METHOD TABLE
 	virtual void _v1_delete(const daeElement&) = 0;
 	virtual void _v1_new(size_t, daeDocument*&,void*&) = 0; 
 	virtual void _v1_delete(const daeDocument&) = 0; 
-	virtual	daeAlloc<> &_v1_new(size_t newT, const daeAlloc<>&, const daeObject&) = 0;
+	virtual	daeAlloc<> &_v1_new(size_t &newT, const daeAlloc<>&, const daeObject&) = 0;
 	virtual void _v1_delete(const daeAlloc<>&, const daeObject&) = 0;	
 	virtual void _v1_note(const DAEP::Change&, const daeAttribute*) = 0;	
 	virtual bool _v1_atomize_on_note(daeContainedObject&) = 0;	

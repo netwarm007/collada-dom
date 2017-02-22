@@ -24,9 +24,9 @@ __enum__ operator=(__enum__ v){ return __value__ = v; }\
 x(__enum__ v=(__enum__)0):__value__(v){} typedef daeEnumeration __COLLADA__POD;
 #endif
 #ifndef COLLADA_DOM_3__struct__daeSmartRef
-#define COLLADA_DOM_3__struct__daeSmartRef(x) /*C2666 using daeSmartRef::operator=;*/\
-template<class T> daeSmartRef &operator=(T &cp){ return daeSmartRef::operator=(cp); }\
-template<class T> daeSmartRef &operator=(T *cp){ return daeSmartRef::operator=(cp); }\
+#define COLLADA_DOM_3__struct__daeSmartRef(x) \
+template<class T> x &operator=(T &cp){ daeSmartRef::operator=(cp); return *this; }\
+template<class T> x &operator=(T *cp){ daeSmartRef::operator=(cp); return *this; }\
 template<class T> x(T &cp):daeSmartRef(cp){}\
 template<class T> x(T *cp):daeSmartRef(cp){}\
 x(){}  x(__COLLADA__T *cp):daeSmartRef(cp){} //nullptr magic
@@ -349,8 +349,9 @@ COLLADA_(namespace)
 	typedef daeUByte xsUnsignedByte;
 	typedef daeArray<daeUByte> xsUnsignedByteArray; //A
 
-#else //domAny requires xsAnySimpleType.
+#else //domAny requires xsAny/xsAnySimpleType.
 
+		typedef daeElement xsAny;
 		typedef daeString xsAnySimpleType;
 #endif
 }

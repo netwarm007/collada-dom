@@ -278,6 +278,9 @@ COLLADA_(private) //OBJECT MEMBERS
 
 	struct _Flags
 	{
+		#ifdef NDEBUG
+		#error Add string-ref support via a ref-release flag.
+		#endif
 		unsigned int resolved:1,any:1,attached:1; 
 
 		_Flags(){ (unsigned&)*this = 0; }
@@ -325,11 +328,6 @@ COLLADA_(public) //OPERATORS
 		refresh(); return *this;
 	}
 
-	//Note: this could be avoided if daeURI used explicit constructors.
-	//However, for openDoc to work and so on, it needs to be converted.
-	#ifdef NDEBUG
-	#error Maybe do this for IDREF and SIDREF for extra-added type safety?
-	#endif
 	template<int ID, class CC, typename CC::_ PtoM>
 	/**
 	 * This seems unavoidable in order to not write versions for every kind
@@ -340,14 +338,7 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline daeURI &operator=(const DAEP::Value<ID,daeURI,CC,PtoM> &cp)
 	{
-		setParentObject(&cp.object()); setURI((daeString)cp); return *this;
-	}
-	//SCHEDULED FOR REMOVAL
-	template<class S, class T>	
-	/** In the unlikely event that a schema has an <xs:list itemType="anyURI"> type. */
-	inline daeURI &operator=(const DAEP::Notice<S,T> &cp)
-	{
-		setParentObject(&cp.agent.object()); setURI((daeString)cp); return *this;
+		setParentObject(dae(&cp.object())); setURI((daeString)cp); return *this;
 	}
 	
 COLLADA_(public) //daeSafeCast() SHORTHANDS

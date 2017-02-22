@@ -88,6 +88,12 @@ COLLADA_(public) //This is 2017 extension ahead of work on old COLLADA Viewer co
 		daeErrorHandler *eh;		
 		inline LogStream(daeErrorHandler *eh):eh(eh){}
 		template<typename const_ptr>
+		#ifdef NDEBUG
+		#error Enable limited i18n by signaling string literals to H.
+		#error Add a flag to this data structure. The string-literal
+		#error can be address-mapped to a message-catalog. Follow-up
+		#error literals combine to form a unified message.
+		#endif
 		inline LogStream operator<<(const_ptr *p)
 		{
 			//HACK: _pointer exists only because the FX component has an

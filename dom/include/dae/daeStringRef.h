@@ -644,6 +644,8 @@ COLLADA_(public)
 								
 COLLADA_(public) //OPERATORS	
 
+	typedef const daeStringCP __COLLADA__Atom;
+
 	template<class T>
 	/**OPERATOR
 	 * Sets a string from an external @c daeString.
@@ -673,13 +675,14 @@ COLLADA_(public) //OPERATORS
 	 * Weak cast to @c daeString. 
 	 */
 	inline operator const CP*()const{ return _string; }
-
+		
 	template<class I>	
 	/**
 	 * C-string style array accessor. 
 	 */
 	inline daeStringCP operator[](const I &i)const{ return _string[i]; }
 
+	using daeString_support::operator==;
 	/**
 	 * Pools must guarantee strict-equality. 
 	 */
@@ -687,6 +690,7 @@ COLLADA_(public) //OPERATORS
 	{
 		return _string==cmp._string;
 	}
+	using daeString_support::operator!=;
 	/**
 	 * Pools must guarantee strict-equality. 
 	 */
