@@ -139,7 +139,15 @@ COLLADA_(public)
 	 * before @c getLock() should return errors, and put
 	 * the IO operation in a permanent error state.
 	 */
-	virtual size_t getLock() = 0;
+	virtual size_t getLock() = 0;	
+
+	/**WARNING
+	 * This is to not have to rely on file extensions.
+	 * @return Returns @c nullptr if the caller should
+	 * guess the type of data based on a file extension
+	 * or other means.
+	 */
+	virtual daeClientString readMIME(){ return nullptr; }
 
 	/**INPUT
 	 * Read in from a file handle or memory buffer.
@@ -165,7 +173,7 @@ COLLADA_(public)
 	 *
 	 * @remarks The @daeIO should have one-at-most maps open at a single time.	 
 	 */
-	virtual void *getReadMap(){ return nullptr; }
+	virtual const void *getReadMap(){ return nullptr; }
 
 	/**INPUT, WARNING, NOT-RECOMMENDED, LEGACY-SUPPORT
 	 * These are for IOPlugins that require whole FILE objects.
@@ -222,7 +230,7 @@ COLLADA_(public) //subject to change
 	static const long long vN = 1LL<<56;
 
 	daeIORequest(const daeArchive *a, const daeHashString &b, const daeURI *c, const daeURI *d=nullptr)
-	:ops(vN),scope(const_cast<daeArchive*>(a)),string(b),localURI(c),remoteURI(d){};
+	:ops(vN),scope(const_cast<daeArchive*>(a)),string(b),localURI(c),remoteURI(d){}
 
 COLLADA_(public)
 	/**LEGACY
@@ -419,7 +427,7 @@ COLLADA_(private)
 
 //Note: There's no need for two parameters since the
 //simple/single-use I/O won't facilitate in & output.
-template<int IO=daeIOPlugin::Demands::unimplemented>
+template<int IO=0>
 /**
  * Implements a complementary @c daeIOPlugin.
  */
@@ -432,12 +440,13 @@ COLLADA_(public) //daeIOPlugin methods
 	virtual daeOK addDoc(daeDOM&,daeDocRef&){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeOK readContent(daeIO&,daeContents&){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeOK writeContent(daeIO&,const daeContents&){ return DAE_ERR_NOT_IMPLEMENTED; }	
+	//CAUTION: THIS IS REALLY NOT A GOOD SET UP. DON'T GIVE IT A TEMPORARY daeIORequest OBJECT!!!
 	daeIOSecond(const daeIORequest &tmp=daeIORequest(nullptr,nullptr,nullptr)):daeIOPlugin(&tmp){}
 };
 /**LEGACY
  * Implements an empty @c daeIOPlugin.
  */
-typedef daeIOSecond<> daeIOEmpty;
+typedef daeIOSecond<daeIOPlugin::Demands::unimplemented> daeIOEmpty;
 
 /**EXPERIMENTAL
  * The daePlatform class is an abstract representation

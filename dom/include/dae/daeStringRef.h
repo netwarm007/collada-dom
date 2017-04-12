@@ -32,6 +32,29 @@ COLLADA_(public) //daeArray traits
 
 	typedef void __COLLADA__atomize;
 
+COLLADA_(public)
+	/**
+	 * COLLADA 1.4.1 and 1.5.0 has many crazy ID
+	 * like # fragment addressing modes. This is
+	 * used to detect a / implicating its SIDREF.
+	 */
+	inline bool getID_slashed()const
+	{
+		This &_this = *(This*)this;
+		for(size_t i=0;i<_this.size();i++)		
+		if('/'==_this[i]) return true; return false;
+	}
+
+	//These simplify std::vector::insert, etc.
+	/**
+	 * Implements @c begin() in terms of @c data().
+	 */
+	daeString begin()const{ return ((This*)this)->data(); }
+	/**
+	 * Implements @c end() in terms of @c data()+size().
+	 */
+	daeString end()const{ return begin()+((This*)this)->size(); }
+
 COLLADA_(public) //COMPARISON OPERATORS
 
 	template<class> struct _eq
@@ -670,11 +693,10 @@ COLLADA_(public) //OPERATORS
 		set(cp); return *this; 
 	}
 
-	template<class CP>	
-	/**
-	 * Weak cast to @c daeString. 
+	/**OPERATOR
+	 * Converts to  @c daeString. 
 	 */
-	inline operator const CP*()const{ return _string; }
+	inline operator daeString()const{ return _string; }
 		
 	template<class I>	
 	/**
@@ -1107,6 +1129,7 @@ COLLADA_(public) //Ambiguous constructors
 			_this.string = str.c_str(); _this.extent = str.size();
 		}
 
+		template<int> friend class daeURI_size;
 		template<int N>
 		/**
 		 * This is preventing conversion from a @c daeURI. This is to force a

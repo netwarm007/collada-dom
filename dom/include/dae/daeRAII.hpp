@@ -59,6 +59,8 @@ struct CloseIO
 	~CloseIO(){ if(IO!=nullptr) p.closeIO(IO); } 	
 };
 
+//ColladaDOM.inl is exposing daeRAII.hpp.
+#ifdef BUILDING_COLLADA_DOM
 struct InstantLegacyIO
 {
 	bool instantiated;
@@ -78,6 +80,7 @@ struct InstantLegacyIO
 		if(instantiated) ((daeIOPlugin&)*IO).~daeIOPlugin(); 
 	} 	
 };
+#endif
 
 //-------.
 	}//<-'

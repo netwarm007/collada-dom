@@ -1112,6 +1112,25 @@ COLLADA_(public) //Alternative to old "getChildren" APIs
 		while(it!=itt) it->hasChild()?f(*it++):it+=it->getKnownStartOfText().span();
 	}
 
+	/**EXPERIMENTAL
+	 * This void form is only useful if only one child
+	 * is expected to be present.
+	 */
+	inline iterator find_first_child()
+	{
+		iterator it = begin(), itt = end();
+		for(;it!=itt;it+=it->getKnownStartOfText().span())
+		if(it->hasChild()) return it; return nullptr;
+	}	
+	/**EXPERIMENTAL, CONST-FORM
+	 * This void form is only useful if only one child
+	 * is expected to be present.
+	 */
+	inline const_iterator find_first_child()const
+	{
+		return const_cast<daeContents*>(this)->find_first_child();
+	}	
+
 	/**WARNING
 	 * @warning "text" includes all non-child nodes. This
 	 * includes comments, processing-instructions, an XML
@@ -2143,6 +2162,11 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * for single argument uses.
 	 */
 	inline void push_back(Type *ref){ assert(Name>=0||0==size()); operator[](size()) = ref; }
+
+	/**
+	 * Complements @c push_back(). (Removes last item.)
+	 */
+	inline void pop_back(){ back() = ""; }
 
 #if 2 == COLLADA_DOM
 

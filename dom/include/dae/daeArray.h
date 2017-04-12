@@ -992,6 +992,10 @@ COLLADA_(public) //Standard Library compatibility layer
 	 * for single argument uses.
 	 */
 	inline void push_back(const S &value){ set(size(),value); }
+	/**
+	 * Complements @c push_back(). (Removes last item.)
+	 */
+	inline void pop_back(){ setCountLess(size()-1); }
 
 COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
 	/**LEGACY

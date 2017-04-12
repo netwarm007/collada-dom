@@ -499,6 +499,7 @@ COLLADA_(public) //LEGACY: old "database" APIs
   //ID/SID NOTES TO daeDocument::_carry_out_change_of_ID_or_SID()//
   //The database must also implement small string pooling, and if//
   //the id/sid strings are too large to qualify they cannot match//
+  //ID lookup requires @c daeStringRef::getID_id() to be operable//
   /////////////////////////////////////////////////////////////////
 
 	template<class S, class T> //T is DAEP::Element or daeElement based
@@ -507,7 +508,9 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	 * FOR HOW TO ENABLE IT, AND HOW IT CAN FAIL IF id IS NOT A SMALL STRING.
 	 *
 	 * Looks up elements by "id" attribute.
-	 * @param id The ID to match on.
+	 * @param id The ID to match on. A # is allowed by removing the first bit
+	 * of the string-ref's pointer address. Databases that enable @c idLookup
+	 * are responsible for this.
 	 * @return Returns @a match.
 	 */
 	inline daeSmartRef<T> &idLookup(const S &id, daeSmartRef<T> &match, enum dae_clear clear=dae_clear)const
@@ -524,7 +527,9 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	 *
 	 * This is a single-argument shorthand with @a S being explicitly stated.
 	 * Looks up elements by "id" attribute.
-	 * @param id The ID to match on.
+	 * @param id The ID to match on. A # is allowed by removing the first bit
+	 * of the string-ref's pointer address. Databases that enable @c idLookup
+	 * are responsible for this.
 	 * @return Returns @a def.
 	 */
 	inline daeSmartRef<typename S::__COLLADA__T> &idLookup(const T &id,

@@ -30,41 +30,55 @@ template<class T> struct daeDocRoot : daeDocRef, daeOK
 	template<> struct _unvoid<void>{ typedef daeElement type; };
 	template<> struct _unvoid<void*>{ typedef daeElement type; };
 
-	typedef typename _unvoid<T>::type T;
+	typedef typename _unvoid<T>::type TT;
 
 	using daeDocRef::operator=; //using daeOK::operator=; //C4522	
 	
+	//NOTE: daeConstOf is added to implement daeArchive::getDoc().
+
 	daeDocRoot(){}
 	daeDocRoot(daeOK cp):daeOK(cp){}
 	daeDocRoot(daeError cp):daeOK(cp){}
-	daeDocRoot(daeDocRef &cp):daeDocRef(cp){}
+	daeDocRoot(const daeDocRef &cp):daeDocRef(cp),daeOK(cp){}
 	daeDocRoot(const daeDocRoot<> &cp):daeDocRef(cp),daeOK(cp){}
 	template<class U>daeDocRoot&operator=(const daeDocRoot<U> &cp)
 	{
 		//Allow same types or dae/DAEP type to void/void*.
-		T &crazy_cast = *(typename daeDocRoot<U>::T*)nullptr; 
+		TT &crazy_cast = *(typename daeDocRoot<U>::TT*)nullptr; 
 		daeDocRef::operator=(cp); error = cp.error; return *this; 
 	}
 	template<class S> operator S*()const
-	{ return (S*)_SFINAE<S>((S*)nullptr); }	
+	{ 
+		return (daeConstOf<T,S>::type*)_SFINAE<S>((S*)nullptr); 
+	}	
 	template<template<class> class R, class S> operator R<S>()const
-	{ return (S*)_SFINAE<S>((S*)nullptr); }
-	operator daeDocument*()const
-	{ return daeDocRef::operator->()->_getDocument(); }
-	operator daeDocumentRef()const
-	{ return daeDocRef::operator->()->getDocument(); }
-	template<class S> daeObject *_SFINAE(...)const
-	{ return daeDocRef::operator->(); }	
-	template<class S> daeObject *_SFINAE(DAEP::Element*)const
-	{ return _SFINAE<S>((daeElement*)nullptr); }
-	template<class S> daeObject *_SFINAE(daeElement*)const
+	{
+		return (daeConstOf<T,S>::type*)_SFINAE<S>((S*)nullptr); 
+	}
+	operator typename daeConstOf<T,daeDocument>::type*()const
+	{
+		return daeDocRef::operator->()->_getDocument(); 
+	}
+	operator daeSmartRef<typename daeConstOf<T,daeDocument>::type>()const
+	{
+		return daeDocRef::operator->()->getDocument(); 
+	}
+	template<class S> typename daeConstOf<T,daeObject>::type *_SFINAE(...)const
+	{
+		return daeDocRef::operator->(); 
+	}	
+	template<class S> daeObject *_SFINAE(const DAEP::Element*)const
+	{ 
+		return _SFINAE<S>((daeElement*)nullptr); 
+	}
+	template<class S> daeObject *_SFINAE(const daeElement*)const
 	{ 
 		//& is used to invoke the DAEP::Element conversion
 		//to a daeElement& in order to behave like xs::any.
-		S &upcast = *(T*)nullptr;
+		S &upcast = *(TT*)nullptr;
 		if(*this==COLLADA_(nullptr)) return nullptr;
 		daeElement *root = (*this)->getDocument()->getRoot(); 
-		daeSafeCast<T>(root); return root;
+		daeSafeCast<TT>(root); return root;
 	}
 };
 
@@ -311,6 +325,23 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	inline const_daeDocRef getDoc(const daeURI &URI)const
 	{
 		const_daeDocRef matchingDoc; return URI.docLookup2(*this,matchingDoc);
+	}
+	template<class S, class T>
+	/**LEGACY
+	 * Gets a @c daeDocRoot compatible with @a S.
+	 */
+	inline daeDocRoot<S> getDoc(const T &i_or_URI)
+	{
+		return getDoc(i_or_URI);
+	}			
+	template<class S, class T>
+	/**LEGACY, CONST-PROPOGATING-FORM
+	 * Gets a @c daeDocRoot compatible with @a S.
+	 * @note @c daeDocRoot wasn't designed with @c const types in mind.
+	 */
+	inline daeDocRoot<const typename S::__COLLADA__T> getDoc(const T &i_or_URI)const
+	{
+		return getDoc(i_or_URI);
 	}
 		
 	/**CONST-ONLY

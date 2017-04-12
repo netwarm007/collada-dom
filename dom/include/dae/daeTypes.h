@@ -16,7 +16,12 @@
 #endif 
 
 COLLADA_(namespace)
-{
+{	
+	//SCHEDULED FOR REMOVAL
+	#ifndef COLLADA_DOM_MAKER
+	inline const char *_COLLADA_DOM_MAKER();
+	#define COLLADA_DOM_MAKER _COLLADA_DOM_MAKER()
+	#endif
 	/** daeObject tags */
 	typedef unsigned char daeTag;
 	/**SINGLETON
@@ -45,7 +50,8 @@ COLLADA_(namespace)
 		 * @param _extern_ is just so C++ lets the @c extern keyword
 		 * decorate the declaration. It is ignored.
 		 */
-		daePShare(int _extern_=0):tag(),OK(grant())
+		daePShare(int _extern_=0)
+		:tag(),OK(grant()),_maker(COLLADA_DOM_MAKER)
 		{
 			//There's a limit of 127 shares. That's a lot of modules.
 			assert(OK==DAE_OK); (void)_extern_;
@@ -54,6 +60,13 @@ COLLADA_(namespace)
 		 * The library will use this to free up a process-share slot.
 		 */
 		~daePShare(){ grant(0); }
+
+		//SCHEDULED FOR REMOVAL?
+		/**
+		 * This is to decouple the process-share from the preprocessor
+		 * so static libraries don't have to know @c COLLADA_DOM_MAKER.
+		 */
+		const char *const _maker;
 
 	/**SINGLETON
 	 * @see @c COLLADA::DAEP::Object::Object().	 
@@ -81,14 +94,13 @@ COLLADA_(namespace)
 	typedef const daeStringCP *daeClientString; 	
 	typedef const daeStringCP daeClientStringCP; 
 
-	#ifndef COLLADA_DOM_MAKER
+	//#ifndef COLLADA_DOM_MAKER
 	/**
 	 * This is used by @c __DAEP__Make__maker to visually identify
 	 * the process-share. It's a default. The address is available
 	 * regardless. It's recommended to define @c COLLADA_DOM_MAKER
 	 * to a string-literal that describes the output of the linker.
 	 */
-	#define COLLADA_DOM_MAKER _COLLADA_DOM_MAKER()
 	inline daeClientString _COLLADA_DOM_MAKER()
 	{
 		//Reminder: %p is non-portable.
@@ -97,7 +109,7 @@ COLLADA_(namespace)
 		if(sprintf(address+2,"%p",&DOM_process_share)>=sizeof(address)) assert(0);
 		return address;
 	}
-	#endif
+	//#endif
 
 	//see daeStringRef.h (unrelated to daeString)
 	class daeStringRef; class daeTokenRef;
@@ -382,7 +394,7 @@ struct daeBoundaryStringIn
 	template<class T, int I> //daeStringCP
 	daeBoundaryStringIn(const daeArray<T,I> &c_str):c_str(c_str.data()){}	
 	template<class A, class B, class C>
-	daeBoundaryStringIn(const std::basic_string<A,B,C> &str):c_str(str.c_str()){}
+	daeBoundaryStringIn(const std::basic_string<A,B,C> &str):c_str(str.c_str()){}	
 	template<class T> //See WORKAROUND
 	daeBoundaryStringIn(const T &operator_char_):c_str(operator_char_){}
 	template<int> friend class daeURI_size; //(Just predeclaring.)
@@ -452,6 +464,9 @@ inline daeElement *dae(const daeSmartRef<T> &r){ T *p = r; return dae(p); }
 inline daeObject *dae(const daeObjectRef &r){ return (daeObject*&)r; }
 /**WARNING @warning CONST-CAST. */
 inline daeObject *dae(const const_daeObjectRef &r){ return (daeObject*&)r; }
+template<class T>
+/**WARNING @warning CONST-CAST. NOP */
+inline daeDocRoot<T> &dae(const daeDocRoot<T> &NOP){ return (daeDocRoot<T>&)NOP; }
 	
 //Many legacy APIs take it upon themselves to clear (or not clear) arrays.
 //Rather than doubling the number of APIs, this enum is added as a default.

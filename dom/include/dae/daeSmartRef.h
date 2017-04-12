@@ -193,14 +193,17 @@ COLLADA_(public) //Non-factory constructors
 COLLADA_(public) //OPERATORS
 
 	//R is expanding this to cover daeDocRoot.
-	template<template<class> class R, class S> //BOTH class T & U MUST BE DEFINED.
+	template<template<class> class R, class U> //BOTH class T & U MUST BE DEFINED.
 	/**
 	 * Overloaded assignment operator which will convert between template types.
 	 * @param smartRef a daeSmartRef to the object to copy from.
 	 * @return Returns a reference to this object.
+	 * 
+	 * @see @c daeElement class template specializations at the end of this file.
 	 */	
-	inline daeSmartRef &operator=(const R<S> &cp)
+	inline daeSmartRef &operator=(const R<U> &cp)
 	{
+		//Reminder: cp can be daeDocRoot, which converts to more than one pointer.
 		T *ptr = cp;
 		dae(ptr)->_ref(); _ptr->_release(); 
 		_ptr = (daeObject*)ptr; return *this;
@@ -255,7 +258,11 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline T *operator->()const
 	{
-		assert(nullptr!=_ptr); 
+		//Disabling this assert so the new deferred dereferencing
+		//feature set can be used with ->.
+		//dae_Array::operator->() and (Type*) conversion operator,
+		//DAEP::InnerValue::operator->*()
+		//assert(nullptr!=_ptr); 
 		return static_cast<T*>((DAEP::Object*)_ptr);
 	}
 
@@ -310,6 +317,28 @@ COLLADA_(protected) //DATA-MEMBER
 	/* The pointer to the element which is being reference counted. */
 	daeObject *_ptr;
 };
+template<>
+template<template<class> class R, class U>
+/**CLASS TEMPLATE-SPECIALIZATION
+ * This converts from @c DAEP::Element to @c daeElement for @c xs::any.
+ */	
+inline daeElementRef &daeElementRef::operator=(const R<U> &cp)
+{
+	daeElement *ptr = dae(cp);
+	dae(ptr)->_ref(); _ptr->_release(); 
+	_ptr = (daeObject*)ptr; return *this;
+}
+template<>
+template<template<class> class R, class U>
+/**CLASS TEMPLATE-SPECIALIZATION
+ * This converts from @c DAEP::Element to @c daeElement for @c xs::any.
+ */	
+inline const_daeElementRef &const_daeElementRef::operator=(const R<U> &cp)
+{
+	const daeElement *ptr = dae(cp);
+	dae(ptr)->_ref(); _ptr->_release(); 
+	_ptr = (daeObject*)ptr; return *this;
+}
 
 //---.
 }//<-'

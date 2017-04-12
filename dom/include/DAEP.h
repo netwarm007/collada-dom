@@ -1013,17 +1013,17 @@ template<class T>
  * system's string-table being used, which is a considerably greater
  * peril.
  */
-class Default
+struct Default
 {
-	typedef const T type; 
+	typedef const T type; typedef const T narrow_test; 
 };
 template<class T, int N>
 /**PARTIAL-TEMPLATE SPECIALIZATION 
  * Assuming this is a string-literal.
  */
-class Default<T[N]>
+struct Default<T[N]>
 {
-	typedef const T *const type; 
+	typedef const T *const type; typedef const T *narrow_test; 
 };
 template<class T, int N>
 /**PARTIAL-TEMPLATE SPECIALIZATION 
@@ -1031,18 +1031,19 @@ template<class T, int N>
  * the "size on stack" argument decay so that it is not a hinderance.
  * @todo Add something to cover @c daeBinary.
  */
-class Default<daeArray<T,N>>
+struct Default<daeArray<T,N>>
 {
-	typedef const daeArray<T> &type;
+	typedef const daeArray<T> &type; typedef daeArray<T> narrow_test;
 };
 template<int ID, class T, class CC, typename CC::_ PtoM>
 /**PARTIAL-TEMPLATE SPECIALIZATION 
  * If both arguments are DAEP Value then the underlying types should
  * match.
  */
-class Default<DAEP::Value<ID,T,CC,PtoM>>
+struct Default<DAEP::Value<ID,T,CC,PtoM>>
 {	
 	typedef const typename DAEP::Value<ID,T,CC,PtoM>::underlying_type &type;
+	typedef typename DAEP::Value<ID,T,CC,PtoM>::underlying_type narrow_test;
 };
 
 template<int ID, class T, class CC, typename CC::_ PtoM, class EBO=
@@ -1178,7 +1179,7 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 		return S(value,(typename S::__COLLADA__Object*)&object());
 	}
 	/** Implements @a S conversion operator. C4927 wants explicity. */
-	template<class S> S __to(...)const{ return S((const underlying_type&)value); }
+	template<class S> S __to(...)const{ return S((underlying_type&)value); }
 
 	/**CONST-FORM
 	 * This brings along with it non-assignment operators.
@@ -1227,7 +1228,15 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 	 */
 	inline typename DAEP::Default<T>::type operator->*(const T &other)const
 	{
-		if(&object()==nullptr) return other; return value;
+		if(&object()==nullptr) return other; return (underlying_type&)value;
+
+		#ifdef NDEBUG
+		#error Raise warnings that user code may be suppressing.
+		#endif
+		//This is designed to catch "narrowing" issues, since the return type
+		//is T and not underlying_type. Something like using 1 to get a float
+		//can be quiet error.
+		DAEP::Default<T>::narrow_test test((underlying_type&)value);
 	}
 
 	/**
@@ -1518,8 +1527,13 @@ COLLADA_(public) //VIRTUAL METHOD TABLE
 	virtual ~Make(){}
 	/**
 	 * Default Constructor
+	 * @c __DAEP__Make__maker was @c COLLADA_DOM_MAKER.
+	 * It's not really used. Is it really needed?
+	 * If there are static libaries it's hard to agree
+	 * on @c COLLADA_DOM_MAKER.
 	 */
-	Make():__DAEP__Make__maker(COLLADA_DOM_MAKER){}
+	Make():__DAEP__Make__maker(COLLADA::DOM_process_share._maker)
+	{}
 
 	/**SEALED INTERFACE
 	 * This is used to set up a DAEP Model. The models are

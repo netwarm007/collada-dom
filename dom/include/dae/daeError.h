@@ -78,8 +78,10 @@ COLLADA_(namespace)
 		daeOK():error(DAE_OK){}
 
 		daeOK(daeError Error):error(Error){}
-
+		
 		daeOK(const daeOK &OK):error(OK.error){}
+
+		daeOK(const void *e):error(e!=nullptr?DAE_OK:DAE_ERROR){}
 
 		inline operator daeError&(){ return error; }
 

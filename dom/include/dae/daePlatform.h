@@ -100,7 +100,7 @@ namespace COLLADA = ColladaDOM_3;
  * locking; and non-local C++ exceptions. In practice this has
  * to be a bitwise-combination of interdisciplinary philosophy.
  */
-#define COLLADA_DOM_PHILOSOPHY COLLADA_DOM //2
+#define COLLADA_DOM_PHILOSOPHY 0 //COLLADA_DOM //2
 /**
  * This relates the ABI's version. It's kind of a minor version.
  * 5 was to imply version 2.5. This number is the module version.
@@ -123,19 +123,18 @@ normally parts are not included by clients when including headers.
 adds __declspec(dllexport) and permits -fvisibility=hidden on GCC.
 
 *IMPORTING_COLLADA_DOM 
-adds __declspec(dllimport) and "noinline". noinline is experimental.
-
-NOTE: see LINKAGE.HPP and the SNIPPET macro, that mistrusts noinline.
+adds __declspec(dllimport) and "noinline". noinline is experimental. 
+NOTE: see LINKAGE.HPP and the SNIPPET macro, that distrusts noinline.
 
 *BUILDING_IN_LIBXML
-builds in the libxml IO plugin. (You need one. Unless you have one?)
+builds in the libxml I/O plugin. (You need one. Unless you have one?)
 
 *BUILDING_IN_TINYXML
-builds in the TinyXML IO plugin. (Histories suggest PS3 required this.)
+builds in the TinyXML I/O plugin. (Histories suggest PS3 required this.)
 
 *BUILDING_IN_LIBXML (together with)
 *BUILDING_IN_MINIZIP
-builds in the MiniZip IO plugin. (Historically, this is for ZAE files.)
+builds in the MiniZip I/O plugin. (Historically, this is for ZAE files.)
 
 NOTE: These libraries will be replaced with equivalents once obsolete.
  
@@ -415,11 +414,9 @@ namespace nick{} namespace name = nick; namespace nick
 COLLADA_(namespace)
 {
 	//THESE FEED INTO daeDomTypes.h.
-	//They also tend to get used like stdint types.
-	//This practice should probably be discouraged.
-	//daeBool was used like bool. Now daeBoolean and
-	//daeEnumeration are used to distance these types
-	//from inappropriate use outside if the RTTI code.
+	//In the past they were used like stdint types.
+	//Don't do that.
+	//Note: signed char and char are different types.
 	typedef COLLADA_DOM_INT8 daeByte; //Was "daeChar."
 	typedef COLLADA_DOM_INT16 daeShort;
 	typedef COLLADA_DOM_INT32 daeInt;
@@ -431,14 +428,29 @@ COLLADA_(namespace)
 	typedef COLLADA_DOM_FLOAT daeFloat;
 	typedef COLLADA_DOM_DOUBLE daeDouble;
 
+	#define COLLADA__float__precision 1
+	#define COLLADA__double__precision 2 
+	/**C-PREPROCESSOR MACRO
+	 * This macro is for external package configuration.
+	 * ~~~~~~~~~~~~~~~~~~~~~~~~~{.C++}
+	 * #if 2==COLLADA_DOM_PRECISION
+	 * #define BT_USE_DOUBLE_PRECISION
+	 * #endif 
+	 */
+	#define COLLADA_DOM_PRECISION \
+	COLLADA_TOKENIZE(COLLADA__,COLLADA_DOM_DOUBLE)##__precision
+
 	//Check that char is signed and types meet XML Schema widths.
+	//daeByte should be signed char if char is an unsigned value.
 	static daeCTC<(daeByte)-1==-1> daeByte_check;
 	static daeCTC<(daeUByte)-1!=-1> daeUByte_check;
 	static daeCTC<sizeof(daeShort)>=16/CHAR_BIT> daeShort_check;
 	static daeCTC<sizeof(daeInt)>=32/CHAR_BIT> daeInt_check;
 	static daeCTC<sizeof(daeLong)>=64/CHAR_BIT> daeLong_check;
 	static daeCTC<sizeof(daeFloat)>=32/CHAR_BIT> daeFloat_check;
+	#if 1!=COLLADA_DOM_PRECISION
 	static daeCTC<sizeof(daeDouble)>=64/CHAR_BIT> daeDouble_check;
+	#endif
 	  
 	#ifndef COLLADA_UPTR_MAX
 	#ifndef SIZE_MAX

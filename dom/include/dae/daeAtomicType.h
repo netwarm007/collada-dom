@@ -748,6 +748,22 @@ template<class I, int size=sizeof(I)>
 struct daeTypist10 : daeTypist<>
 {
 	enum{ system_type=(I(-1)<0?-1:1)*int(sizeof(I)) };
+
+	/**
+	 * This is added to use an @c unsigned type so the default
+	 * value of <stencil_mask> doesn't overflow (it ought to be
+	 * xs:unsignedLong instead of xs:long.)
+	 */
+	static daeOK encodeXML(std::istream &src, I &dst)
+	{
+		if(system_type<0&&sizeof(int)==sizeof(I))
+		{				
+			//I think -1 will convert to an unsigned value, but
+			//4294967295 (0xFFFFFFFF) into 32 signed bits fails.
+			src >> (unsigned int&)dst;
+		}
+		else src >> dst; return DAE_OK;
+	}	
 };
 //REMINDER: system_type must be visible to XS::Schema::XS::Schema::_typewrit().
 template<class I>

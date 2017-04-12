@@ -20,6 +20,22 @@ COLLADA_(namespace)
 {//-.
 //<-'
 
+/**
+ * This @c daeRefRequest is designed to help with
+ * binding nodes and Physics' constraints. It can
+ * return a chain of matched SIDs.
+ */
+class daeSIDREFRequest : public daeRefRequest 
+{
+COLLADA_(public)
+
+	typedef void reset;
+	daeArray<const_daeElementRef,8> SID_by_SID; 
+	daeSIDREFRequest(daeHashString cp=nullptr)
+	:daeRefRequest(cp,sizeof(daeSIDREFRequest))
+	{}
+};
+
 template<int size_on_stack> class daeSIDREF_size;
 
 /**LEGACY

@@ -81,7 +81,7 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	 * E.g. for SIDREF this can be a profile. If @c nullptr SIDREFs use "profile_COMMON"
 	 */
 	daeRefRequest(daeHashString cp, size_t extra=sizeof(daeRefRequest))
-	:daeHashString(cp),rangeMax(sizeof(*this))
+	:daeHashString(cp),rangeMax(extra)
 	{}
 
 	/** WARNING: @c reset cannot initialize data beyond @c maxValue. */
@@ -152,8 +152,8 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 			//data. An array of strings is typed, and won't be casted.
 			if(at==type->writer->getAtomicType())
 			{
-				daeStringRef &s = typeInstance;				
-				daeString *p = s.data(); daeStringCP *e;
+				const daeStringRef &s = typeInstance;				
+				daeString p = s.data(); daeStringCP *e;
 				for(size_t i=o=0;o<N;i++)
 				{
 					double d = strtod(p,&e);
@@ -371,13 +371,25 @@ COLLADA_(public) //LEGACY QUERY API
 
 		static type cast(const daeRefRequest &req, type def)
 		{
-			#ifdef NDEBUG
-			#error There's a slim chance of false positives.
-			#endif 
-			daeElement* &e = (daeElement*&)req.object;
-			if(e!=nullptr) if(daeUnsafe<T>(e)) 
+			//There are other ways to do this, but this is the safest
+			//way, and eventually it will be desirable to extract the
+			//binary-compatibility identifier.
+			if(_safe(dae(*(type*)&req.object)))
 			const_cast<daeObjectRef&>(req.object) = dae(def);
-			else assert(e->_isElement()); return (type&)req.object;
+			return *(type*)&req.object;
+		}
+		static bool _safe(const daeObject *o)
+		{
+			#ifdef COLLADA_dynamic_daeSafeCast
+			return dynamic_cast<type>(&*req.object)!=nullptr;
+			#else
+			return o->__DAEP__Object__v1__model()
+			==typename T::__COLLADA__T().__DAEP__Object__v1__model();
+			#endif
+		}
+		static bool _safe(const daeElement *e)
+		{
+			return !daeUnsafe<T>(e);
 		}
 	};
 	/**PARTIAL-TEMPLATE-SPECIALIZATION
@@ -436,10 +448,10 @@ COLLADA_(public) //LEGACY QUERY API
 
 	/**LEGACY SUPPORT
 	 * @warning Relies on @c daeDOM::getRefResolvers().
-	 * Gets @c getTargettedObject() as @c daeElementRef.
+	 * Gets @c getTargetedObject() as @c daeElementRef.
 	 * @return Returns @c nullptr if unresolved, or the target is not an element.
 	 * @remarks If the target is a document, 
-	 * @c get() should NOT return the document's root element.
+	 * @c getTargetedFragment() should NOT return the document's root element.
 	 */
 	inline daeElementRef getTargetedFragment()const
 	{
@@ -448,6 +460,14 @@ COLLADA_(public) //LEGACY QUERY API
 		return (daeElementRef&)req.object;
 		return nullptr;
 	}
+
+	COLLADA_DEPRECATED("Use getTargetedObject()->a<daeDocument>()\n\
+	Or getTargetedObject()->getDoc()->a<daeDocument>() depending on use-case.\n")
+	/**NOT-IMPLEMENTING
+	 * This API never existed; But this is here to guide users who're looking for
+	 * just such an API.
+	 */	
+	inline void getTargetedDocument()const;
 
 COLLADA_(public) //OPERATORS
 
@@ -694,9 +714,8 @@ COLLADA_(public) //daeRefString is an encapsulated class.
 	 */
 	inline daeArray<daeStringCP> &_varrayToArray()
 	{	
-		//daeOffsetOf should not be a macro!
-		typedef daeAlloc<daeStringCP,!0> commaless;
-		return (daeArray<daeStringCP>&)(_varray-=daeOffsetOf(commaless,_varray));
+		_varray-=daeOffsetOf(daeAlloc<daeStringCP>,_varray);
+		return *(daeArray<daeStringCP>*)&_varray;
 	}
 
 COLLADA_(public) //CONSTRUCTORS
@@ -729,7 +748,7 @@ COLLADA_(public) //Accessors & Mutators
 	/** 
 	 * This is for registering the thunk for the dynamic array.
 	 */
-	daeString getInternalStorage()const{ return _string; }
+	inline const daeString &getInternalStorage()const{ return _varray; }
 
 	/** 
 	 * @return Returns true if internal representation is @c daeString pointer. 
@@ -807,7 +826,7 @@ COLLADA_(public) //Accessors & Mutators
 				_varray = _string; break;
 			}
 			_isAU = 1; //__DAEP__Object__v1__model() must have set up a thunk.
-			_varray = ((daeAlloc<daeStringCP>&)c[_string].getAllocThunk())._varray; 
+			_varray = ((daeAlloc<daeStringCP>&)c[&_varray].getAllocThunk())._varray; 
 		case 1:
 			daeArray<daeStringCP> &a = _varrayToArray();
 			a.grow(size); _varray = a.getAU()->_varray;

@@ -10,7 +10,9 @@
 #define __COLLADA_DOM__DAE_URI_H__
 
 #include "daeRefResolver.h"
-																		
+						
+//ISSUES. daeURI cannot be constructed with a string/extent pair. A view.
+
 COLLADA_(namespace)
 {//-.
 //<-'
@@ -67,11 +69,15 @@ COLLADA_(protected) //DATA-MEMBER
 	 */
 	daeRefString<size_on_stack> _refString;
 
-COLLADA_(public) //CONSTRUCTORS
+COLLADA_(public) //NON-STRING CONSTRUCTORS
 	/**
 	 * Default Constructor
 	 */
 	daeURI_size(){ _00(); }	
+
+	//These two constructors require templates to tell them
+	//apart. The second form combines a base & relative URI.
+	template<class C_str>
 	/**
 	 * Constructor having @c this contained by @a c.
 	 * @param c_str is now required to supply a parent object.
@@ -79,18 +85,36 @@ COLLADA_(public) //CONSTRUCTORS
 	 * @c DAEP::InnerValue uses this constructor to supply an
 	 * object. @c c is a @c daeRef_support::__COLLADA__Object.
 	 */
-	daeURI_size(daeBoundaryStringIn c_str, const DAEP::Object *c):daeURI_base(c)
+	daeURI_size(const C_str &URI, const DAEP::Object *c):daeURI_base(c)
 	{
-		setURI(c_str); 
+		_setURI(daeBoundaryStringIn(URI).c_str); 
 	}
-	/**LEGACY
-	 * Constructs a @c daeURI a @a baseURI and a @a URI. 
+	template<int N> //See notes above the two-argument ctor.
+	/**LEGACY-SUPPORT
+	 * Constructs a @c daeURI out of a @a baseURI & a @a URI. 
 	 * Calls @c setURI(URI,&baseURI).
-	 * @param baseURI Base URI to resolve against.
-	 * @param URI The URI string.
+	 * @param baseURI Base URI to resolve against. Its parent object
+	 * will be used as the new URI's parent, like a copy-constructor.
+	 * @param URI The URI string to be combined with @a baseURI when
+	 * it is a relative URI; or the URI if @a URI is an absolute URI.
 	 */
-	daeURI_size(const daeURI &baseURI, daeBoundaryStringIn URI){ setURI(URI,&baseURI); }
-	 																		
+	daeURI_size(const daeURI_size<N> &baseURI, daeBoundaryStringIn URI)	
+	:daeURI_base(&baseURI.getParentObject())
+	{
+		_setURI(URI.c_str,(daeURI*)&baseURI); 
+	}
+	 									
+COLLADA_(protected) //PROTECTED daeURI_parser CONSTRUCTOR
+	/**
+	 * This is used by @c daeURI_parser to avoid calling @c _00().
+	 */
+	daeURI_size(const daeURI_parser_view &URI, const DAEP::Object *c)
+	//Call the view-constructor on dummy class daeURI_parser_view.
+	:daeURI_base(c),_refString(&(daeStringCP&)URI)
+	{
+		_setURI(&(daeStringCP&)URI,nullptr); //Won't overwrite itself.
+	}
+
 COLLADA_(public) //STRING CONSTRUCTORS
 	
 	template<class T>
@@ -102,7 +126,7 @@ COLLADA_(public) //STRING CONSTRUCTORS
 	 * be necessary as these would default to @c daeURI_base's.
 	 */
 	daeURI_size(const T &cp){ daeURI_base::operator=(cp); }
-	/**C++ Non-Default Copy Constructor */
+	/** C++ Non-Default Copy Constructor */
 	daeURI_size(const daeURI_size &cp){ daeURI_base::operator=(cp); }
 	/** This is in support of the const daeObject &c constructor. */
 	daeURI_size(const daeURI_base &cp){ daeURI_base::operator=(cp); }
@@ -112,19 +136,8 @@ COLLADA_(public) //STRING CONSTRUCTORS
 	/** Pass-through Assignment Operator */
 	daeURI &operator=(const T &cp){ return daeURI_base::operator=(cp); }	
 	COLLADA_SUPPRESS_C(4522)
-	/**C++ Non-Default Assignment Operator */
+	/** C++ Non-Default Assignment Operator */
 	daeURI &operator=(const daeURI_size &cp){ return daeURI_base::operator=(cp); }	
-
-COLLADA_(protected) //PROTECTED daeURI_parser CONSTRUCTOR
-	/**
-	 * This is used by @c daeURI_parser to avoid calling @c _00().
-	 */
-	daeURI_size(const daeObject &c, daeURI_parser_view *URI)
-	//Call the view-constructor on dummy class daeURI_parser_view.
-	:daeURI_base(&c),_refString((daeString)URI)
-	{
-		_setURI((daeString)URI,nullptr); //Won't overwrite itself.
-	}
 
 COLLADA_(public) //LAZY EVALUATION 
 	/**
@@ -205,8 +218,8 @@ COLLADA_(public) //DAEP::Object methods
 		static DAEP::Model *om = nullptr; if(om!=nullptr) return *om;
 		static daeAlloc<daeStringCP,0> t; daeModel &m = 
 		getDefaultProcessShare().addModel<1>((daeURI_size<0>*)this,"COLLADA::daeURI_base");				
-		m.addFeature_variant<1>(this,*_this()._refString.getInternalStorage()
-		,"VARIANT //daeRefString::_string").setAllocThunk_offset(t);
+		m.addFeature_variant<1>(this,_this()._refString.getInternalStorage()
+		,"VARIANT //daeRefString::_varray").setAllocThunk_offset(t);
 		m.addFeatureComplete();
 		m.setObjectType(daeObjectType::REF); om = &m; return *om; 	
 	}
@@ -220,10 +233,12 @@ COLLADA_(private) //DATA-MEMBERS
   //without carefully looking over daeURI.cpp.///////
   ///////////////////////////////////////////////////
 
-	#ifdef NDEBUG	
-	#error Don't use daeShort/daeByte/etc.
-	#error They're for/tied to xs::byte and xs::short.
-	#endif
+	/**
+	 * This had been @c daeUShort, but that type is meant to
+	 * configure xs:unsignedShort.
+	 */
+	typedef unsigned short CP;
+
 	/**DELICATE MACHINERY
 	 * This is the codepoint where the relative-part of the URL
 	 * begins, for purposes of reconstructing the relative URL,
@@ -232,7 +247,7 @@ COLLADA_(private) //DATA-MEMBERS
 	 * modern advent of "protocol-relative" URLs.
 	 * @see @c _rel_backtracks.
 	 */
-	daeShort _rel_half;	
+	short _rel_half;	
 	/**DELICATE MACHINERY
 	 * ALIGNED behind @c _rel_backtracks 
 	 * (@c _rel_backtracks counts the ../ directives.)
@@ -245,30 +260,30 @@ COLLADA_(private) //DATA-MEMBERS
 	 * (To try to distinguish between URIs and URLs, the 
 	 * scheme is being called "protocol".)
 	 */
-	daeByte _rel_backtracks, _authority;
+	char _rel_backtracks, _authority;
 	/**DELICATE MACHINERY
 	 * authority component dissected 
 	 * @note The "user" is implicitly at position @c _authority.	 
 	 */
-	daeShort _authority_password, _authority_host, _authority_port;
+	short _authority_password, _authority_host, _authority_port;
 	/**DELICATE MACHINERY
 	 * path component 
 	 * @see @c _rel_backtracks Doxygentation pertaining to @c _rel_half. 
 	 */
-	daeShort _path, _path_filename, _path_extension;	
+	short _path, _path_filename, _path_extension;	
 	/**DELICATE MACHINERY
 	 * query component */
-	daeShort _query;
+	short _query;
 	/**DELICATE MACHINERY
 	 * fragment component */
-	daeShort _fragment;
+	short _fragment;
 	/**DELICATE MACHINERY
 	 * code-point count, including the 0 terminating code-point. */
-	daeShort _size;
+	short _size;
 	/** UNUSED, ALIGNED
 	 * Must be 0. Maybe it will be a scheme-based enum? Or @c _size 
 	 * might be expanded to 32, or even size_t bits if possible. */
-	daeShort _reserved; inline void _00()
+	short _reserved; inline void _00()
 	{
 		memset(&_rel_half,0x00,intptr_t(&_reserved+1)-intptr_t(&_rel_half));
 	}	
@@ -338,7 +353,7 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline daeURI &operator=(const DAEP::Value<ID,daeURI,CC,PtoM> &cp)
 	{
-		setParentObject(dae(&cp.object())); setURI((daeString)cp); return *this;
+		setParentObject(&cp.object()); _setURI((daeString)cp); return *this;
 	}
 	
 COLLADA_(public) //daeSafeCast() SHORTHANDS
@@ -393,10 +408,10 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * Sets the pointer to the @c daeObject that contains this ref.
 	 * @param c the containing @c daeObject.
 	 */
-	inline daeOK setParentObject(const daeObject *c)
+	inline daeOK setParentObject(const DAEP::Object *c)
 	{
 		assert(c!=nullptr);
-		daeOK OK(getIsAttached()?DAE_ERR_INVALID_CALL:_reparent(*c));
+		daeOK OK(getIsAttached()?DAE_ERR_INVALID_CALL:_reparent(dae(*c)));
 		refresh(); return OK;
 	}
 	#ifndef COLLADA_NODEPRECATED
@@ -405,7 +420,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * Sets the pointer to the @c daeElement that contains this ref.
 	 * @param c Pointer to the containing @c daeElmement.
 	 */
-	inline void setContainer(const daeElement *c)
+	inline void setContainer(const DAEP::Object *c)
 	{
 		if(setParentObject(c==nullptr?*this:(daeObject&)*c)!=DAE_OK) assert(0);
 	}
@@ -446,18 +461,43 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * Pre-2.5 this was "reset" and marked as internal, 
 	 * -but it cannot hurt to expose a std::string like method.
 	 */
-	inline void clear(){ setURI(""); }
+	inline void clear(){ _setURI(""); }
 
-	//SCHEDULED FOR REMOVAL
-	/** This exists just to implement the old "nofrag" constructor. */
-	inline void clear_fragment()
+	/** 
+	 * Removes the fragment by changing its '#' to '\0'.
+	 * @return Returns the fragment without '#' as a view.
+	 * @see @c erase()
+	 */
+	inline daeRefView_0 erase_fragment()
 	{
-		daeRefString<260> &rs = _this()._refString;
-		if(rs.isView()) rs.setString(*this,rs.getString(),_size);
-		int zt = _fragment; daeString URI = data();
-		if(zt>0&&URI[zt-1]=='#') zt--; _fragment = zt; _size = zt+1; 
-		const_cast<daeStringCP&>(URI[zt]) = '\0';
-	}	
+		return erase(getURI_fragmentCP());
+	}
+	/** 
+	 * @param CP is a codepoint to become the new 0-terminator.	 
+	 * @return Returns the erased section starting after @a CP.
+	 * (Often @a CP is a separator. If not, ignore the output.)
+	 * @see @c erase_fragment()
+	 */
+	inline daeRefView_0 erase(size_t CP)
+	{
+		short zt = (short)CP; if(zt<_size-1)
+		{
+			if(zt<_authority) _authority = (char)zt;
+			for(short *it=&_authority_password;it<&_size;it++)
+			if(*it>zt) *it = zt;
+			//This copies up to _size so the returned view is intact.
+			daeRefString<260> &rs = _this()._refString;
+			if(rs.isView()) rs.setString(*this,rs.getString(),_size);			
+			const_cast<daeStringCP&>(data()[zt]) = '\0';
+			//This compenstates for the branch. The branch is needed
+			//in order to ensure the return is 0-terminated, even if
+			//CP is the 0-terminator itself--it's not bound checking.
+			zt--; 
+		}
+		else zt = _size-2; daeRefView_0 erased;
+		erased.view = data()+zt+1; 
+		erased.extent = _size-zt-2; _size = zt+2; return erased;
+	}
 
 	/**Standard Library support 
 	 * Tells if @c size() is 0.
@@ -513,7 +553,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	{
 		return _setURI(URI,baseURL);
 	}
-	/**
+	/**OVERLOAD
 	 * This uses some trickery to avoid doing a double copy. It relies on
 	 * that resolution will normally make a duplicate of the URI in order
 	 * to resolve it. Afterward the duplicate will be its own string, and
@@ -535,6 +575,13 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 			refresh(); //resolve(); 
 			if(URI.c_str==s.getString()) s.setString(*this,URI.c_str);
 	)
+	/**OVERLOAD
+	 * Does @c setURI_and_resolve() with a base-URI.
+	 */
+	inline void setURI_and_resolve(const daeURI &baseURL, daeBoundaryStringIn URL)
+	{
+		setURI_and_resolve(URL,&baseURL);		
+	}
 
 	template<class T> 
 	/**
@@ -572,46 +619,46 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 
 	/**LOW-LEVEL
 	 * Gets authority component codepoint after :// or the path codepoint. */
-	inline daeUByte getURI_authorityCP()const{ return _authority; }
+	inline CP getURI_authorityCP()const{ return _authority; }
 	/**LOW-LEVEL
 	 * Gets password subcomponent codepoint after : or the host's @. */
-	inline daeUShort getURI_passwordCP()const{ return _authority_password;  }
+	inline CP getURI_passwordCP()const{ return _authority_password;  }
 	/**LOW-LEVEL
 	 * Gets host subcomponent codepoint after @ or the port's :. */
-	inline daeUShort getURI_hostCP()const{ return _authority_host;  }
+	inline CP getURI_hostCP()const{ return _authority_host;  }
 	/**LOW-LEVEL
 	 * Gets port subcomponent codepoint after : or the path codepoint. */
-	inline daeUShort getURI_portCP()const{ return _authority_port;  }
+	inline CP getURI_portCP()const{ return _authority_port;  }
 	/**LOW-LEVEL
 	 * Gets path component codepoint before / or the query's ?. */
-	inline daeUShort getURI_pathCP()const{ return _path;  } 
+	inline CP getURI_pathCP()const{ return _path;  } 
 	/**LOW-LEVEL
 	 * Gets filename subcomponent codepoint after / or the query's ?. */
-	inline daeUShort getURI_filenameCP()const{ return _path_filename; }
+	inline CP getURI_filenameCP()const{ return _path_filename; }
 	/**LOW-LEVEL
 	 * Gets extension subcomponent codepoint after . or the query's ?. */
-	inline daeUShort getURI_extensionCP()const{ return _path_extension; }	
+	inline CP getURI_extensionCP()const{ return _path_extension; }	
 	/**LOW-LEVEL
 	 * Gets query component codepoint after ?, or the fragment's #. */
-	inline daeUShort getURI_queryCP()const{ return _query; }
+	inline CP getURI_queryCP()const{ return _query; }
 	/**LOW-LEVEL
 	 * Gets fragment component codepoint after #, or the @c '\0' codepoint. */
-	inline daeUShort getURI_fragmentCP()const{ return _fragment; }
+	inline CP getURI_fragmentCP()const{ return _fragment; }
 	/**LOW-LEVEL
 	 * Gets the size of the URI+0 in units of @c daeStringCP codepoints. */
-	inline daeUShort getURI_terminatedCP()const{ return _size; }
+	inline CP getURI_terminatedCP()const{ return _size; }
 	/**LOW-LEVEL
 	 * Prefer @c size().
 	 * Gets the length of the URI in units of @c daeStringCP codepoints. 
 	 */
-	inline daeUShort getURI_terminatorCP()const{ return _size-1; }
+	inline CP getURI_terminatorCP()const{ return _size-1; }
 
 	template<char X> //X can be '://', '@', ':', '/', '.', '?', or '#'.
 	/**LOW-LEVEL
 	 * @see getURI_upto(), which this parallels.
 	 * @note / is equivalent to @c getURI_pathCP().
 	 */
-	inline daeUShort getURI_uptoCP()const
+	inline CP getURI_uptoCP()const
 	{
 		daeString URI = data();		
 		switch(X)
@@ -745,15 +792,16 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 	 * or not) and so, for example, '/' can be read as ':', but with ports.
 	 * @param from lets you strip off the front. It will be optimized away.
 	 */
-	inline T &getURI_upto(T &io, daeShort from=0)const
+	inline T &getURI_upto(T &io, size_t from=0)const
 	{
-		switch(X) //<daeUShort> is in case compilers know 0 is never a maximum.
+		CP cp = (CP)from; //C4267
+		switch(X) //CP should be unsigned. So from=0 can be optimized away.
 		{
-		case ':': return _getURI(io,from,':',std::max<daeUShort>(from,_authority_port));
-		case '/': return _getURI(io,from,'\0',std::max<daeUShort>(from,_path));
-		case '.': return _getURI(io,from,'.',std::max<daeUShort>(from,_path_extension));
-		case '?': return _getURI(io,from,'?',std::max<daeUShort>(from,_query)); 
-		case '#': return _getURI(io,from,'#',std::max<daeUShort>(from,_fragment)); 
+		case ':': return _getURI(io,cp,':',std::max<CP>(cp,_authority_port));
+		case '/': return _getURI(io,cp,'\0',std::max<CP>(cp,_path));
+		case '.': return _getURI(io,cp,'.',std::max<CP>(cp,_path_extension));
+		case '?': return _getURI(io,cp,'?',std::max<CP>(cp,_query)); 
+		case '#': return _getURI(io,cp,'#',std::max<CP>(cp,_fragment)); 
 		}
 		assert(0); return io; daeCTC<X==':'||X=='/'||X=='.'||X=='?'||X=='#'>();
 	}	
@@ -905,15 +953,15 @@ COLLADA_(private) //INTERNAL SUBROUTINES
 
 	template<class T> //T can be daeArray or std::string or daeRefView.
 	/** Implements many daeURI methods, with std::string compatible code. */
-	inline T &_getURI(T &str, daeShort pos, daeStringCP sep, daeShort end)const
+	inline T &_getURI(T &str, short pos, daeStringCP sep, short end)const
 	{
-		daeUShort len = end-pos;
+		CP len = end-pos;
 		daeRefView URI = getURI(); if(len==0||URI[len-1]!=sep) len++;
 		daeRef::_getT<dae_clear>(str,URI+pos,len); return str;
 	}
 
 	/** Does case-insensitive comparisons. */
-	inline daeShort _ieq(daeShort i, daeString cmp)const
+	inline short _ieq(short i, daeString cmp)const
 	{
 		for(daeString URI=data();*cmp!='\0';)
 		if(tolower(URI[i++])!=tolower(*cmp++)) return -1; return i;
@@ -983,15 +1031,15 @@ COLLADA_(public)
 	daeURI_parser(const T &URL)
 	//daeURI_parser_view is a dummy class.
 	COLLADA_SUPPRESS_C(4355)
-	:daeURI_size(*this,(class daeURI_parser_view*)daeBoundaryStringIn(URL).c_str){}
+	:daeURI_size(*(class daeURI_parser_view*)daeBoundaryStringIn(URL).c_str,this){}
 
 	template<class T>
 	/**
 	 * Constructor, optimized to not call @c clear() unnecessarily. 
 	 */
-	daeURI_parser(const daeObject &c, const T &URL)
+	daeURI_parser(const T &URL, const DAEP::Object *c)
 	//daeURI_parser_view is a dummy class.
-	:daeURI_size(c,(class daeURI_parser_view*)daeBoundaryStringIn(URL).c_str){}
+	:daeURI_size(*(class daeURI_parser_view*)daeBoundaryStringIn(URL).c_str,c){}
 };
 
 //---.

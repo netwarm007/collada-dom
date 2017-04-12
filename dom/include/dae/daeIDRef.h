@@ -81,8 +81,8 @@ COLLADA_(public) //DAEP::Object methods
 		static DAEP::Model *om = nullptr; if(om!=nullptr) return *om;
 		static daeAlloc<daeStringCP,0> t; daeModel &m =
 		_support::getDefaultProcessShare().addModel<1>((Type*)this,"COLLADA::daeIDREF_base");				
-		m.addFeature_variant<1>(this,*_this()._refString.getInternalStorage()
-		,"VARIANT //daeRefString::_string").setAllocThunk_offset(t);
+		m.addFeature_variant<1>(this,_this()._refString.getInternalStorage()
+		,"VARIANT //daeRefString::_varray").setAllocThunk_offset(t);
 		m.addFeatureComplete();
 		m.setObjectType(daeObjectType::REF); om = &m; return *om; 	
 	}
@@ -139,7 +139,7 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline Type &operator=(const DAEP::Value<ID,T,CC,PtoM> &cp)
 	{
-		setParentObject(dae(&cp.object())); const daeStringRef &ref = cp;
+		setParentObject(&cp.object()); const daeStringRef &ref = cp;
 		_this()._refString.setString(*this,daeHashString(ref)); return *this;
 	}
 
@@ -197,10 +197,9 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * Sets the pointer to the @c daeObject that contains this ref.
 	 * @param c the containing @c daeObject.
 	 */
-	inline daeOK setParentObject(const daeObject *c)
+	inline daeOK setParentObject(const DAEP::Object *c)
 	{
-		assert(c!=nullptr);
-		return _support::_reparent(*c); //NOT MANAGING daeStringRef RIGHT NOW.
+		assert(c!=nullptr); return _support::_reparent(dae(*c));
 	}
 	#ifndef COLLADA_NODEPRECATED
 	COLLADA_DEPRECATED("setParentObject")
@@ -208,7 +207,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * Sets the pointer to the @c daeElement that contains this ref.
 	 * @param c Pointer to the containing @c daeElmement.
 	 */
-	void setContainer(const daeElement *c)
+	void setContainer(const DAEP::Object *c)
 	{
 		if(setParentObject(c==nullptr?*this:*c)!=DAE_OK) assert(0);
 	}

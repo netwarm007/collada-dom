@@ -16,6 +16,8 @@
 #include "dae/daeErrorHandler.h"
 #include "dae/daeIOPluginCommon.h"
 #include "dae/daeStandardURIResolver.h"
+//This is internal, but useful for I/0 code.
+#include "dae/daeRAII.hpp"
 					  
 //Miscellaneous and circularly defined APIs.
 COLLADA_(namespace)
@@ -301,12 +303,9 @@ template<class S>
  * to @c daeDocument::idLookup() without resorting to highly technical casting.
  * @c daeDocument uses this to convert strings into @c daeStringRef if need be. 
  */
-inline const daeStringRef &daeBoundaryStringRef(const S &c, const void* &str)
+inline const daeStringRef &daeBoundaryStringRef(const S &c, const void*const &str)
 {
-	#ifdef NDEBUG
-	#error Ensure only void* takes this overload.
-	#endif
-	return *(const daeStringRef&)str;
+	return *(const daeStringRef*)&str; 
 }
 
 //---.
