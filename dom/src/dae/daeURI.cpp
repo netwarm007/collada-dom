@@ -15,6 +15,13 @@ COLLADA_(namespace)
  
 daeOK daeURI_base::refresh()const
 {
+	//NEW: URIs are typically temporary now.
+	//So try to screen out very common # URIs
+	//and absolute URIs are unexpected to move.
+	if(getIsResolved())
+	if(isAbsoluteURI()||isSameDocumentReference())
+	return DAE_OK;
+
 	const_daeDOMRef DOM = getDOM();
 	if(DOM==nullptr) return DAE_ERR_INVALID_CALL;
 	return DOM->getPlatform().resolveURI(*this,*DOM);
@@ -87,7 +94,7 @@ daeOK daeURI_base::_setURI(daeString URI, const daeURI *baseURL)
 	if(doc!=nullptr)
 	doc->getArchive()._movingDoc(doc); ////POINT-OF-NO-RETURN////
 
-		daeShort *p = &_rel_half, *q = &parser._rel_half;
+		short *p = &_rel_half, *q = &parser._rel_half;
 		while(p<=&_size) *p++ = *q++; goto parsed_absolute_URI;
 	}	
 	if(doc!=nullptr)
@@ -203,9 +210,9 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 	}
 	long_break: //This algorithm fills in unset placemarkers.
 	{
-		daeShort nz = 1; //nonzero		
-		daeShort *z = 0==_path?&_path_extension:&_authority_password; 				
-		for(daeShort *x=&_fragment;x>=z;x--) 
+		short nz = 1; //nonzero		
+		short *z = 0==_path?&_path_extension:&_authority_password; 				
+		for(short *x=&_fragment;x>=z;x--) 
 		if(*x==0){ *x = x[1]-nz; nz = 0; }else nz = 1;		
 		//HACK: The above algorithm is heuristical.
 		if(*z<_authority) for(;z<&_path;z++) *z+=1;
@@ -270,9 +277,9 @@ void daeURI_base::_setURI_concat(const daeURI &base, size_t trim, daeString rel)
 	//Here 3 is strlen("../"), and 1 is sizeof('\0').
 	size_t size = i+3*trim+strlen(rel)+1; buf.grow(size);		
 	//Note: this is done prior to adjusting i by 3*trim.
-	const daeShort *cpyN = &base._path;
-	const daeShort *cpy = &base._authority_password;	
-	if(!protocol_relative) while(cpy<=cpyN&&*cpy<=(daeShort)i) cpy++;	
+	const short *cpyN = &base._path;
+	const short *cpy = &base._authority_password;	
+	if(!protocol_relative) while(cpy<=cpyN&&*cpy<=(short)i) cpy++;	
 	//Copy over base's placemarkers. _rel_half can wait.
 	memcpy(&_authority,&base._authority,(char*)cpy-&base._authority);
 	//This URL, if valid, is going behind the webserver 

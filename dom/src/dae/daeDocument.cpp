@@ -219,8 +219,14 @@ daeError daeDocument::_write(const daeIORequest &reqO, daeIOPlugin *O)const
   
 //// sid/idLookup //// sid/idLookup //// sid/idLookup //// sid/idLookup //// sid/idLookup 
 
+static daeString daeDocument_ID_id(daeString ref)
+{
+	return (daeString)(((daeOffset&)ref)&~daeOffset(1));
+}
 void daeDocument::_idLookup(daeString ref, daeElementRef &match)const
 {
+	ref = daeDocument_ID_id(ref); //Permit # string-refs for <source> and just convenience.
+
 	_idMapIter cit = _idMap.find(ref); if(cit!=_idMap.end()) match = cit->second;
 } 
 void daeDocument::_sidLookup(daeString ref, daeArray<daeElementRef> &matchingElements)const
@@ -255,13 +261,13 @@ void daeDocument::_carry_out_change_of_ID_or_SID(const DAEP::Change &c, const XS
 				}
 			}		
 		}
-		else _idMap.erase(got); 
+		else _idMap.erase(daeDocument_ID_id(got)); 
 	}
 	c.carry_out_change(); got = (const daeString&)a->getWRT(e); if(got[0]!='\0') 
 	{
 		if(id)
 		{
-			daeElement* &uniqueID = _idMap[got];
+			daeElement* &uniqueID = _idMap[daeDocument_ID_id(got)];
 			#ifdef NDEBUG
 			#error This is probably worth outputting something to the error logs.
 			#error What if this is a proposed "orphans" document?
@@ -299,13 +305,13 @@ void daeDocument::_migrate_ID_or_SID(const daeDocument *destination, const daeEl
 				}
 			}		
 		}
-		else source->_idMap.erase(got); 
+		else source->_idMap.erase(daeDocument_ID_id(got)); 
 	}
 	if(nullptr!=destination) 
 	{
 		if(id)
 		{
-			daeElement* &uniqueID = destination->_idMap[got];
+			daeElement* &uniqueID = destination->_idMap[daeDocument_ID_id(got)];
 			#ifdef NDEBUG
 			#error This is probably worth outputting something to the error logs.
 			#error What if this is a proposed "orphans" document?

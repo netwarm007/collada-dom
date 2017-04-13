@@ -77,7 +77,7 @@ bool daeElement::_addAnyAttribute(const daePseudonym &name)const
 		//This will eventually have to be implemented in this way.
 		assert(!getMeta()->getAllowsAnyAttribute()); return false;
 	}
-	_cloneAnyAttribute(daeStringRef(name,name.extent)); return true;
+	_cloneAnyAttribute(daeStringRef(name)); return true;
 }
 void daeElement::_cloneAnyAttribute(const daePseudonym &name)const
 {

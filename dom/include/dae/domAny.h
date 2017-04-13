@@ -82,8 +82,9 @@ COLLADA_(public) //Content
 	/**NO-NAMES
 	 * These elements are invalid according to the schema. They may be user-defined 
 	 * additions and substitutes.
+	 * @note This name uses the 2.4 convention because @c domAny is a legacy object.
 	 */
-	DAEP::Child<1,xsAny,_,(_::_)&_::_N> _elemAny_et_cetera__unnamed;
+	DAEP::Child<1,xsAny,_,(_::_)&_::_N> elemAny_et_cetera__unnamed;
 	/**
 	 * Children, mixed-text, comments & processing-instructions.
 	 */

@@ -51,7 +51,7 @@ COLLADA_(public)
 	 */
 	inline daeOK resolve(const daeURI &URI, daeRefRequest &req)const
 	{
-		URI.refresh(); return _resolve(URI,req);
+		/*URI.refresh();*/ return _resolve(URI,req);
 	}
 
 	/**LEGACY */
@@ -69,7 +69,7 @@ COLLADA_(protected) //daeRefResolver::_resolve
 	 */
 	virtual daeOK _resolve(const daeRef &ref, daeRefRequest &req)const
 	{
-		daeError out = DAE_OK; const daeURI &URI = (daeURI&)ref;
+		daeError OK = DAE_OK; const daeURI &URI = (daeURI&)ref;
 		
 		const_daeDOMRef dom;
 		if(req.object!=nullptr) dom = req.object->getDOM();
@@ -77,37 +77,56 @@ COLLADA_(protected) //daeRefResolver::_resolve
 		if(dom!=nullptr) 
 		{
 			daeDocRef doc;
-			if(req!=nullptr)
+			if(!req.empty())
 			{
 				//no special commands are being supported
-				out = DAE_ERR_NOT_IMPLEMENTED; assert(0);
+				OK = DAE_ERR_NOT_IMPLEMENTED; assert(0);
 			}
-			else if(URI.docLookup2(*dom,doc)==nullptr)
-			{	
-				doc = const_cast<daeDOM&>(*dom).openDoc<void>(URI);
-				if(doc==nullptr)
-				out = DAE_ERR_QUERY_NO_MATCH;
-			}
-			if(doc!=nullptr)
+			else if(URI.isFragmentURI())
 			{
-				daeString id = URI.data()+URI.getURI_fragmentCP();
-				if(*id!='\0')
+				doc = const_cast<daeDoc*>(URI.getDoc()); 
+				if(doc!=nullptr)
+				{
+					if(!URI.getIsResolved()||URI.referencesDoc(doc))
+					goto fragment; 
+					else doc = nullptr;
+				}
+				goto doc_less;
+			}
+			else doc_less:
+			{			
+				if(URI.docLookup2(*dom,doc)==nullptr)
+				{	
+					doc = const_cast<daeDOM&>(*dom).openDoc<void>(URI);
+					if(doc==nullptr)
+					OK = DAE_ERR_QUERY_NO_MATCH;
+				}
+			}
+			if(doc!=nullptr) fragment:
+			{
+				daeRefView id = URI.getURI_fragment();
+				if(!id.empty())
 				{
 					daeObjectRef obj;
 					if(nullptr==doc->getDocument()->idLookup(id,obj))
-					out = DAE_ERR_QUERY_NO_MATCH;
+					OK = DAE_ERR_QUERY_NO_MATCH;
 					else req.object = obj;
 				}
 				else req.object = doc;	 				
-				if(out==DAE_OK)
+				if(OK==DAE_OK)
 				req.typeInstance = nullptr;
 			}
 		}
-		else out = DAE_ERR_INVALID_CALL;
-
-		if(out!=DAE_OK) _printError(out,URI.getURI().view); return out;
+		else OK = DAE_ERR_INVALID_CALL; 
+		
+		if(OK!=DAE_OK) 
+		{
+			URI.resolve(); _printError(OK,URI.getURI()); 
+		}
+		return OK;
 	}
-	COLLADA_DOM_LINKAGE static void _printError(daeError err, daeString uri)
+	COLLADA_DOM_LINKAGE 
+	static void _printError(daeError err, const daeRefView &uri)
 	COLLADA_DOM_SNIPPET
 	(
 		daeEH::Error<<"daeDefaultURIResolver - Failed to resolve\n"<<uri;

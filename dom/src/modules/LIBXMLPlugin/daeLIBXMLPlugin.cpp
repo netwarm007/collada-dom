@@ -330,8 +330,7 @@ bool daeLibXMLPlugin::_read(daeIO &IO, daeContents &content)
 	if(-1==readRetVal) return false;
 	//1 or 0?
 	//THE RETURN CODES ARE COMPLETELY UNDOCUMENTED???
-	assert(0<=readRetVal);	
-	return true;
+	assert(0<=readRetVal); return true;
 }
 
 int daeLibXMLPlugin::_readElement(daePseudoElement &parent)

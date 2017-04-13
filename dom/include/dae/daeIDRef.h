@@ -431,7 +431,7 @@ COLLADA_(protected) //daeRefResolver::_resolve
 			if(doc==nullptr) return DAE_ERR_INVALID_CALL;
 		}		
 
-		if(req!=nullptr)
+		if(!req.empty())
 		{
 			//no special commands are being supported
 			assert(0); return DAE_ERR_NOT_IMPLEMENTED;

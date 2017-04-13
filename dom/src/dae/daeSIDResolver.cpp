@@ -27,12 +27,12 @@ typedef struct //daeSIDResolver_cpp
 		if(name[0]=='i'&&name.extent>9&&0==memcmp(&name,"instance_",9))
 		{
 			#ifdef NDEBUG
-			#error Try to use getTypeID() to verify it's a daeURI type?
+			#error Sometimes it's "target" instead.
 			#endif
-			const daeArray<daeStringCP> &url = scope->getAttribute("url");			
+			daeName url = scope->getAttribute("url");			
 			if(!url.empty())
 			{
-				daeURI_parser URI(*scope,url);
+				daeURI_parser URI(url,scope);
 				daeElementRef e = URI.getTargetedFragment();
 				if(e!=nullptr)
 				{
@@ -111,6 +111,10 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 		daeStringRef *it = NCNames.begin();
 		if(dot_slashed)
 		{
+			//REMINDER: Some (likely misguided) Physics examples
+			//in the manual seem to either be assuming that ./ is
+			//to search among the elements siblings, or that it is
+			//to search upstream by some process that isn't defined.
 			cpp.scope = ref.getElementObject();			
 		}
 		else if(!NCNames.empty())
@@ -120,24 +124,27 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 			if((it++)->empty()
 			||nullptr==cpp.lookup->idLookup(it[-1],cpp.scope))
 			{								
-				/*THIS SEEMS AMBIGUOUS daeElement::sidLookup
-				//IS A BETTER FIT FOR THESE KINDS OF LOOKUPS.
-				//This does not comport with the manual, but
-				//many examples in the manual, and in the CTS
-				//examples omit the ID.
-				//UPDATE: <texture texture> must work this way
-				//because its type is NCName. But then it can't
-				//be a SIDREF. The schemas are very inconsistent.
-				cpp.scope = cpp.lookup->getRoot();*/
+				//This does a fallback to looking in the entire file
+				//for the first SID. daeElement::sidLookup is better
+				//than this if possible. But if the 1.4.1/1.5 manual
+				//is carefully studied, especially in Physics, there
+				//are areas that have IDs and SIDs grossly conflated.
+				//Resolving Physics node/constraint bindings can get
+				//very complicated. This reduces the number of steps.
+				cpp.scope = cpp.lookup->getRoot();
 			}
 		}
 		if(cpp.scope==nullptr)
 		return DAE_ERR_QUERY_NO_MATCH;
 
 		//Find the element matching each SID.
-		while(it<NCNames.end())
-		if(!cpp.relocate_to(*it++))
-		return DAE_ERR_QUERY_NO_MATCH;
+		while(it<NCNames.end()) if(cpp.relocate_to(*it++))
+		{
+			if(req.rangeMax==sizeof(daeSIDREFRequest))			
+			((daeSIDREFRequest*)&req)->SID_by_SID.push_back(cpp.scope);
+			else assert(req.rangeMax==sizeof(daeRefRequest));
+		}
+		else return DAE_ERR_QUERY_NO_MATCH;
 
 		//SID resolution was successful!
 		(const_daeElementRef&)req.object = cpp.scope;

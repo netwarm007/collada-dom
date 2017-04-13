@@ -760,6 +760,9 @@ struct daeTypist10 : daeTypist<>
 		{				
 			//I think -1 will convert to an unsigned value, but
 			//4294967295 (0xFFFFFFFF) into 32 signed bits fails.
+			//TWO'S-COMPLEMENT
+			//A quote from some standard suggesting -1 is valid.
+			//"scanf converts %u by matching an optionally signed decimal integer"
 			src >> (unsigned int&)dst;
 		}
 		else src >> dst; return DAE_OK;
@@ -890,6 +893,11 @@ template<> struct daeTypist<daeStringRef> : daeTypist<> //xs:string
  * @see @c daeAtomicType::TOKEN concerns.
  * This class distinguishes xs:token types from xs:string types. 
  * (They treat whitespace differently.)
+ *
+ * @note @c daeDomTypes.h will use @c daeStringRef unless there
+ * is an <xs:list> involved. It tends not to distinguish and if
+ * "normalization" is an issue then we have a problem that will
+ * require more work/thought to resolve.
  */
 class daeTokenRef : public daeStringRef
 {
@@ -955,6 +963,7 @@ struct __daeBinary__static
 	int _base; 	
 	//HACK: daeBinary needs this structure to be 8 bytes
 	//to make daeBinary<N,0> and daeBinary<N,!0> line up.
+	//NOTE: "surplus" is something else, and not padding.
 	//#if 8!=CHAR_BIT
 	unsigned char _surplus;
 	//#endif

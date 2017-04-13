@@ -144,17 +144,17 @@ COLLADA_(public) //LAZY EVALUATION
 	 * @c daeDoc is an incomplete type.
 	 * @return Returns @c true if @c this URI references @a doc. 	 
 	 */
-	inline bool referencesDoc(const daeDoc &doc)const
+	inline bool referencesDoc(const daeDoc *doc)const
 	{	
-		return referencesURI(doc.getDocURI());
+		return referencesURI(doc->getDocURI());
 	}
 	/**
 	 * @c daeDoc is an incomplete type.
 	 * @return Returns @c true if @c this URI is based on @a arc. 
 	 */	
-	inline bool transitsDoc(const daeDoc &doc)const
+	inline bool transitsDoc(const daeDoc *doc)const
 	{	
-		return transitsURI(doc.getDocURI());
+		return transitsURI(doc->getDocURI());
 	}
 
 	/**LEGACY
@@ -515,11 +515,18 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline daeString data()const{ return ((daeURI&)*this)._refString._varray; }
 
-	/** @return Returns true if the unresolved URI is absolute. */
-	inline bool isAbsoluteURI()const{ return _rel_half==0&&_path!=0; }
-	
-	/** @return Returns true if the unresolved URI is relative. */
+	/**
+	 * @return Returns @c true if the unresolved URI is absolute. 
+	 */
+	inline bool isAbsoluteURI()const{ return _rel_half==0&&_path!=0; }	
+	/** 
+	 * @return Returns @c true if the unresolved URI is relative. 
+	 */
 	inline bool isRelativeURI()const{ return _rel_half!=0||_path==0; }	
+	/** 
+	 * @return Returns @c true if the unresolved URI is a # only.
+	 */
+	inline bool isFragmentURI()const{ return _rel_half==_fragment-1; }
 
 	/**WARNING
 	 * Setter function for setting/concatenating the URL.
@@ -761,9 +768,21 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 	_(getURI_query){ return _getURI(io,_query,'#',_fragment); }		
 	/** 
 	 * Gets the fragment component to a @a T. 
-	 * @tparam T can be daeRefView, daeArray, std::string, etc.
+	 * @tparam T can be daeRefView_0, daeArray, std::string, etc.
 	 */
-	_(getURI_fragment){ return _getURI(io,_fragment,'\0',_size); }	
+	daeRefView_0 getURI_fragment()const
+	{
+		daeRefView_0 o; return getURI_fragment(o); 
+	}	
+	template<class T>
+	/** 
+	 * Gets the fragment component to a @a T. 
+	 * @tparam T can be daeRefView_0, daeArray, std::string, etc.
+	 */
+	T &getURI_fragment(T &io)const
+	{
+		return _getURI(io,_fragment,'\0',_size); 
+	}
 	#undef _
 	
 	template<class T> //daeArray, std::string
@@ -931,9 +950,9 @@ COLLADA_(public) //UTILITIES
 	 * -whereas, @c if(isSameDocumentReference()){...}else{...} is INCORRECT.)
 	 */
 	inline dae3ool isSameDocumentReference()const
-	{	
+	{		
 		const_daeDocRef doc = getDoc();
-		if(doc!=nullptr) return _path==0?true:_this().referencesDoc(*doc);
+		if(doc!=nullptr) return _path==0?true:_this().referencesDoc(doc);
 		return dae3ool::is_neither;
 	}			 
 	#ifndef COLLADA_NODEPRECATED
@@ -955,9 +974,8 @@ COLLADA_(private) //INTERNAL SUBROUTINES
 	/** Implements many daeURI methods, with std::string compatible code. */
 	inline T &_getURI(T &str, short pos, daeStringCP sep, short end)const
 	{
-		CP len = end-pos;
-		daeRefView URI = getURI(); if(len==0||URI[len-1]!=sep) len++;
-		daeRef::_getT<dae_clear>(str,URI+pos,len); return str;
+		daeString URI = data(); if(end==0||URI[end-1]!=sep) end++;
+		daeRef::_getT<dae_clear>(str,URI+pos,end-pos); return str;
 	}
 
 	/** Does case-insensitive comparisons. */

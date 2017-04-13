@@ -454,7 +454,7 @@ daeElementRef daeElement::getDescendant(const matchElement &matcher)
 	return nullptr;
 }
 
-const_daeElementRef daeElement::getAncestor(const matchElement &matcher)
+const_daeElementRef daeElement::getAncestor(const matchElement &matcher)const
 {
 	const_daeElementRef elt = getParent(); while(elt!=nullptr)
 	{

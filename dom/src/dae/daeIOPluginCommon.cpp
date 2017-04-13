@@ -193,7 +193,7 @@ void daeIOPluginCommon::_push_back_xml_decl(daeContents &content, daeName versio
 	//The built-in plugins only output UTF-8. 
 	//They are old/unrecommended/unworth time investments.
 	//This is to let users know (in a test environment) they're recoding.
-	assert("UTF-8"==encoding||encoding.empty());
+	assert("UTF-8"==encoding||"utf-8"==encoding||encoding.empty());
 	encoding = "UTF-8"; 
 
 	_CD.assign(daeName("xml version=\"")).append(version).push_back('"');

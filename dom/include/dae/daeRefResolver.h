@@ -71,9 +71,15 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 		return (daeElement*&)object; 
 	}
 	
-	/** @c nullptr request constructor. */
+	/**WARNING
+	 * Empty Request Constructor 
+	 * @warning Maybe the string should be set to @c nullptr
+	 * just to be safe? It's just now the extent is set to 0
+	 * and the string is rarely used, so the pointer doesn't 
+	 * have to be initialized.
+	 */
 	daeRefRequest(size_t extra=sizeof(daeRefRequest))
-	:daeHashString(nullptr,0),rangeMax(extra)
+	:/*daeHashString(cp),*/rangeMax(extra)
 	{}
 	/**
 	 * Constructor with arguments for the URL-like reference.
@@ -104,6 +110,15 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	 */
 	inline int isAtomicType()const{ return daeAtomicType::EXTENSION!=getAtomicType(); }
 			
+COLLADA_(public) //SCHEDULED FOR REMOVAL?
+
+	//This may or may not be useful in practice (as it turns out.)
+	//If not it's because a mature application would not typically
+	//simply dereference a SIDREF for its value and COLLADA really
+	//doesn't use SIDREF addressing for anything except animations.
+	//The fact that it has very many addressing modes is a problem.
+	//(Note that this class is not limited to SIDREF nor COLLADA.)
+
 	template<typename daeT>
 	/** Implements @c getScalar(). */
 	inline daeT &_got()const
@@ -360,6 +375,7 @@ COLLADA_(public) //LEGACY QUERY API
 	//	return DAE_ERR_INVALID_CALL;
 	//}
 	 
+	//EXPERIMENTAL
 	template<class T, bool=daeArrayAware<T>::is_class>
 	/**
 	 * This template exists so @c get() can return an element pointer
@@ -374,22 +390,22 @@ COLLADA_(public) //LEGACY QUERY API
 			//There are other ways to do this, but this is the safest
 			//way, and eventually it will be desirable to extract the
 			//binary-compatibility identifier.
-			if(_safe(dae(*(type*)&req.object)))
+			if(nullptr==req.object||_unsafe(dae(*(type*)&req.object)))
 			const_cast<daeObjectRef&>(req.object) = dae(def);
 			return *(type*)&req.object;
 		}
-		static bool _safe(const daeObject *o)
+		static bool _unsafe(const daeObject *o)
 		{
 			#ifdef COLLADA_dynamic_daeSafeCast
 			return dynamic_cast<type>(&*req.object)!=nullptr;
 			#else
 			return o->__DAEP__Object__v1__model()
-			==typename T::__COLLADA__T().__DAEP__Object__v1__model();
+			!=typename T::__COLLADA__T().__DAEP__Object__v1__model();
 			#endif
 		}
-		static bool _safe(const daeElement *e)
+		static bool _unsafe(const daeElement *e)
 		{
-			return !daeUnsafe<T>(e);
+			return daeUnsafe<T>(e);
 		}
 	};
 	/**PARTIAL-TEMPLATE-SPECIALIZATION
@@ -405,6 +421,14 @@ COLLADA_(public) //LEGACY QUERY API
 		}
 	};
 
+	//EXPERIMENTAL
+	//This was made much more complicated to work with @c getVector().
+	//It turns out that in practice @c getVector() may rarely if ever
+	//be used. The second argument was added for vectors and may need
+	//to be removed. It's uncharacteristic of most other APIs, and it
+	//affects the regular element version of @c get() as well because
+	//both forms must be congruent.
+	//
 	template<class T> //element or element smart-ref or a scalar type
 	/**LEGACY-SUPPORT 
 	 * Previously "getElement."
@@ -522,16 +546,17 @@ COLLADA_(protected) //daeRefView support
 	static inline void _getT(T &str, daeString pos, daeUShort len)
 	{
 		if(clear) str.clear(); _getT2(str,pos,len);
-	}
-	template<> 
-	/**TEMPLATE-SPECIALIZATION 
-	 * @c daeRefView cannot be appended to.  
-	 */
+	}template<> 
+	/**TEMPLATE-SPECIALIZATION @c daeRefView cannot be appended to. */
 	static inline void _getT<dae_clear>(daeRefView &str, daeString pos, daeUShort len)
 	{
 		str.view = pos; str.extent = len-1;
-	}
-	template<class T> 
+	}template<> 
+	/**TEMPLATE-SPECIALIZATION @c daeRefView_0 cannot be appended to. */
+	static inline void _getT<dae_clear>(daeRefView_0 &str, daeString pos, daeUShort len)
+	{
+		str.view = pos; str.extent = len-1;
+	}template<class T> 
 	////////////////////////////////////////////////////////////////
 	//There is a problem here. daeURI_base uses these to capture a//
 	//string-span in an array-like container. Which arrays include//
@@ -1164,7 +1189,6 @@ COLLADA_(public)
 	 */
 	inline daeOK resolve(const daeRef &ref, daeRefRequest &req)const
 	{
-		ref.getRefText(); //Always refresh.
 		int t,rt = ref.getRefType();		
 		for(size_t i=0;i<_contained.size();i++)
 		{

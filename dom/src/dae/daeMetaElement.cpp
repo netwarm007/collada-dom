@@ -920,7 +920,13 @@ const daeChildRef<> &daeMeta::pushBackWRT(daePseudoElement *parent, const daePse
 		//CHECKING getAllowsAny() MAY NOT BE THE BEST WAY TO DO IT.
 		//IDEALLY 1 WILL ALWAYS HAVE AN OUTLET, BUT IT DOESN'T YET.
 		//daeParentCM::_deepCM's COMMENTS HAVE SOME THOUGHTS ON IT.
-		if(it==_elem_names.end()) 
+		if(it!=_elem_names.end()) 
+		{
+			_elem_names_cache = _elem0+it->second;
+
+			p.name = it->second;
+		}
+		else
 		{
 			p.name = 1; if(!getAllowsAny())
 			{
@@ -929,10 +935,7 @@ const daeChildRef<> &daeMeta::pushBackWRT(daePseudoElement *parent, const daePse
 				p.count = c.unnamed().size();
 				goto unordered;
 			}
-		}
-		else p.name = it->second;
-
-		_elem_names_cache = _elem0+it->second;
+		}		
 	}
 	else p.name = thread_safe_cache->getChildID().getName();
 
