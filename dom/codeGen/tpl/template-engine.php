@@ -931,6 +931,28 @@ function echoContentModelCPP(& $indent,& $meta, $closure_text)
 	if($_elem=2==$COLLADA_DOM?'elem':'')
 	$nc = array(); else $nc = $meta['attributes'];
 	
+	$pt = NULL; //addPartialCM	
+	$content_model = addPartialCM($meta['content_model']);	
+	
+	$big = 0; 
+	//HACK: trying to extend big_number for <polygons>.
+	//large CMs are likely to exceed the maximum limit.
+	if(count($content_model)<21)
+	foreach($content_model as $k=>$ea) switch($ea['name'])
+	{	
+	case ElementMeta::groupCM:
+		
+		//<pass> is very large via a group. Disqualify
+		//all group transclusion for this.
+		$big = 0; break;
+	
+	case ElementMeta::sequenceCMopening:		
+	case ElementMeta::choiceCMopening:		
+
+		if($ea['maxOccurs']===unbounded) $big++;		
+	}
+	$big = $big===1?300000:big_number;
+		
 	echo "
 	daeCM *cm = nullptr;\n";
 	$curCM = array('cm'=>NULL,'ord'=>0);		
@@ -943,9 +965,7 @@ function echoContentModelCPP(& $indent,& $meta, $closure_text)
 		$curCM['ord'] = $curOrd; array_push($cmStack,$curCM);
 		$curCM['cm'] = $cm;	$curOrd = 0; 
 	};
-
-	$pt = NULL; //addPartialCM	
-	$content_model = addPartialCM($meta['content_model']);	
+	
 	//NOTE: this is tightly coupled to generateCM_isPlural
 	foreach($content_model as $ea)
 	{
@@ -1025,7 +1045,7 @@ function echoContentModelCPP(& $indent,& $meta, $closure_text)
 			if(isset($cm['d'])) $pt = NULL;
 			
 			//FYI: Elsewhere >big_number calls die().
-			if(-1===$maxOccurs) $maxOccurs = big_number; //3000			
+			if($maxOccurs===unbounded) $maxOccurs = $big; //big_number;			
 			else if($maxOccurs>big_number) $maxOccurs = big_number;
 						
 			if(!empty($cmStack)) 
