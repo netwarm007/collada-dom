@@ -98,7 +98,7 @@ daeElement &daeIOPluginCommon::_beginReadElement(daePseudoElement &parent, const
 		daeEH::Warning<<
 		"Appended an unordered element named "<<
 		elementName<<" at line "<<_errorRow()<<".\n"
-		"(Could be a schema violation.)";
+		"(Could be a schema violation OR ordinal-space overflow.)";
 	}
 
 	//Process the attributes

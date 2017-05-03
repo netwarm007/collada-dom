@@ -158,6 +158,9 @@ class daeElement : public daeObject
 
 COLLADA_(public) //non-SIDREF SID lookup
 
+	#ifdef NDEBUG
+	#error Probably a daeArray<daeSmartRef<T>> form of this is in order.
+	#endif
 	template<class S, class T> //T is DAEP::Element or daeElement based
 	/**WARNING, LEGACY-SUPPORT
 	 * @warning THIS IS LEGACY FUNCTIONALITY. SEE THE BODY OF @c daeDocument 
@@ -779,6 +782,26 @@ COLLADA_(public)
 		int DAEP_genus;
 		matchType(int g):DAEP_genus(g){}		
 		virtual bool operator()(const daeElement *e)const{ return DAEP_genus==e->getElementType(); }
+	};
+	/**WARNING, LEGACY-SUPPORT
+	 * Matches an element by SID type.
+	 * @warning It's recommended to only use this with @c getChild().
+	 * Although @c getDescendant() does a correct SIDREF-like search,
+	 * -for some kinds of searches that can mean the entire document.
+	 * @see @c sidLookup() and @c daeSIDResolver.
+	 */
+	struct matchSID : public matchElement
+	{
+		const daeStringRef &sid;
+		template<class T>
+		matchSID(const T &SID, daeElement *e=nullptr)
+		:sid(daeBoundaryStringRef(*e,SID)){}		
+		virtual bool operator()(const daeElement *e)const
+		{
+			for(daeAttribute *ID=e->getMeta()->getFirstID();ID!=nullptr;ID=ID->getNextID())
+			if(sid==(const daeStringRef&)ID->getWRT(e)&&"sid"==ID->getName()) 
+			return true; return false; 
+		}
 	};
 	/**LEGACY
 	 * Returns a matching child element. By "child", I mean one hierarchy level beneath the

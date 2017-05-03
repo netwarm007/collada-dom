@@ -70,11 +70,22 @@ struct daeAtomicType
 	//FYI: It's impractical to do STRING|TOKEN because
 	//a negative value will result in a false positive.
 	/**WARNING
+	 *
+	 * On STRING:
 	 * daeStringRef/daeTokenRef atomic type 
 	 * @warning This is not the only string type.
 	 * Maybe it should be? @c TOKEN may even be more
 	 * common. They are identical in binary terms.
-	 * @see @c STRING/TOKEN Doxygentation.
+	 * @see @c daeTypist<daeStringRef>
+	 *
+	 * On TOKEN:
+	 * @note @c TOKEN is treated as a short text and
+	 * is subject to having spaces replaced with #x20
+	 * and normalized. CURRENTLY the library is very
+	 * unsophisticated in the distinciton. It's in no
+	 * way synonymous with xs:token and if a document
+	 * saves/writes/outputs a space it may be as #x20.
+	 * @see @c daeTypist<daeTokenRef>
 	 */
 	STRING, TOKEN, 
 	};
@@ -199,6 +210,20 @@ struct daeTypist
 		//string in the system string-table, and then allocate
 		//it again, the second time, in the array's string-table.
 		new(C4700) daeStringRef(dst.getObject());
+	}
+
+	//EXPERIMENTAL
+	/**
+	 * This is mainly added so @c std::istream doesn't trigger an
+	 * error when it encounters trailing spaces followed by @c '\0'.
+	 * Checking for the error after the fact is to much of a chore.
+	 * Some exotic types might need to preserve the whitespace. Most
+	 * do not want it there. An error more or less rejects the input.
+	 */
+	static void normalize(daeString &srcIn, daeString &srcEnd)
+	{
+		while(srcIn<srcEnd&&isspace(*srcIn)) srcIn++; 
+		while(srcEnd>srcIn&&isspace(srcEnd[-1])) srcEnd--;
 	}
 };
 
@@ -565,6 +590,7 @@ COLLADA_(public)
 
 		virtual daeOK unserialize(const daeStringCP *srcIn, const daeStringCP *srcEnd, daeOpaque dst)
 		{
+			Typist::normalize(srcIn,srcEnd);
 			daeIStringBuf buf(srcIn,srcEnd);
 			std::istream src(&buf);
 			Typist::formatXML<T>(src);
@@ -632,6 +658,7 @@ COLLADA_(public)
 		
 		virtual daeOK unserialize(const daeStringCP *srcIn, const daeStringCP *srcEnd, daeOpaque dstIn)
 		{		
+			Typist::normalize(srcIn,srcEnd);
 			Array &dst = dstIn;
 			//REMINDER: THERE SHOULDN'T BE A PRE-ALLOCATION STRATEGY.
 			//SEE unserialize() DOXYGENTATION NOTES ON REALLOCATIONS.
@@ -889,15 +916,18 @@ template<> struct daeTypist<daeStringRef> : daeTypist<> //xs:string
 		src.setstate(src.eofbit); return DAE_OK;
 	}	
 };
-/**WISE?
+/**LEGACY, WISE?
  * @see @c daeAtomicType::TOKEN concerns.
  * This class distinguishes xs:token types from xs:string types. 
  * (They treat whitespace differently.)
+ * It's currently used for all short-text types, even for types
+ * that should never have spaces. 
+ * There's no real reason why. Except the types are technically
+ * supposed to be "normalized."
  *
  * @note @c daeDomTypes.h will use @c daeStringRef unless there
- * is an <xs:list> involved. It tends not to distinguish and if
- * "normalization" is an issue then we have a problem that will
- * require more work/thought to resolve.
+ * is an <xs:list> involved ALTHOUGH system types use this type
+ * internally when reading/writing values via the meta back end.
  */
 class daeTokenRef : public daeStringRef
 {

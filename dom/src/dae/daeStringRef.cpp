@@ -28,6 +28,8 @@ extern daeString daeStringRef_empty = daeStringRef_table.allocString("",0);
 
 daeString daeStringRef_system(daeString cp, size_t extent)
 {
+	if(extent==0) return daeStringRef_empty;
+
 	daeString out;
 	bool frag = '#'==cp[0]; 
 	if(frag){ cp++; extent--; }
@@ -240,8 +242,8 @@ xs_(daeStringRef,gDay)
 xs_(daeBinary<16>,hexBinary)
 xs_(daeBinary<64>,base64Binary) 
 xs_(daeStringRef,anyURI)
-xs_(daeStringRef,QName)
-xs_(daeStringRef,NOTATION)
+xs_(daeTokenRef,QName)
+xs_(daeTokenRef,NOTATION)
 xs_(daeBoolean,boolean) 
 xs_(daeFloat,float) 
 xs_(daeDouble,double) 

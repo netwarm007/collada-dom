@@ -19,6 +19,10 @@ COLLADA_(namespace)
 domAny::_Master::_Master(XS::Schema &xs)
 :meta(xs.addElement(toc,"")),model(meta.getModel())
 {
+	//CHICKEN/EGG
+	const_cast<daeMetaElement&>(meta)
+	._jumpIntoTOC(1)._element.child = &meta;
+
 	xs.addType<xs::anySimpleType>("xs:anySimpleType");
 
 	daeMetaElement &el = const_cast<daeMetaElement&>(meta);
@@ -83,22 +87,18 @@ void daeElement::_cloneAnyAttribute(const daePseudonym &name)const
 {
 	domAny &_this = (domAny&)*this;
 	typedef domAny::AttributeBucket bucket;
-	daeArray<XS::Attribute> &aa = _this._meta->_attribs;
-	size_t i = aa.size(); 
-	//Copying _value isn't ideal, but it is less code.
-	//And this is on the track to obsolescence anyway.
-	aa.push_back(*_this._meta->_value);
-	XS::Attribute &a = aa.back();
-	a._attribute_name = name;
+	size_t i = _this._meta->_attribs.size();
+	//This sets up getFirstID() etc.
+	XS::Attribute &back = 
+	_this._meta->_anyAttribute_maybe_addID(this);
+	back._attribute_name = name;
 	bucket *b = &_this._attribs;
 	while(i>bucket::size)
 	{
 		if(b->next==nullptr) b->next = new bucket;
 		b = b->next; i-=bucket::size;
 	}	
-	a._offset = &daeOpaque(b->refs+i)-(char*)this;
-	//This sets up getFirstID() etc.
-	_this._meta->_addAttribute_maybe_addID(a,this);	
+	back._offset = &daeOpaque(b->refs+i)-(char*)this;
 	b->refs[i] = getDOM()->getEmptyURI().data();	
 }
 

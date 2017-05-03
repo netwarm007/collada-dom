@@ -1,88 +1,112 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/
-#ifndef _CFX_EFFECT_H
-#define _CFX_EFFECT_H
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+#ifndef __COLLADA_FX__EFFECT_H__
+#define __COLLADA_FX__EFFECT_H__
 
-//#ifndef _LIB
-#include <Cg/cg.h>
-//#else
-//#include <cfxNoCg.h>
-//#endif
-//#if defined(_POSIX_)
+#include "cfxParam.h"
 
-//include <GL/gl.h>
-//#endif
-
-#include <string>
-#include <map>
-#include "cfxTypes.h"
-#include "cfxAnnotatable.h"
-#include "cfxParamable.h"
-#include "cfxSurface.h"
-#include "cfxCode.h"
-#include "cfxTechnique.h"
-
-// cfxEffect
-class cfxEffect : public cfxAnnotatable, public cfxParamable
+COLLADA_(namespace)
 {
-public:
+	namespace FX
+	{//-.
+//<-----'
 
-  cfxEffect(const std::string& _name, CGcontext _context); 
-  ~cfxEffect();
+/**
+ * Effect < Profile < Technique < Material
+ */
+class Effect : public FX::NewParamable, public FX::Annotatable
+{
+COLLADA_(public)
+	
+	//SCHEDULED FOR REMOVAL
+	//Reminder: can use cgGetEffectContext if necessary.
+	xs::ID Id; CGcontext Cg_Context;
 
-  cfxBool apply();
-  cfxBool validate() const;
-  CGcontext getContext() const;
-  CGeffect getEffect() const;
-  const std::string& getName() const;
+	/**
+	 * Previously "effect." 
+	 * Capitalizing "effect" conflicts with the constructor.
+	 * (All Cg variables should be distinguished eventually.)
+	 */
+	CGeffect Cg;
+	
+	std::vector<FX::Technique*> Techniques; 
 
-  void pushCode(cfxCode* code);
-  void pushTechnique(cfxTechnique* technique);
+	std::vector<FX::NewParamable*> Profiles;
 
-  void setPassState(unsigned int techniqueIndex, unsigned int passIndex);
-  void resetPassState(unsigned int techniqueIndex, unsigned int passIndex);
-  unsigned int getTechniqueCount();
-  unsigned int getPassCount(unsigned int techniqueIndex);
+COLLADA_(public)
 
-  // this is temporary until cg api gets upgraded to set effect parameter names
-  void addNamedParameter(const std::string& name, CGparameter param);
-  CGparameter getParameterByName(const std::string& name);
+	Effect(xs::ID id, CGcontext=nullptr);
+	~Effect();
 
-  void addNamedSurface(const std::string& name, cfxSurface* surface);
-  cfxSurface* getSurfaceByName(const std::string& name);
-  std::string getSurfaceName( const cfxSurface *surface );
+	void Apply();
+};
+	  
+/**
+ * Effect < Profile < Technique < Material
+ */
+class Technique : public FX::NewParamable, public FX::Annotatable
+{
+COLLADA_(public)
 
-  // this is temporary until cg api gets upgraded to set parameter semantics
-  void addSemanticParameter(const std::string& semantic, CGparameter param);
-  CGparameter getParameterBySemantic(const std::string& semantic);
+	//SCHEDULED FOR REMOVAL
+	xs::ID Sid;
 
-  const std::vector<cfxTechnique*> &getTechniqueArray() const;
+	/**
+	 * Previously "technique." 
+	 * Capitalizing "technique" conflicts with the constructor.
+	 * (All Cg variables should be distinguished eventually.)
+	 */
+	CGtechnique Cg;
+							  	
+	std::vector<FX::Pass*> Passes;
 
-  const std::map<std::string, cfxSurface*> &getSurfaceMap() const;
+COLLADA_(public)
 
-private:
+	Technique(FX::NewParamable *parent, xs::ID sid);
+	~Technique();
 
-  std::vector<cfxCode*> codeArray;  // min 0
-  std::vector<cfxTechnique*> techniqueArray;  // min 1
-
-  std::string name;
-
-  CGcontext context;
-  CGeffect effect;
-
-  // this is temporary until cg api gets upgraded to set effect parameter names
-  std::map<std::string, CGparameter> mapNameToParameter;
-  std::map<std::string, cfxSurface*> mapNameToSurfacePtr;
-  // and semantics !?!
-  std::map<std::string, CGparameter> mapSemanticToParameter;
-
+	void Apply();
 };
 
+/**
+ * Effect < Profile < Technique < Material
+ *
+ * @note @c FX::NewParamable is the <instance_effect> child of
+ * <material>.
+ */
+class Material : public FX::NewParamable
+{
+COLLADA_(public)
+	
+	//SCHEDULED FOR REMOVAL
+	xs::ID Name;
 
-#endif // _CFX_EFFECT_H
+COLLADA_(public)
 
+	Material(FX::NewParamable *parent, xs::ID id)
+	:NewParamable(parent),Name(id){}
+
+	/**
+	 * The RT component is using these to begin/end
+	 * a pass, but only with 1 pass, and it's unclear
+	 * if NewParamable::Apply() should apply as well???
+	 */
+	void SetPassState(int),ResetPassState(int);
+
+	FX::Technique *FindTechnique()
+	{
+		return (FX::Technique*)Parent_NewParamable;
+	}
+};
+
+//-------.
+	}//<-'
+}
+
+#endif //__COLLADA_FX__EFFECT_H__
+/*C1071*/

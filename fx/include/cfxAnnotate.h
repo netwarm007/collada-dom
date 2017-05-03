@@ -1,59 +1,77 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/
-#ifndef _CFX_ANNOTATE_H
-#define _CFX_ANNOTATE_H
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+#ifndef __COLLADA_FX__ANNOTATE_H__
+#define __COLLADA_FX__ANNOTATE_H__
+		  
+#include "cfxData.h"
 
-
-#include <string>
-
-//#ifndef _LIB
-#include <Cg/cg.h>
-//#else
-//#include <cfxNoCg.h>
-//#endif
-
-
-class cfxData;
-class cfxEffect;
-class cfxParam;
-class cfxPass;
-class cfxTechnique;
-class cfxShader;
-
-
-// cfxAnnotate
-class cfxAnnotate
+COLLADA_(namespace)
 {
-public:
+	namespace FX
+	{//-.
+//<-----' 
 
-  cfxAnnotate(cfxData* _data, const std::string& _name);
-  virtual ~cfxAnnotate();
- 
-  virtual bool apply(const cfxEffect* effect);
-  virtual bool apply(const cfxParam* param);
-  virtual bool apply(const cfxPass* pass);
-  virtual bool apply(const cfxTechnique* technique);
-  virtual bool apply(const cfxShader* shader);
+/**wARNING
+ * @warning The current implementation merges the
+ * @c FX::Param to the @c FX::Data because it's a
+ * chicken/egg situation. It doesn't hurt to fuse
+ * the @c new and @c delete operation either. The
+ * same goes for @c FX::Annotate.
+ */
+class Annotate
+{
+COLLADA_(public)
 
-  CGannotation getAnnotation() const;
+	FX::Data *Data;
 
-  const cfxData *getData() const;
-  const std::string &getName() const;
+	xs::ID Name;
 
-protected:
-  
-  cfxData* data;
+	CGannotation Cg;
 
-  std::string name;
-  
-  CGannotation annotation;
+COLLADA_(public)
 
+	typedef xs::ID arg2;
+	Annotate(FX::DataMaker<FX::Annotate>*)
+	:Data(Data),Name(Name),Cg(Cg)
+	{ /*NOP*/ }
+
+	void Apply(const FX::Effect *effect);
+	void Apply(const FX::Param *param);
+	void Apply(const FX::Pass *pass);
+	void Apply(const FX::Technique *technique);
+	void Apply(const FX::Shader *shader);
 };
 
+class Annotatable
+{
+COLLADA_(public)
 
-#endif // _CFX_ANNOTATE_H
+	std::vector<FX::Annotate*> Annotations;
+
+COLLADA_(public)
+
+	template<class T>
+	void Apply(T *p)
+	{
+		for(size_t i=0;i<Annotations.size();i++)	
+		Annotations[i]->Apply(p);	
+	}
+
+	~Annotatable()
+	{
+		for(size_t i=0;i<Annotations.size();i++)
+		delete Annotations[i];	
+	}
+};
+
+//-------.
+	}//<-'
+}
+
+#endif //__COLLADA_FX__ANNOTATE_H__
+/*C1071*/

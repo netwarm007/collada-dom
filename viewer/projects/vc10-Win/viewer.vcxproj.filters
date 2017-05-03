@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\vc10-Win\Windows_main.cpp" />
+    <ClCompile Include="..\linux\Linux_main.cpp" />
+    <ClCompile Include="..\xcode\OSX_main.cpp" />
+    <ClCompile Include="..\vc8-PS3\PS3_BrowserUI.cpp" />
+    <ClCompile Include="..\vc8-PS3\PS3_main.cpp" />
+    <ClCompile Include="..\..\src\viewer_base.lite.cpp" />
+    <ClCompile Include="..\..\src\viewer_base.pch.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\vc8-PS3\PS3_BrowserUI.h" />
+    <ClInclude Include="..\..\src\viewer_base.inl" />
+    <ClInclude Include="..\..\src\viewer_base.pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\vc10-Win\Windows_wgl.inl" />
+  </ItemGroup>
+</Project>

@@ -768,6 +768,23 @@ COLLADA_(public) //daeDBaseString API
 		assert('#'==def[-1]); return (daeStringRef&)def;
 	}
 
+	/**WARNING
+	 * Gets the underlying reference count. 
+	 *
+	 * @warning This is not for monkeying with refs.
+	 * COLLADA encourages high-frequency SIDs which
+	 * are very difficult to dereference because if
+	 * a bottom-up search is used it must eliminate
+	 * many many SIDs. But a top-down search has to
+	 * consider the entire document downstream from
+	 * the starting point. A middle-ground is to do
+	 * a one level deep search if the SID is a high
+	 * frequency, and fall back to a slow bottom-up.	 
+	 * THIS STRATEGY IS IMPERFECT, BUT THOUGHT GOOD
+	 * ENOUGH FOR THE BUILT-IN, PROVIDED FACILITIES.
+	 */
+	inline size_t getSID_frequency()const{ return (size_t)_ptr->refs; }
+
 COLLADA_(private) //DATA-MEMBER
 
 	union //daeStringRef itself can't be a union.

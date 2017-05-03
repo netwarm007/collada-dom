@@ -64,38 +64,6 @@ COLLADA_(inline) DAEP::Model& DAEP::Elemental
 	Elemental::TOC toc; daeMetaElement &el = 
 	::COLLADA_target_namespace::__XS__().addElement(toc,\"$globalName\");");
 
-//INLINE-ENUMS?
-/*BLANKING OUT SO NOT TO HAVE TO THINK IT'S ACTIVE
-//On 1.5.0 only <author_email> requires'simple_type'
-//NOTE: the COLLADA schemas have no instance of this
-if($meta['simple_type']!=NULL)
-{	
-	$meta2 =& $meta['simple_type']->getMeta();
-	//FIX ME: (WHAT WOULD THIS EVEN LOOK LIKE?)
-	//NOT SURE IF THE _type SUFFIX IS USED OR NOT. BUT!!! SUFFIXES ARE UNRELIABLED
-	if(!empty($meta2['enum'])&&!$meta2['useConstStrings'])
-	{
-		die('die(Is this COLLADA 1.4.1??)');
-		if(!$pretty++) echo "\n";
-		$type = ucfirst($meta2['type']);
-		echoCode("
-
-	//ENUM: {$type}_type
-	daeAtomicType *type;
-	type = new daeEnumType;
-	type->_nameBindings.append(\"{$type}_type\");
-	((daeEnumType*)type)->_strings = new daeStringRefArray;
-	((daeEnumType*)type)->_values = new daeEnumArray;");
-		$type = strtoupper(asFriendlyEnum($type));
-		foreach($meta2['enum'] as $enum=>$ea) 
-		echoCode("
-	((daeEnumType*)type)->_strings->append(\"$enum\");
-	((daeEnumType*)type)->_values->append({$type}_".strtr($enum,'.-','__').");");	
-		echo "
-	aeAtomicType::append(type);";
-	}
-}*/
-
 //ATTRIBUTES
 if(2!==$COLLADA_DOM) 
 $nc = $meta['elements']; else $nc = array();

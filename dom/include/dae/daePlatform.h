@@ -276,6 +276,7 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 #include <vector>
 #endif //BUILDING_COLLADA_DOM
 
+//Microsoft prefixes these nonstandard APIs
 #ifndef COLLADA__itoa__
 #define COLLADA__itoa__ itoa
 #endif

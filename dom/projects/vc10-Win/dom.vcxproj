@@ -1,0 +1,175 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\include\ColladaDOM.inl" />
+    <None Include="..\..\include\ColladaLAB.inl" />
+    <None Include="..\..\projects\NatvisFile.natvis">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\include\dae.h" />
+    <ClInclude Include="..\..\include\DAEP.h" />
+    <ClInclude Include="..\..\include\dae\daeArray.h" />
+    <ClInclude Include="..\..\include\dae\daeAtomicType.h" />
+    <ClInclude Include="..\..\include\dae\daeContent.h" />
+    <ClInclude Include="..\..\include\dae\daeDatabase.h" />
+    <ClInclude Include="..\..\include\dae\daeDocument.h" />
+    <ClInclude Include="..\..\include\dae\daeDomTypes.h" />
+    <ClInclude Include="..\..\include\dae\daeElement.h" />
+    <ClInclude Include="..\..\include\dae\daeError.h" />
+    <ClInclude Include="..\..\include\dae\daeErrorHandler.h" />
+    <ClInclude Include="..\..\include\dae\daeGCCPlatform.h" />
+    <ClInclude Include="..\..\include\dae\daeIDRef.h" />
+    <ClInclude Include="..\..\include\dae\daeIOPlugin.h" />
+    <ClInclude Include="..\..\include\dae\daeIOPluginCommon.h" />
+    <ClInclude Include="..\..\include\dae\daeMetaAttribute.h" />
+    <ClInclude Include="..\..\include\dae\daeMetaCMPolicy.h" />
+    <ClInclude Include="..\..\include\dae\daeMetaElement.h" />
+    <ClInclude Include="..\..\include\dae\daeMetaElementAttribute.h" />
+    <ClInclude Include="..\..\include\dae\daeMetaSchema.h" />
+    <ClInclude Include="..\..\include\dae\daePlatform.h" />
+    <ClInclude Include="..\..\include\dae\daePlatonic.h" />
+    <ClInclude Include="..\..\include\dae\daeRAII.hpp" />
+    <ClInclude Include="..\..\include\dae\daeRefCountedObj.h" />
+    <ClInclude Include="..\..\include\dae\daeRefResolver.h" />
+    <ClInclude Include="..\..\include\dae\daeSIDResolver.h" />
+    <ClInclude Include="..\..\include\dae\daeSmartRef.h" />
+    <ClInclude Include="..\..\include\dae\daeStandardURIResolver.h" />
+    <ClInclude Include="..\..\include\dae\daeStringRef.h" />
+    <ClInclude Include="..\..\include\dae\daeTypes.h" />
+    <ClInclude Include="..\..\include\dae\daeURI.h" />
+    <ClInclude Include="..\..\include\dae\daeWin32Platform.h" />
+    <ClInclude Include="..\..\include\dae\daeZAEUncompressHandler.h" />
+    <ClInclude Include="..\..\include\dae\domAny.h" />
+    <ClInclude Include="..\..\include\LINKAGE.HPP" />
+    <ClInclude Include="..\..\include\modules\daeSTLDatabase.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\dae\dae.cpp" />
+    <ClCompile Include="..\..\src\dae\daeDocument.cpp" />
+    <ClCompile Include="..\..\src\dae\daeElement.cpp" />
+    <ClCompile Include="..\..\src\dae\daeError.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\src\dae\daeIOPluginCommon.cpp" />
+    <ClCompile Include="..\..\src\dae\daeMetaElement.cpp" />
+    <ClCompile Include="..\..\src\dae\daeMetaElementAttribute.cpp" />
+    <ClCompile Include="..\..\src\dae\daeMetaSchema.cpp" />
+    <ClCompile Include="..\..\src\dae\daeSIDResolver.cpp" />
+    <ClCompile Include="..\..\src\dae\daeStringRef.cpp" />
+    <ClCompile Include="..\..\src\dae\daeTinyXMLPlugin.cpp" />
+    <ClCompile Include="..\..\src\dae\daeURI.cpp" />
+    <ClCompile Include="..\..\src\dae\daeZAEUncompressHandler.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\dae\domAny.cpp" />
+    <ClCompile Include="..\..\src\modules\LIBXMLPlugin\daeLIBXMLPlugin.cpp" />
+    <ClCompile Include="..\..\src\PCH.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ColladaDOM.inl</PrecompiledHeaderFile>
+    </ClCompile>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{02BD8297-6078-4D09-9BA5-3EDBCF475AE7}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>COLLADAMSVC2010test</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>dom</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v100</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v100</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <TargetName>libcolladadom25-sd</TargetName>
+    <OutDir>../../../bin/Win32\</OutDir>
+    <IntDir>../../build/vc9-Win-d/obj/$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>libcolladadom25-s</TargetName>
+    <OutDir>../../../bin/Win32\</OutDir>
+    <IntDir>../../build/vc9-Win/obj/$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>EXPORTING_COLLADA_DOM;BUILDING_IN_LIBXML;BUILDING_IN_TINYXML;COLLADA_DOM_UNORDERED_SET;COLLADA_DOM_UNORDERED_MAP;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableLanguageExtensions>true</DisableLanguageExtensions>
+      <ShowIncludes>false</ShowIncludes>
+      <AdditionalIncludeDirectories>C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\tinyxml-sources;C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\libxml2-new-sources\include;C:\Users\Michael\COLLADA-DOM (Official)\dom\include</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <StringPooling>true</StringPooling>
+      <PrecompiledHeaderFile>ColladaDOM.inl</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
+      <GenerateXMLDocumentationFiles>false</GenerateXMLDocumentationFiles>
+      <FloatingPointModel>Precise</FloatingPointModel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <AdditionalDependencies>C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\libxml2-new-sources\lib\libxml2.lib;C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\tinyxml-sources\Debugtinyxml\tinyxml.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <OutputFile>$(OutDir)libcolladadom25-sd$(TargetExt)</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <OutputFile>$(OutDir)libcolladadom25-s$(TargetExt)</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

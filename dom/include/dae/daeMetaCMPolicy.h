@@ -47,8 +47,6 @@ COLLADA_(protected) //Implementation details
 
 	/**
 	 * Historically the library has used "ordinals" to place children.
-	 * @remark @c _maxOrdinals_x_maxOccurs is wasted on @c XS:Element.
-	 * It's used to optimize/prevent overflow. It will be junk memory.
 	 */
 	daeCounter _ordSubtrahend, _maxOrdinals, _maxOrdinals_x_maxOccurs;
 

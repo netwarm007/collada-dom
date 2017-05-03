@@ -308,6 +308,10 @@ extern bool daeDocument_typeLookup_called;
  */
 class daeDocument : public daeDoc
 {	
+#ifdef _DEBUG
+	daeContents *__Natvis_content;
+#endif
+
 	friend class daeDOM;
 	friend class daeDoc;
 	/**

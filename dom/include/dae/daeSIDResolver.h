@@ -236,7 +236,7 @@ COLLADA_(public) //SIDREF HELP
 				}
 				else if(extent==6)
 				{
-					assert(0==strcmp(view,"ANGLE")); return 3;
+					assert(*this==".ANGLE"); return 3;
 				}
 			}
 			else if('('==view[0])
@@ -247,7 +247,7 @@ COLLADA_(public) //SIDREF HELP
 				{
 					if(e[1]!='(')
 					{
-						assert(e[3]=='\0');
+						assert(e[1]=='\0');
 						return out;
 					}
 					else if(e[3]==')')
@@ -284,13 +284,16 @@ COLLADA_(public) //SIDREF HELP
 	{
 		NCNames.clear();
 		daeString p = data(), q = p;
-		while(*q!='\0'&&*q!='/') q++;
-		//Technically "." will satisfy this, but "..A" won't. If possible
-		//this implementation should NOT consider denerate ID-SID SIDREFs.
+		while(*q!='\0'&&*q!='/') q++;		
+		//Technically "." will satisfy this, but "..A" won't. If possible 		
 		DotSlash out =  (DotSlash)(q-p==1&&*p=='.'?1:0); 
+		//This allows degenerate IDREF style SIDREFs. COLLADA's messiness
+		//necessitates this. IT also lets <source> act as an <instance_*>
+		//redirect to a <*_array> target via <technique_common><accessor>.
+		if(*q!='/') q = data(); 
 		//Don't store the "." string as S may be daeStringRef.
 		if(out) p = ++q;
-		//terminating after the first slash avoids the initial ID segment.
+		//terminating after the first slash avoids the initial ID segment.		
 		terminate(q);
 		daeString d = terminate.data();
 		while(q<=d) if(*q++=='/') final:
@@ -466,7 +469,10 @@ COLLADA_(protected) //daeRefResolver::_resolve
 		daeElementRef hit = _cache.lookup(key);
 		if(SIDREF[0]=='.'&&hit!=&ref.getParentObject()) hit = nullptr;
 		daeError out = _resolve_exported(hit,doc,sidref,req);
-		if(out==DAE_OK&&hit!=req.object) _cache.add(key,req.object); return out;
+		#ifdef NDEBUG
+		#error _cache is corrupting the heap atexit. Are SIDREFs ever worth caching?
+		#endif
+		/*if(out==DAE_OK&&hit!=req.object) _cache.add(key,req.object);*/ return out;
 	}
 
 	COLLADA_DOM_LINKAGE

@@ -1,85 +1,56 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/
-// System includes
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+#include <FX.pch.h> //PCH
 
-#include <stdio.h>
-#include <cstdlib>
-#include <assert.h>
-#include <cfxPlatform.h>
-// User includes
+#include "cfxData.h"
+#include "cfxEffect.h"
+#include "cfxParam.h"
+#include "cfxPass.h"
 
-#include <cfxAnnotate.h>
-#include <cfxData.h>
-#include <cfxEffect.h>
-#include <cfxParam.h>
-#include <cfxPass.h>
-#include <cfxTechnique.h>
-#include <cfxShader.h>
-
-
-// cfxAnnotate
-cfxAnnotate::cfxAnnotate(cfxData* _data, const std::string& _name) 
-  : data(_data),
-    name(_name)
+COLLADA_(namespace)
 {
-}
- 
-cfxAnnotate::~cfxAnnotate() 
+	namespace FX
+	{//-.
+//<-----'
+
+void FX::Annotate::Apply(const FX::Effect *effect)
 {
+	if(Cg==nullptr)
+	Cg = cgCreateEffectAnnotation(effect->Cg,Name,Data->GetType());
+	Data->Apply(this);
 }
-
-
-bool cfxAnnotate::apply(const cfxEffect* effect)
+void FX::Annotate::Apply(const FX::Param *param)
 {
-  annotation = cgCreateEffectAnnotation(effect->getEffect(), name.c_str(), data->getType());
-  data->apply(this);
-  return true; 
+	if(Cg==nullptr)
+	Cg = cgCreateParameterAnnotation(param->Cg,Name,Data->GetType());
+	Data->Apply(this);
 }
-
-bool cfxAnnotate::apply(const cfxParam* param)
+void FX::Annotate::Apply(const FX::Pass *pass)
 {
-  annotation = cgCreateParameterAnnotation(param->getParameter(), name.c_str(), data->getType());
-  data->apply(this);
-  return true; 
+	if(Cg==nullptr)
+	Cg = cgCreatePassAnnotation(pass->Cg,Name,Data->GetType());
+	Data->Apply(this);
 }
-
-bool cfxAnnotate::apply(const cfxPass* pass)
-{ 
-  annotation = cgCreatePassAnnotation(pass->getPass(), name.c_str(), data->getType());  
-  data->apply(this);
-  return true; 
-}
-
-bool cfxAnnotate::apply(const cfxTechnique* technique)
+void FX::Annotate::Apply(const FX::Technique *technique)
 {
-  annotation = cgCreateTechniqueAnnotation(technique->getTechnique(), name.c_str(), data->getType());  
-  data->apply(this);
-  return true; 
+	if(Cg==nullptr)
+	Cg = cgCreateTechniqueAnnotation(technique->Cg,Name,Data->GetType());
+	Data->Apply(this);
+}
+void FX::Annotate::Apply(const FX::Shader *shader)
+{
+	if(Cg==nullptr)
+	Cg = cgCreateProgramAnnotation(shader->Cg_Program,Name,Data->GetType());
+	Data->Apply(this);
 }
 
-bool cfxAnnotate::apply(const cfxShader* shader)
-{
-  annotation = cgCreateProgramAnnotation(shader->getProgram(), name.c_str(), data->getType());  
-  data->apply(this);
-  return true; 
+//-------.
+	}//<-'
 }
 
-CGannotation cfxAnnotate::getAnnotation() const
-{
-  return annotation;
-}
-
-const cfxData *cfxAnnotate::getData() const
-{
-	return data;
-}
-
-const std::string &cfxAnnotate::getName() const
-{
-	return name;
-}
+/*C1071*/

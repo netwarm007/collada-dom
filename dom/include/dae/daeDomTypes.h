@@ -20,8 +20,8 @@
 #ifndef COLLADA_DOM_3__enum__
 #define COLLADA_DOM_3__enum__(x)\
 operator __enum__()const{ return __value__; }\
-__enum__ operator=(__enum__ v){ return __value__ = v; }\
-x(__enum__ v=(__enum__)0):__value__(v){} typedef daeEnumeration __COLLADA__POD;
+template<class T> __enum__ operator=(const T &v){ return __value__ = v; }\
+x(__enum__ v=(__enum__)0):__value__(v){}
 #endif
 #ifndef COLLADA_DOM_3__struct__daeSmartRef
 #define COLLADA_DOM_3__struct__daeSmartRef(x) \

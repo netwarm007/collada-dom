@@ -61,11 +61,13 @@
     <Expand>
       <CustomListItems>
         <Variable Name="ptr" InitialValue="(daeContent*)0" />
+        <Variable Name="name" InitialValue="$T2" />
         <Size>$T2&gt;=0?_counter&amp;0xFFFF:this[-1+$T2/32]._counter&amp;1&lt;&lt;($T2+1)%-32?1:0</Size>
-        <Exec>ptr = ((daeContents&amp;)(this[$T2&gt;=0?_counter&gt;&gt;16:1]))._au->_varray</Exec>
+        <Exec>name = $T2&gt;=0?_counter&gt;&gt;16:name</Exec>
+        <Exec>ptr = ((daeContents&amp;)(this[name&lt;0?1:name]))._au->_varray</Exec>
         <Loop>
           <Break Condition="ptr->_child.ID==0" />
-          <If Condition="ptr->_child.ID&gt;&gt;16==$T2&amp;&amp;ptr->_child.ordinal&lt;=daeOrdinals">
+          <If Condition="ptr->_child.ID&gt;&gt;16==name&amp;&amp;ptr->_child.ordinal&lt;=daeOrdinals">
           <Item Name="[{ptr->_child.ID&amp;0xFFFF}]">($T1*)ptr->_child.ref</Item>
           </If>
           <Exec>ptr++</Exec>
@@ -102,13 +104,13 @@
       {*(daeText*)this}
     </DisplayString>
     <DisplayString Condition="_child.ordinal&gt;daeOrdinals&amp;&amp;_SOTextview._.hole==1">
-      &lt;!--{(daeString)_SOTextview._text,[_SOTextview._.len]sb}--&gt;
+      &lt;!--{(daeString)_SOTextview._text,[_SOTextview._.extent]sb}--&gt;
     </DisplayString>
     <DisplayString Condition="_child.ordinal&gt;daeOrdinals&amp;&amp;_SOTextview._.hole==4">
-      &lt;?{(daeString)_SOTextview._text,[_SOTextview._.len]sb}?&gt;
+      &lt;?{(daeString)_SOTextview._text,[_SOTextview._.extent]sb}?&gt;
     </DisplayString>
     <DisplayString Condition="_child.ordinal&gt;daeOrdinals">
-      {(daeString)_SOTextview._text,[_SOTextview._.len]sb}
+      {(daeString)_SOTextview._text,[_SOTextview._.extent]sb}
     </DisplayString>    
     <DisplayString Condition="_child.ref!=0">
     &lt;{_child.ref->__DAEP__Element__data.NCName.string,sb}&gt;</DisplayString>
@@ -146,7 +148,7 @@
   <Type Name="ColladaDOM_3::daeDocument">    
     <Expand>
       <ExpandedItem>*(daeDoc*)this,nd</ExpandedItem>
-      <Item Name="content">((_PseudoElement*)&amp;((daeMeta*)_pseudo.meta)->_prototype)->content</Item>
+      <Item Name="content">*this->__Natvis_content</Item>
     </Expand>
   </Type>
 </AutoVisualizer>

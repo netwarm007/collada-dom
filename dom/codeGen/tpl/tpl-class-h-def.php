@@ -123,53 +123,6 @@ if(!empty($meta['classes']))
 	}	
 }
 
-//INLINE-ENUMS?
-/*BLANKING OUT SO NOT TO HAVE TO THINK IT'S ACTIVE
-//On 1.5.0 only <author_email> requires'simple_type'
-//NOTE: the COLLADA schemas have no instance of this
-if($meta['simple_type']!=NULL)
-{
-	$meta2 = $meta['simple_type']->getMeta();	
-	if(!empty($meta2['enum']))
-	{
-		//REMINDER: not properly indented either
-		die("die(inline enum? This code is not up-to-date.)");		
-		$type = $meta2['type'];		
-		if(!$meta2['useConstStrings'])
-		{
-			//NOTE: this was outside this block
-			//HOWEVER it's clear that the constStrings path is not echoing
-			echo $indent, "public: //ENUM\n";		
-			//what is this comment saying?
-			//Decided to name mangle the enum constants so they are more descriptive and avoid collisions			
-			echoDoxygen($meta2['documentation'],"\t");
-			//previously _type is injected. HOWEVER this is an ENUM and tpl-types-header.cpp doesn't do this, so
-			echo "enum ", $prefix, ucfirst($$type), "\n{\n";		
-			$type = strtoupper(asFriendlyEnum($type));
-			foreach($meta2['enum'] as $enum=>$ea)
-			{
-				echo "\t", $type, "_", strtr($enum,'.-','__'), ",";
-				if(!empty($ea['documentation']))
-				echo ' /**< ', getDocumentationText($ea['documentation']), ' *','/';
-				echo "\n";
-			}
-			echo "\t", $type, "_COUNT";
-			echo "\n};\n\n";
-		}
-		else
-		{
-			$type = strtoupper(asFriendlyEnum($type));
-			foreach($meta2['enum'] as $enum=>$ea)
-			{
-				if(!empty($ea['documentation']))
-				$constStrings[] = "/**\n * ".getDocumentationText($ea['documentation'])."\n *"."/\n";								
-				$constStrings[$type."_".strtr($enum,'.-','__')] = "\"".$enum."\";\n";
-			}
-			$constStrings[] = "\n";
-		}
-	}
-}*/
-
 $i = 0; 
 echoCode("
 public: //Parameters

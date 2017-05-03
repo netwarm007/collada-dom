@@ -1,0 +1,3 @@
+This project is to load into the viewer.sln file under viewer/ which since 2017 is not rightly compatible with pre-2010 versions of Visual Studio.
+
+Note that a VS2010 project can host later versions of Visual Studio, and that is why vc10 is chosen. VS2015 or later is recommended for speedily building the viewer/ project, including its rt/ and fx/ components. (Prior versions are dog slow for building C++ templates.)

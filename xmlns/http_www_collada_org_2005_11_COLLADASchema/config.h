@@ -1,0 +1,11 @@
+
+#ifndef COLLADA__http_www_collada_org_2005_11_COLLADASchema__
+#define COLLADA__http_www_collada_org_2005_11_COLLADASchema__(x) \
+<COLLADA_DOM/COLLADA 1.4.1/x.h>
+#endif
+
+#ifndef COLLADA__http_www_collada_org_2005_11_COLLADASchema__namespace
+#define COLLADA__http_www_collada_org_2005_11_COLLADASchema__namespace \
+COLLADA_DOM_NICKNAME(Collada05,http_www_collada_org_2005_11_COLLADASchema)
+#endif
+

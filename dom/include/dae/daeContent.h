@@ -262,17 +262,27 @@ class daeText
 	friend class daeContents_size;
 	struct _Header
 	{	  
-		/** The hole is used to rewind to the beginning,
+		/** 
+		 * The hole is used to rewind to the beginning,
 		 * -and so must be a @c char (or optimally it is.)
-		 * @see @c daeContent::getText(). */
+		 * @see @c daeContent::getText(). 
+		 */
 		unsigned hole:8;
-		/** The string-length, up to the 0 terminator. */
-		unsigned len:12;
-		/** Courtesy flags governing broken up text. */
+		/** 
+		 * Returned by @c size() indicating printable text.
+		 * @c extent==0 if @c kind()==0||kind()==5.
+		 */
+		unsigned extent:12;
+		/**
+		 * Courtesy flags governing broken up text. 
+		 */
 		unsigned continued:1, continues:1;
-		/** Can this be used to note <![CDATA[]]> text? */
+		/**
+		 * Can this be used to note <![CDATA[]]> text? 
+		 */
 		unsigned reserved:2;
-		/** The length in context-array position units. 
+		/** 
+		 * The length in context-array position units. 
 		 * This must be bit 24~32, and is used to tell if
 		 * the position is a text, or a child-element ref. */
 		unsigned span:8;
@@ -293,8 +303,9 @@ COLLADA_(public) //ACCESSORS
 	 * '\1': SOH, or start-of-heading. Used for <!--comment-->.
 	 * '\2': STX, or start-of-text. Used for XSD Mixed Content text.
 	 * '\4': EOT, or end-of-transmission. Used for <?processing-instruction?>.
-	 * '\5' through '\x08' are reserved.
-	 * '\0' is reserved.
+	 * '\5': ENQ, or enquiry/inquiry. This is a simple-type value range.
+	 * '\6' through '\x08' are reserved.
+	 * '\0' is debris. Deleted content.
 	 */
 	inline int kind(){ return _.hole; }
 
@@ -319,7 +330,7 @@ COLLADA_(public) //ACCESSORS
 	 * straightforward by "show-not-tell.") 
 	 * @see @c daeContent::getKnownText().
 	 */
-	inline size_t size(){ return _.len; }
+	inline size_t size(){ return _.extent; }
 	/**
 	 * The library provides this for all string-like types.
 	 */
@@ -327,8 +338,12 @@ COLLADA_(public) //ACCESSORS
 	/**
 	 * The library provides this for all string-like types.
 	 */
-	inline bool empty(){ return _.len==0; }
-
+	inline bool empty(){ return _.extent==0; }
+	
+	//WHAT CAN BE DONE?
+	#ifdef NDEBUG
+	#error is/hasX is confusing and looks like isDebris() etc.
+	#endif
 	/** 
 	 * @return Returns @c true if this text continues a previous. 
 	 * Text is broken up so rewinding the text takes fewer cycles.
@@ -364,6 +379,45 @@ COLLADA_(public) //ACCESSORS
 	 * @remarks The "XML declaration" is covered by "_like."
 	 */
 	inline bool isPI_like(){ return _.hole==daeKindOfText::PI_LIKE; /*'\4'*/ }
+	/**PROPOSAL
+	 * This doesn't have a corresponding @c daeKindOfText flag as it's not text
+	 * and there's only room for four such flags.
+	 * 
+	 * This is designed to preserve location of the following sort of text data.
+	 *
+	 * <lookat> 
+     * 2.0  0.0  3.0  <!-- eye position (X,Y,Z)       --> 
+     * 0.0  0.0  0.0  <!-- interest position (X,Y,Z)  --> 
+     * 0.0  1.0  0.0  <!-- up-vector position (X,Y,Z) --> 
+	 * </lookat> 
+	 *
+	 * This text-node doesn't store text. It stores a range of values to insert
+	 * at this point in the text. If the value is a list, the range is in terms
+	 * of subscripts. If the value is text it is in terms of control-points. If
+	 * the value is other, there is a single value and its range is 0-0.
+	 */
+	inline bool isValueRange(){ return _.hole=='\5'; }
+
+	#ifdef NDEBUG
+	#error This still needs to be implemented/tested.
+	#endif
+	/**PROPOSAL
+	 * This type is a 32-bit inclusive range.
+	 */
+	typedef unsigned ValueRange[2];
+	/**WARNING
+	 * If @c isValueRange()==true this returns the range of values to insert at
+	 * this point into the simple-type content.
+	 *
+	 * @warning The range is inclusive. It may be corrupted if code changed the
+	 * value without considering text-nodes. The caller must clamp the returned
+	 * range to the end of the value's container.
+	 */
+	inline const ValueRange &getKnownValueRange()
+	{
+		ValueRange &out = *(ValueRange*)&_text; 
+		assert(_.hole=='\5'&&_.extent==0&&out[1]>=out[0]); return out;
+	}
 
 COLLADA_(public) //text extraction
 
@@ -379,7 +433,7 @@ COLLADA_(public) //text extraction
 		if(clear) io.clear();
 		union{ daeCursor p; daeText *t; }; t = this; for(;;)
 		{
-			i+=t->span(); io.append_and_0_terminate(t->_text,t->_.len);			
+			i+=t->span(); io.append_and_0_terminate(t->_text,t->_.extent);			
 			if(t->hasMoreText()) p+=t->span(); else break;
 		}return io;
 	}
@@ -758,7 +812,11 @@ COLLADA_(public)
 	 * It must be subtracted IOW. (Unsigned sizes are just
 	 * too prevalent in the C++ world, and -= is clearer.)
 	 */
-	inline daeUStringCP counterspan(){ return _textview[_cspan]; }
+	inline daeUStringCP counterspan()
+	{
+		daeUStringCP out = _textview[_cspan]; assert(out!=0);
+		return out; 
+	}
 };
 
 /**
@@ -1151,7 +1209,7 @@ COLLADA_(public) //Alternative to old "getChildren" APIs
 		assert(text>=data()&&text<=end());
 		if(text->hasText()&&!text->getKnownStartOfText().isMoreText()) do 
 		{
-			daeText &t = *text; t._.len = t._.hole = 0; text+=t.span();
+			daeText &t = *text; t._.extent = t._.hole = 0; text+=t.span();
 		}while(text->hasText()&&text->getKnownStartOfText().isMoreText());
 		else return nullptr; return text;
 	}
@@ -1851,7 +1909,7 @@ COLLADA_(private) //BASIC (text nodes are not skimmed) CURSOR ALGORITHM
 	static daeCursor __get1(daeCursor &_, daeChildID ID, daeCursor d, daeCursor e)
 	{
 		daeCursor o = _->_child.ID==ID?_:__get1_missed(_,ID,d,e);
-		while((++_)->hasText()) _+=_->getKnownStartOfText().span(); return o;
+		for(_++;_->hasText();_+=_->getKnownStartOfText().span()); return o;
 	}	
 	static daeCursor __get2(daeCursor &_, daeChildID ID, daeCursor d, daeCursor e)
 	{	
@@ -2450,12 +2508,13 @@ COLLADA_(private)
 	/** Locate the contents-array. */
 	inline daeContents &_content()
 	{
-		return (daeContents&)*(this+Name);
+		int os = Name==0?_counter>>16:Name;
+		return *(daeContents*)(this+os);
 	}
 	/** Locate the contents-array. CONST-FORM */
 	inline const daeContents &_content()const
 	{
-		return (daeContents&)*(this+Name);
+		return const_cast<dae_Array_base*>(this)->_content();
 	}
 
 	/**

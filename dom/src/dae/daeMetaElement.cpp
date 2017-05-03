@@ -137,6 +137,7 @@ void *daeMeta::_continue_XS_Schema_addElement2(void ctor(DAEP::Object*), daeFeat
 		memset(&e1._element,0x00,sizeof(e1._element));
 		e1._maxOrdinals = 1;
 		e1._element.name._clear_client_string();
+		//CHICKEN/EGG: 0 if domAny's metdata.
 		e1._element.child = domAny::_master.meta;
 
 	  //This remaining code is just to avoid having junk data inside getTOC().
@@ -354,7 +355,7 @@ XS::Attribute &daeMeta::_addAttribute(daeFeatureID fID, daeOffset os, daeAlloc<>
 	} 
 	return static_cast<XS::Attribute&>(out);	
 }
-void daeMetaElement::_addAttribute_maybe_addID(daeAttribute &maybe_ID, const daeElement *proto_or_any)
+void daeMeta::_addAttribute_maybe_addID(daeAttribute &maybe_ID, const daeElement *proto_or_any)
 {
 	if(nullptr==_schema->_IDs.find(maybe_ID._attribute_name))
 	return;	
@@ -384,6 +385,19 @@ void daeMetaElement::_addAttribute_maybe_addID(daeAttribute &maybe_ID, const dae
 	it->_this_attribute_is_ID = 1; 	
 	if("id"==it->_attribute_name) _IDs_id = it; //LEGACY		
 	proto_or_any->__DAEP__Element__data.getMeta_getFirstID_is_nonzero = 1;
+}
+XS::Attribute &daeMeta::_anyAttribute_maybe_addID(const daeElement *proto_or_any)
+{
+	XS::Attribute *was = _attribs.data(); 
+	//Copying _value isn't ideal, but it is less code.
+	//And this is on the track to obsolescence anyway.
+	_attribs.push_back(*_value); if(nullptr!=_IDs)
+	{
+		_IDs = &_attribs[_IDs-was]; //This complicates things.
+	
+		if(nullptr!=_IDs_id) _IDs_id = &_attribs[_IDs_id-was];
+	}		
+	_addAttribute_maybe_addID(_attribs.back(),proto_or_any); return _attribs.back();
 }
 void daeValue::_setDefaultString(daeHashString def)
 {
@@ -887,6 +901,7 @@ const daeChildRef<> &daeMeta::pushBackWRT(daePseudoElement *parent, const daePse
 	//the array is significantly unordered.
 	const daeContent *iit = c.begin();
 	const daeContent *rit = c.cursor();
+	assert(!rit->hasText());
 	if(0==rit->_child.ordinal)
 	{
 		//This is not normal. 

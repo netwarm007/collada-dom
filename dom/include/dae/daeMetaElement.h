@@ -806,6 +806,9 @@ COLLADA_(private) //MODEL SETUP IMPLEMENTATION
 
 		/** @c addAttribute() and @c daeElement::_cloneAnyAttribute() share this. */	
 		void _addAttribute_maybe_addID(daeAttribute &maybe_ID, const daeElement *prototype_or_domAny);
+		//SCHEDULED FOR REMOVAL
+		//This must remap _IDs and _IDs_id if the _attribs vector is reallocated.
+		XS::Attribute &_anyAttribute_maybe_addID(const daeElement *prototype_or_domAny);
 
 		friend class daeDOM;
 		friend class daeModel;

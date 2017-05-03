@@ -136,9 +136,9 @@ static void daeLibXMLPlugin_libxmlErrorHandler
 {
 	if(severity==XML_PARSER_SEVERITY_VALIDITY_WARNING||severity==XML_PARSER_SEVERITY_WARNING)
 	{
-		daeEH::Warning<<msg;
+		daeEH::Warning<<msg<<" at line "<<xmlTextReaderLocatorLineNumber(locator);
 	}
-	else daeEH::Error<<msg;
+	else daeEH::Error<<msg<<" at line "<<xmlTextReaderLocatorLineNumber(locator);
 }
 
 //Previously ::xmlTextReaderHelper.
@@ -384,7 +384,7 @@ int daeLibXMLPlugin::_readContent2(daePseudoElement &parent)
 			case XML_READER_TYPE_SIGNIFICANT_WHITESPACE:
 
 				daeCTC<Reader::ops&XML_PARSE_NOBLANKS>();
-				assert(0);
+				//assert(0);
 				#ifdef NDEBUG
 				#error What can be done about this?
 				#endif

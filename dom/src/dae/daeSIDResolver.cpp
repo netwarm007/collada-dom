@@ -13,11 +13,15 @@ COLLADA_(namespace)
 
 typedef struct //daeSIDResolver_cpp
 {	
+	//If a string-ref has more refs than this
+	//a single level top-down search is tried.
+	enum{ high_freq=30+1 };
+
 	//These were arguments to the find() APIs.
 	daeHashString profile; const_daeElementRef scope; const_daeDocumentRef lookup;	
 
 	//NEW: Having this buffer as a member lets consecutive find() calls reuse it.
-	daeArray<daeElementRef,30> _sidElements;
+	daeArray<daeElementRef,high_freq-1> _sidElements;
 			
 	//Implements a breadth-first SID search by using the database to find all elements
 	//matching 'SID', then finding the element closest to 'scope'.		
@@ -26,8 +30,9 @@ typedef struct //daeSIDResolver_cpp
 		const daeName &name = scope->getNCName(); //Follow URL?
 		if(name[0]=='i'&&name.extent>9&&0==memcmp(&name,"instance_",9))
 		{
+			//Should <instance_material> be targetable?
 			#ifdef NDEBUG
-			#error Sometimes it's "target" instead.
+			#error Sometimes it's "target" instead. E.g. <instance_material>
 			#endif
 			daeName url = scope->getAttribute("url");			
 			if(!url.empty())
@@ -47,11 +52,24 @@ typedef struct //daeSIDResolver_cpp
 			#ifdef NDEBUG
 			#error SHOULD THIS return? IS THERE ANYTHING INSIDE AN instance_ ELEMENT?
 			#endif
-		}
+		}	 
 		return _find(scope,lookup,SID);
 	}
 	bool _find(const_daeElementRef &in_out, const daeDocument *look_in, const daeStringRef &SID)
 	{
+		//This is designed to get constructions of the type
+		//<rotate sid="rotateX"> where there may be several
+		//SIDs to eliminate by the regular bottom-up search.
+		if(high_freq<SID.getSID_frequency())
+		{
+			daeElement::matchSID matcher(SID);
+			const daeElement *e = in_out->getChild(matcher);
+			if(e!=nullptr)
+			{
+				in_out = e; return true; 
+			}
+		}
+
 		//Get the elements with matching SIDs. 		
 		look_in->sidLookup(SID,_sidElements);
 
@@ -111,6 +129,14 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 		daeStringRef *it = NCNames.begin();
 		if(dot_slashed)
 		{
+			#ifdef NDEBUG
+			#error The manual doesn't define this. But do it I guess.
+			#endif
+			/*https://github.com/KhronosGroup/OpenCOLLADA/issues/507
+			"The parent scope of  "./"  is defined by the first parent
+			element with id attribute value present."
+			*/
+
 			//REMINDER: Some (likely misguided) Physics examples
 			//in the manual seem to either be assuming that ./ is
 			//to search among the elements siblings, or that it is
@@ -132,6 +158,9 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 				//Resolving Physics node/constraint bindings can get
 				//very complicated. This reduces the number of steps.
 				cpp.scope = cpp.lookup->getRoot();
+				//Try to find a global SID instead of a global ID if
+				//not "/".
+				if(!it[-1].empty()) it--; 
 			}
 		}
 		if(cpp.scope==nullptr)
@@ -152,13 +181,14 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 	else return DAE_ERR_QUERY_NO_MATCH;
 
 hit: //fill out the request object
-	const daeElement &e = (daeElement&)*req.object;
-	daeCharData *cd = e.getCharDataObject();
+	const daeElement *e = (daeElement*)&*req.object;
+	accessor_source:
+	daeCharData *cd = e->getCharDataObject();
 	if(cd!=nullptr)
 	{
 		size_t n = 0;
 		req.type = &cd->getType(); 		
-		req.typeInstance = cd->getWRT(&e);
+		req.typeInstance = cd->getWRT(e);
 		if(cd->isArrayValue())
 		{
 			const daeAlloc<> *AU =
@@ -189,13 +219,31 @@ hit: //fill out the request object
 			//is nullified only if the selection is past the
 			//last codepoint. The caller must parse the lists.
 
-			size_t m = t.select(e.getNCName());
+			size_t m = t.select(e->getNCName());
 			if(m<n)
 			{
 				req.rangeMin = req.rangeMax = m;
 			}
 			else req.typeInstance = nullptr;
 		}						
+	}
+	else if("source"==e->getNCName()) //<morph> animation support.
+	{		
+		//The URL of <source> is buried deep inside.
+		if(nullptr!=(e=e->getChild("technique_common"))
+		 &&nullptr!=(e=e->getChild("accessor")))
+		{	
+			daeName source = e->getAttribute("source");
+			if(!source.empty())
+			{
+				e = daeURI_parser(source,e).getTargetedFragment();
+				if(e!=nullptr)
+				{
+					assert("float_array"==e->getNCName());
+					goto accessor_source;
+				}
+			}
+		}	
 	}
 	else req.typeInstance = nullptr; return DAE_OK;
 }

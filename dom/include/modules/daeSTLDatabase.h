@@ -218,13 +218,13 @@ COLLADA_(public) //daeDB methods
 				#ifdef NDEBUG
 				#error What about <xs:anyAttribute>?
 				#endif
-				daeAttribute *id;
-				id = ch->getMeta()->getFirstID();
-				for(;id!=nullptr;id=id->getNextID())
+				daeAttribute *ID;
+				ID = ch->getMeta()->getFirstID();
+				for(;ID!=nullptr;ID=ID->getNextID())
 				{
-					if("id"==id->getName()
-					||"sid"==id->getName())
-					first->_migrate_ID_or_SID(second,ch,id); //source->destination
+					if("id"==ID->getName()
+					||"sid"==ID->getName())
+					first->_migrate_ID_or_SID(second,ch,ID); //source->destination
 				}
 			}
 			if(!ch->getOptimizationBit_is_definitely_not_a_graph()) //Recurse?

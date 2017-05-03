@@ -210,7 +210,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline typename daeConstOf<T,daeOpaque>::type getWRT(T &e)const
 	{
-		const daeElement *upcast = *e; return daeOpaque(e)[getOffset()]; 
+		const daeElement &upcast = dae(*e); return daeOpaque(e)[getOffset()]; 
 	}
 	template<class This> //daeElement
 	/**LEGACY, NOT-RECOMMENDED
@@ -221,7 +221,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline typename daeConstOf<This,daeOpaque>::type getWRT(This *e)const
 	{
-		const daeElement *upcast = *e; return daeOpaque(e)[getOffset()]; 
+		const daeElement &upcast = dae(*e); return daeOpaque(e)[getOffset()]; 
 	}
 	
 	template<class Change> //DAEP::Change

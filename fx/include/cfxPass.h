@@ -1,64 +1,94 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/
-#ifndef _CFX_PASS_H
-#define _CFX_PASS_H
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+#ifndef __COLLADA_FX__PASS_H__
+#define __COLLADA_FX__PASS_H__
 
-#include <string>
-#include <vector>
+#include "cfxEffect.h"
 
-#include <cfxAnnotatable.h>
-#include <cfxParamable.h>
-
-//#ifndef _LIB
-#include <Cg/cg.h>
-//#else
-//#include <cfxNoCg.h>
-//#endif
-
-class cfxGlPipelineSetting;
-class cfxShader;
-class cfxTechnique;
-
-// cfxPass 
-class cfxPass : public cfxAnnotatable, public cfxParamable
+COLLADA_(namespace)
 {
-public:
+	namespace FX
+	{//-.
+//<-----'
 
-  cfxPass(cfxTechnique* _technique, const std::string& _name);
-  ~cfxPass();
+//These are limited to vertex/fragment shaders.
+typedef Collada05_XSD::cg_pipeline_stage Cg_Stage;
+typedef Collada05_XSD::glsl_pipeline_stage GLSL_Stage;
+//1.5.0 has more shader types and does not differentiate.
+//(Possibly the existence of the Cg handles could be used.)
+//typedef Collada08_XSD::fx_pipeline_stage_enum FX_Stage08;
 
-  bool apply();
-  bool validate() const;
+class Shader : public FX::Annotatable, public FX::Paramable
+{
+COLLADA_(public)
 
-  void pushSetting(cfxGlPipelineSetting* setting);
-  void pushShader(cfxShader* shader);
+	FX::Pass *Pass;
 
-  cfxTechnique* getTechnique() const;
+	CGprofile Cg_Profile;
+	CGprogram Cg_Program;
+	CGstate Cg_State; 
+	CGstateassignment Cg_Assignment;
 
-  CGpass getPass() const;
+	struct Generate
+	{
+	unsigned NORMAL:1;
+	unsigned TANGENT:1;
+	unsigned BINORMAL:1;
+	operator unsigned&(){ return *(unsigned*)this; }
+	}Generate;
 
-  const std::string &getName() const;
-  const std::vector<cfxGlPipelineSetting*> &getSettingArray() const;
-  const std::vector<cfxShader*> &getShaderArray() const;
+COLLADA_(public)
 
-private:
+	using Paramable::Apply;
 
-  cfxTechnique* technique;
-
-  std::string name;
- 
-  std::vector<cfxGlPipelineSetting*> settingArray;  // min 0
-  
-  std::vector<cfxShader*> shaderArray;  // min 0
-  
-  CGpass pass;
-
+	Shader(FX::Pass*,FX::Cg_Stage,xs::ID prof, xs::string args, xs::ID f, xs::string src);
+	Shader(FX::Pass*,FX::GLSL_Stage,xs::ID,xs::string,xs::ID,xs::string);
 };
 
-#endif // _CFX_PASS_H
+class Pass : public FX::Annotatable
+{
+COLLADA_(public)
 
+	//SCHEDULED FOR REMOVAL
+	FX::Technique *Technique;
+		
+	std::vector<FX::Shader*> Shaders;
+
+	/**
+	 * Previously "pass." 
+	 * Capitalizing "pass" conflicts with the constructor.
+	 * (All Cg variables should be distinguished eventually.)
+	 */
+	CGpass Cg;
+
+COLLADA_(public)
+
+	Pass(FX::Technique *technique, xs::ID sid)
+	:Technique(technique)
+	{
+		Cg = cgCreatePass(Technique->Cg,sid);
+	}
+	~Pass()
+	{
+		for(size_t i=0;i<Shaders.size();i++)
+		delete Shaders[i];
+	}
+
+	void Apply()
+	{
+		for(size_t i=0;i<Shaders.size();i++)
+		Shaders[i]->Apply();
+	}
+};
+
+//-------.
+	}//<-'
+}
+
+#endif //
+/*C1071*/

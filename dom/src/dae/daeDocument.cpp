@@ -61,7 +61,7 @@ daeDocument::daeDocument(daeDOM *DOM):daeDoc(DOM,daeDocType::HARDLINK)
 	//destruct a metadata record, but this one isn't destructed.
 	meta._constructor = nullptr;	
 
-	daePseudoElement &e = _getPseudoElement();
+	daePseudoElement &e = _getPseudoElement();	
 	e.__DAEP__Object__parent = this; //HACK
 	//HACK: it's too late to call __DAEP__Object__embed_subobject().
 	e.__DAEP__Object__refs = _uri.__DAEP__Object__refs;
@@ -79,6 +79,9 @@ daeDocument::daeDocument(daeDOM *DOM):daeDoc(DOM,daeDocType::HARDLINK)
 	e.__DAEP__Element__data.is_document_daePseudoElement = 1; 	
 	//This is to be sure !_isAny() and that it's not a system object.
 	assert(0!=e._getPShare()&&!e._isAny());
+
+	//This is the document's top-level content for NatvisFile.natvis.
+	__Natvis_content = ((_PseudoElement*)&e)->content.operator->();
 }
 daeDocument::~daeDocument() //VERY SKETCHY
 {
@@ -241,12 +244,17 @@ void daeDocument::_carry_out_change_of_ID_or_SID(const DAEP::Change &c, const XS
 	//Should this be allowed? For symmetry?
 	assert(this!=nullptr); //if(this==nullptr) return;
 
+	const daeElement *e = dae(c.element_of_change);
+
 	//REMINDER: THIS IS NOT DESIGNED TO HANDLE ELEMENT MOVEMENT.
-	assert(a->getType()->getAtomicType()==daeAtomicType::TOKEN);
+	switch(a->getType()->getAtomicType())
+	{
+	case daeAtomicType::TOKEN: break;
+	case daeAtomicType::STRING: assert(e->_isAny()); break;
+	default: assert(0); return;
+	}
 	bool id = a->getName().string[0]=='i';
 	assert(daeName(id?"id":"sid")==a->getName());
-	
-	const daeElement *e = dae(c.element_of_change);
 
 	daeString got = (const daeString&)a->getWRT(e); if(got[0]!='\0')
 	{
@@ -272,7 +280,8 @@ void daeDocument::_carry_out_change_of_ID_or_SID(const DAEP::Change &c, const XS
 			#error This is probably worth outputting something to the error logs.
 			#error What if this is a proposed "orphans" document?
 			#endif
-			assert(nullptr==uniqueID);
+			if(nullptr!=uniqueID)			
+			daeEH::Error<<"Non-unique id=\""<<got<<"\" added to daeDocument map.";
 			uniqueID = const_cast<daeElement*>(e);
 		}
 		else _sidMap.insert(std::make_pair(got,const_cast<daeElement*>(e)));
@@ -284,7 +293,12 @@ void daeDocument::_migrate_ID_or_SID(const daeDocument *destination, const daeEl
 	const daeDocument *source = this;
 	assert(source!=destination); //Callers should avoid this.
 
-	assert(a->getType()->getAtomicType()==daeAtomicType::TOKEN);
+	switch(a->getType()->getAtomicType())
+	{
+	case daeAtomicType::TOKEN: break;
+	case daeAtomicType::STRING: assert(e->_isAny()); break;
+	default: assert(0); return;
+	}
 	daeString got = (const daeString&)a->getWRT(e);
 	if(got[0]=='\0') return; 
 
@@ -316,7 +330,8 @@ void daeDocument::_migrate_ID_or_SID(const daeDocument *destination, const daeEl
 			#error This is probably worth outputting something to the error logs.
 			#error What if this is a proposed "orphans" document?
 			#endif
-			assert(nullptr==uniqueID);
+			if(nullptr!=uniqueID)			
+			daeEH::Error<<"Non-unique id=\""<<got<<"\" added to daeDocument map.";
 			uniqueID = const_cast<daeElement*>(e);
 		}
 		else destination->_sidMap.insert(std::make_pair(got,const_cast<daeElement*>(e)));
@@ -423,7 +438,7 @@ inline daeCursor daeContents_base::__insert(int KoT, daeString s, size_t e, cons
 
 		union{ daeContent *p; daeText *t; }; p = _;
 
-		//This may not best, but it's consistent.
+		//This is not the best, but it's consistent.
 		while(p->hasText())
 		{
 			t = p->getText(); if(!t->isMoreText()) break;
@@ -433,18 +448,20 @@ inline daeCursor daeContents_base::__insert(int KoT, daeString s, size_t e, cons
 		c.getAU()->setInternalCounter(c.size()+nodes);
 		for(i=e;i>0;i-=span_max)
 		{	
-			int len = std::min(i,span_max);
-			int span = i==span_max?255:nodes%255;			
+			int extent = std::min(i,span_max);
+			int span = i>=span_max?255:nodes%255;
+			assert(span!=0);
 			daeEOText *eot = (daeEOText*)(p+span-1);
 			memset(eot,'\n',sizeof(*p));
 			eot->_textview[eot->_cspan] = span;	
 			t->_.hole = KoT;
-			t->_.len = len;
+			t->_.extent = extent;
 			t->_.span = span;
 			t->_.continued = i!=e;
 			t->_.continues = i>span_max;
 			t->_.reserved = 0;
-			memcpy(t->_text,s,len*sizeof(daeStringCP)); s+=len; p+=span;
+			memcpy(t->_text,s,extent*sizeof(daeStringCP)); s+=extent; p+=span;
+			assert(span==eot->_textview[eot->_cspan]);	
 		}
 
 		//Note: _/cursor() isn't permitted to remain on text. 

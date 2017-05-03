@@ -26,6 +26,8 @@ COLLADA_(namespace)
 	{
 	COLLADA_(protected) //PADDING AND ONLY DATA-MEMBER
 
+		daeElementCM(){ _maxOrdinals_x_maxOccurs = 1; }
+
 		enum
 		{
 		__size_of_CM=12*sizeof(void*), 	
@@ -316,6 +318,7 @@ class Element : public daeElementCM
 {
 COLLADA_(private)
 
+	friend class domAny;
 	friend class XS::Schema;
 	friend class XS::Choice;
 	friend class daeDocument;

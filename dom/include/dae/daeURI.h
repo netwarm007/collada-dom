@@ -285,7 +285,8 @@ COLLADA_(private) //DATA-MEMBERS
 	 * might be expanded to 32, or even size_t bits if possible. */
 	short _reserved; inline void _00()
 	{
-		memset(&_rel_half,0x00,intptr_t(&_reserved+1)-intptr_t(&_rel_half));
+		memset(&_rel_half,0x00,intptr_t(&_size)-intptr_t(&_rel_half));
+		_size = 1; _reserved = 0;
 	}	
 	inline daeURI &_this()const{ return (daeURI&)*this; }
 
@@ -338,9 +339,9 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline daeURI &operator=(const daeURI_base &cp)
 	{
-		if(isUnparentedObject()) _reparent(cp->getParentObject());	
-		daeArray<daeStringCP,260> rel; _setURI(cp->getURI_baseless(rel).data());
-		refresh(); return *this;
+		if(!getIsAttached()) _reparent(cp->getParentObject());
+		daeArray<daeStringCP,260> rel; 
+		return operator=(cp->getURI_baseless(rel).data());		
 	}
 
 	template<int ID, class CC, typename CC::_ PtoM>
@@ -353,7 +354,8 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline daeURI &operator=(const DAEP::Value<ID,daeURI,CC,PtoM> &cp)
 	{
-		setParentObject(&cp.object()); _setURI((daeString)cp); return *this;
+		if(!getIsAttached()) _reparent(dae(cp.object()));
+		return operator=((daeString)cp);		
 	}
 	
 COLLADA_(public) //daeSafeCast() SHORTHANDS
@@ -412,7 +414,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	{
 		assert(c!=nullptr);
 		daeOK OK(getIsAttached()?DAE_ERR_INVALID_CALL:_reparent(dae(*c)));
-		refresh(); return OK;
+		return OK;
 	}
 	#ifndef COLLADA_NODEPRECATED
 	COLLADA_DEPRECATED("setParentObject")
@@ -578,7 +580,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	SNIPPET
 	(		daeRefString<260> &s = _this()._refString;
 			s.setView(URI.c_str); _setURI(URI.c_str,baseURL); 
-			//refresh is desirable as A) resolved==false B) don't wants assert().
+			//refresh is desirable as A) resolved==false B) don't want assert().
 			refresh(); //resolve(); 
 			if(URI.c_str==s.getString()) s.setString(*this,URI.c_str);
 	)
@@ -796,7 +798,7 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 	{
 		if(clear) io.clear();
 		for(int i=_rel_backtracks;i-->0;io.append("../",3));
-		daeRef::_getT<dae_append>(io,getURI()+_rel_half,_size-_rel_half); 
+		daeRef::_getT<dae_append>(io,data()+_rel_half,_size-_rel_half); 
 		return io;
 	};
 

@@ -84,6 +84,12 @@ daeOK daeURI_base::_setURI(daeString URI, const daeURI *baseURL)
 	//Bases must have both a scheme and an authority part.
 	if(baseURL!=nullptr&&3>=baseURL->getURI_authorityCP())
 	{
+		//This is a courtesy so "" can be passed as a base.
+		if(baseURL->empty())
+		{
+			baseURL = nullptr; goto empty_base;
+		}
+
 		 //return DAE_ERR_INVALID_CALL;
 		//Instead of returning an error, see if a base is
 		//required or not. If so, return error. If not, it
@@ -100,7 +106,7 @@ daeOK daeURI_base::_setURI(daeString URI, const daeURI *baseURL)
 	if(doc!=nullptr)
 	doc->getArchive()._movingDoc(doc); ////POINT-OF-NO-RETURN////
 
-	//// RESUME THE REGULAR ALGORITHM ////
+empty_base: //// RESUME THE REGULAR ALGORITHM ////
 
 	slashed = false; //goto slash;
 
@@ -217,7 +223,8 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 		//HACK: The above algorithm is heuristical.
 		if(*z<_authority) for(;z<&_path;z++) *z+=1;
 	}
-	assert(slashed);
+	assert(slashed||URI[0]=='\0');
+	assert(_size>0);
 	parsed_absolute_URI: setIsResolved(false); 
 	//Here, URI may've already been assigned by _setURI_concat,
 	//-or, something like parseURI may be in play. A string cannot
@@ -292,7 +299,6 @@ void daeURI_base::_setURI_concat(const daeURI &base, size_t trim, daeString rel)
 	_rel_half = (short)i;
 	memcpy(buf.data()+i,rel,size-i);		
 	_this()._refString.setString(*this,buf.data(),size);
-	setIsResolved(false);
 }
 
 //THIS PRE-2.5 CODE COULD USE A REVIEW.

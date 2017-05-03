@@ -52,8 +52,10 @@ if(OPT_DOUBLE_PRECISION)
   set(COLLADA_PRECISION "dp")
   set(CPACK_DEBIAN_PACKAGE_NAME "${CPACK_DEBIAN_PACKAGE_NAME}-dp")
   set(COLLADA_DOM_EXTERNAL_FLAGS "${COLLADA_DOM_EXTERNAL_FLAGS} -DCOLLADA_DOM_FLOAT=double") # daeFloat is 64 bit
+  set(COLLADA_DOM_EXTERNAL_FLAGS "${COLLADA_DOM_EXTERNAL_FLAGS} -DCOLLADA_DOM_DOUBLE=double") # stake claim on it
   message(STATUS "compiling with double float precision")
 else()
+# NOTE: THIS IS NOT REALLY "sp" BECAUSE COLLADA MOSTLY USES double
   set(COLLADA_PRECISION "sp")
   set(CPACK_DEBIAN_PACKAGE_NAME "${CPACK_DEBIAN_PACKAGE_NAME}-sp")
   message(STATUS "compiling with single float precision")

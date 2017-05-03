@@ -250,10 +250,10 @@ COLLADA_(public)
 		_print(stdout,"Warning: ",msg,clear==dae_clear); //C4800
 	}
 
+	/**LEGACY-SUPPORT */
 	static daeStandardErrorHandler &getInstance()
 	{
-		static daeStandardErrorHandler perTranslationUnitInstance;
-		return perTranslationUnitInstance; //theInstance; 
+		static daeStandardErrorHandler staticInstance; return staticInstance;
 	}
 };
 
@@ -274,10 +274,10 @@ COLLADA_(public)
 	/**PURE-OVERRIDE */
 	virtual void handleWarning(const daeHashString&,enum dae_clear){}
 
+	/**LEGACY-SUPPORT */
 	static daeQuietErrorHandler &getInstance()
 	{
-		static daeQuietErrorHandler perTranslationUnitInstance;
-		return perTranslationUnitInstance; //theInstance; 
+		static daeQuietErrorHandler staticInstance; return staticInstance;
 	}
 
 COLLADA_(private) //not worth having its on CPP file

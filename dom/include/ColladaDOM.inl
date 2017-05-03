@@ -71,13 +71,13 @@ template<class S> inline bool _daeUnsafe2(const daeElement *e)
 	#ifdef COLLADA_dynamic_daeSafeCast
 	return dynamic_cast<const DAEP::Elemental<S>*>(e)==nullptr;
 	#else
-	return e->getMeta()!=daeGetMeta<S>();
+	return e==nullptr||e->getMeta()!=daeGetMeta<S>();
 	#endif
 }
 /**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
 template<> inline bool _daeUnsafe2<domAny>(const daeElement *e)
 {
-	return !e->_isAny();
+	return e==nullptr||!e->_isAny();
 }
 /**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
 template<> inline bool _daeUnsafe2<daeObject>(const daeElement*){ return false; }

@@ -59,9 +59,7 @@ __pragma(warning(disable:4351))
 #endif
 
 //Microsoft prefixes these nonstandard APIs
-#ifdef BUILDING_COLLADA_DOM
 #define COLLADA__itoa__ COLLADA_SUPPRESS_C(4996) _itoa
-#endif
 
 /**
  * Define the system fopen hook for @c daeCRT. 

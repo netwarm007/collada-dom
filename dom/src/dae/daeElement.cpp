@@ -465,6 +465,22 @@ const_daeElementRef daeElement::getAncestor(const matchElement &matcher)const
 
 void daeElement::_sidLookup(daeString ref, daeElementRef &match, const daeDoc *docIn)const
 {
+	const daeStringRef &known_ref = *(daeStringRef*)&ref;
+
+	//This is copy/pasted from daeSIDResolver.cpp.
+	//This is designed to get constructions of the type
+	//<rotate sid="rotateX"> where there may be several
+	//SIDs to eliminate by the regular bottom-up search.
+	if(30<known_ref.getSID_frequency())
+	{
+		daeElement::matchSID matcher(known_ref);
+		const daeElement *e = getChild(matcher);
+		if(e!=nullptr)
+		{
+			match = e; return; 
+		}
+	}
+
 	const daeDocument *doc = (daeDocument*)docIn;
 	if(doc==nullptr) return; assert(doc==docIn->getDocument());
 
@@ -473,22 +489,22 @@ void daeElement::_sidLookup(daeString ref, daeElementRef &match, const daeDoc *d
 	unsigned minDistance = UINT_MAX;
 	const daeElement *closestElement = nullptr;
 	daeDocument::_sidMapRange range = doc->_sidMap.equal_range(ref);
-	for(daeDocument::_sidMapIter cit=range.first;cit!=range.second;cit++)	
+	for(daeDocument::_sidMapIter it=range.first;it!=range.second;it++)	
 	{
 		unsigned distance = 0; 
-		const daeElement *e = cit->second; do
+		const daeElement *p = it->second; do
 		{
-			if(this==e) 
+			if(this==p) 
 			{
 				if(distance<minDistance)
 				{
-					minDistance = distance;	closestElement = e;					
+					minDistance = distance;	closestElement = it->second;					
 				}
 				break;
 			}
 			else distance++;
 
-		}while(nullptr!=(e=e->getParentElement()));		
+		}while(nullptr!=(p=p->getParentElement()));		
 	}
 	if(closestElement!=nullptr)
 	match = const_cast<daeElement*>(closestElement);

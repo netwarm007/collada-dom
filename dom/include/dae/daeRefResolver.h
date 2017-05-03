@@ -397,15 +397,24 @@ COLLADA_(public) //LEGACY QUERY API
 		static bool _unsafe(const daeObject *o)
 		{
 			#ifdef COLLADA_dynamic_daeSafeCast
-			return dynamic_cast<type>(&*req.object)!=nullptr;
+			return dynamic_cast<type>(&*req.object)==nullptr
 			#else
 			return o->__DAEP__Object__v1__model()
-			!=typename T::__COLLADA__T().__DAEP__Object__v1__model();
+			!=typename T::__COLLADA__T().__DAEP__Object__v1__model()
 			#endif
+			?_true(*o):false;
 		}
 		static bool _unsafe(const daeElement *e)
 		{
-			return daeUnsafe<T>(e);
+			return daeUnsafe<T>(e)?_true(*e):false;
+		}
+		static bool _true(const daeObject &o)
+		{
+			//This is good to know if a URI expects one type but gets another type.
+			//(Ex. It might indicate that an id or fragment is entered incorrectly.)
+			daeEH::Warning<<"Nullifying dereference because types are mismatched:\n"
+			"Sought typeid("<<typeid(*(type*)0).name()<<")!=typeid("<<typeid(o).name()<<")";
+			return true;
 		}
 	};
 	/**PARTIAL-TEMPLATE-SPECIALIZATION

@@ -1,447 +1,104 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/
-#ifndef _CFX_DATA_H
-#define _CFX_DATA_H
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+#ifndef __COLLADA_FX__DATA_H__
+#define __COLLADA_FX__DATA_H__
 
-#include <cfxTypes.h>
-#include <string>
+#include "cfxTypes.h"
 
-//#ifndef _LIB
-#include <Cg/cg.h>
-//#else
-//#include <cfxNoCg.h>
-//#endif
-
-class cfxParam;
-class cfxAnnotate;
-class cfxSampler;
-
-// cfxData
-class cfxData
+COLLADA_(namespace)
 {
- public:
- 
-  virtual ~cfxData() {}
-  
-  virtual CGtype getType() const = 0;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);  
+	namespace FX
+	{//-.
+//<-----'
+				  
+class Data
+{
+COLLADA_(public)
+
+	virtual ~Data(){}
+	virtual CGtype GetType() = 0;
+	virtual void Apply(FX::Param *param) = 0;
+	virtual void Apply(FX::Annotate *annotate) = 0;
 };
 
+template<class T>
+/**INTERNAL 
+ * This design could use more thought.
+ */
+struct DataMaker
+{	
+	FX::NewParamable *p;
 
-// cfxDataBool
-class cfxDataBool : public cfxData
+	xs::ID sid; typename T::arg2 aux; 
+
+	T *&o; const daeContents &c; void MakeData();
+};	  
+template<class S, class T>
+inline void MakeData(S* &o, const T &e, FX::NewParamable *p, xs::ID a1, typename S::arg2 a2=nullptr)
 {
- public:
-  cfxDataBool(const cfxBool& _data);
+	FX::DataMaker<S> dm = {p,a1,a2,o,e->content}; FX::MakeData2(dm);
+}
+extern void MakeData2(DataMaker<FX::Annotate>&);
+extern void MakeData2(DataMaker<FX::NewParam>&);
+extern void MakeData2(DataMaker<FX::SetParam>&);
+extern void MakeData2(DataMaker<FX::BindParam>&);
 
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxBool &getData() const;
-
- protected:
-
-  cfxBool data;
-};
-
-
-// cfxDataBool1
-class cfxDataBool1 : public cfxData
+#ifdef NDEBUG
+#error These may not be needed/exposed.
+#endif
+template<class T, CGtype E> 
+class DataType : public FX::Data
 {
- public:
-  cfxDataBool1(const cfxBool1& _data);
+COLLADA_(public)
+	/**
+	 * Previoiusly "Data."
+	 */
+	T Value;
 
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
+	//SCHEDULED FOR REMOVAL?
+	static const CGtype Cg = E;
 
-  const cfxBool1 &getData() const;
+COLLADA_(public) //SCHEDULED FOR REMOVAL?
 
- protected:
+	virtual CGtype GetType(){ return Cg; }
 
-  cfxBool1 data;
+	virtual void Apply(FX::Param *param);
+	virtual void Apply(FX::Annotate *annotate);	
 };
-
-
-// cfxDataBool2
-class cfxDataBool2 : public cfxData
-{
- public:
-  cfxDataBool2(const cfxBool2& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxBool2 &getData() const;
-
- protected:
-
-  cfxBool2 data;
-};
-
-
-// cfxDataBool3
-class cfxDataBool3 : public cfxData
-{
- public:
-  cfxDataBool3(const cfxBool3& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxBool3 &getData() const;
-
- protected:
-
-  cfxBool3 data;
-};
-
-
-// cfxDataBool4
-class cfxDataBool4 : public cfxData
-{
- public:
-  cfxDataBool4(const cfxBool4& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxBool4 &getData() const;
-
- protected:
-
-  cfxBool4 data;
-};
-
-
-// cfxDataInt
-class cfxDataInt : public cfxData
-{
- public:
-  cfxDataInt(const cfxInt& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxInt &getData() const;
-
- protected:
-
-  cfxInt data;
-};
-
-
-// cfxDataInt1
-class cfxDataInt1 : public cfxData
-{
- public:
-  cfxDataInt1(const cfxInt1& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-  
-  const cfxInt1 &getData() const;
-
- protected:
-
-  cfxInt1 data;
-};
-
-
-// cfxDataInt2
-class cfxDataInt2 : public cfxData
-{
- public:
-  cfxDataInt2(const cfxInt2& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxInt2 &getData() const;
-
- protected:
-
-  cfxInt2 data;
-};
-
-
-// cfxDataInt3
-class cfxDataInt3 : public cfxData
-{
- public:
-  cfxDataInt3(const cfxInt3& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxInt3 &getData() const;
-
- protected:
-
-  cfxInt3 data;
-};
-
-
-// cfxDataInt4
-class cfxDataInt4 : public cfxData
-{
- public:
-  cfxDataInt4(const cfxInt4& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxInt4 &getData() const;
-
- protected:
-
-  cfxInt4 data;
-};
-
-
-// cfxDataFloat
-class cfxDataFloat : public cfxData
-{
- public:
-  cfxDataFloat(const cfxFloat& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat &getData() const;
-
- protected:
-
-  cfxFloat data;
-};
-
-
-// cfxDataFloat1
-class cfxDataFloat1 : public cfxData
-{
- public:
-  cfxDataFloat1(const cfxFloat1& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat1 &getData() const;
-
- protected:
-
-  cfxFloat1 data;
-};
-
-
-// cfxDataFloat2
-class cfxDataFloat2 : public cfxData
-{
- public:
-  cfxDataFloat2(const cfxFloat2& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat2 &getData() const;
-
- protected:
-
-  cfxFloat2 data;
-};
-
-
-// cfxDataFloat3
-class cfxDataFloat3 : public cfxData
-{
- public:
-  cfxDataFloat3(const cfxFloat3& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat3 &getData() const;
-
- protected:
-
-  cfxFloat3 data;
-};
-
-
-// cfxDataFloat4
-class cfxDataFloat4 : public cfxData
-{
- public:
-  cfxDataFloat4(const cfxFloat4& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat4 &getData() const;
-
- protected:
-
-  cfxFloat4 data;
-};
-
-
-// cfxDataFloat2x2
-class cfxDataFloat2x2 : public cfxData
-{
- public:
-  cfxDataFloat2x2(const cfxFloat2x2& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat2x2 &getData() const;
-
- protected:
-
-  cfxFloat2x2 data;
-};
-
-
-// cfxDataFloat3x3
-class cfxDataFloat3x3 : public cfxData
-{
- public:
-  cfxDataFloat3x3(const cfxFloat3x3& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat3x3 &getData() const;
-
- protected:
-
-  cfxFloat3x3 data;
-};
-
-
-// cfxDataFloat4x4
-class cfxDataFloat4x4 : public cfxData
-{
- public:
-  cfxDataFloat4x4(const cfxFloat4x4& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const cfxFloat4x4 &getData() const;
-
- protected:
-
-  cfxFloat4x4 data;
-};
-
-
-// cfxDataSampler1D
-class cfxDataSampler1D : public cfxData
-{
- public:
-  cfxDataSampler1D(cfxSampler* _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-
-  const cfxSampler *getData() const;
-
- protected:
-  
-  cfxSampler* data;
-};
-
-
-// cfxDataSampler2D
-class cfxDataSampler2D : public cfxData
-{
- public:
-  cfxDataSampler2D(cfxSampler* _data);
-  ~cfxDataSampler2D();
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-
-  const cfxSampler *getData() const;
-
- protected:
-
-  cfxSampler* data;
-};
-
-
-// cfxDataSampler3D
-class cfxDataSampler3D : public cfxData
-{
- public:
-  cfxDataSampler3D(cfxSampler* _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-
-  const cfxSampler *getData() const;
-
- protected:
-  
-  cfxSampler* data;
-};
-
-
-// cfxDataSamplerCUBE
-class cfxDataSamplerCUBE : public cfxData
-{
- public:
-  cfxDataSamplerCUBE(cfxSampler* _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxParam* param);
-
-  const cfxSampler *getData() const;
-
- protected:
-
-  cfxSampler* data;
-};
-
-
-// cfxDataString
-class cfxDataString : public cfxData
-{
- public:
-  cfxDataString(const std::string& _data);
-
-  virtual CGtype getType() const;
-  virtual bool apply(cfxAnnotate* annotate);
-
-  const std::string &getData() const;
-
- protected:
-
-  std::string data;
-};
-
-
-
-#endif // _CFX_DATA_H
+typedef DataType<bool,CG_BOOL> DataBool;
+typedef DataType<FX::Bool1,CG_BOOL1> DataBool1;
+typedef DataType<FX::Bool2,CG_BOOL2> DataBool2;
+typedef DataType<FX::Bool3,CG_BOOL3> DataBool3;
+typedef DataType<FX::Bool4,CG_BOOL4> DataBool4;
+typedef DataType<int,CG_INT> DataInt;
+typedef DataType<FX::Int1,CG_INT1> DataInt1;
+typedef DataType<FX::Int2,CG_INT2> DataInt2;
+typedef DataType<FX::Int3,CG_INT3> DataInt3;
+typedef DataType<FX::Int4,CG_INT4> DataInt4;
+typedef DataType<float,CG_FLOAT> DataFloat;
+typedef DataType<FX::Float1,CG_FLOAT1> DataFloat1;
+typedef DataType<FX::Float2,CG_FLOAT2> DataFloat2;
+typedef DataType<FX::Float3,CG_FLOAT3> DataFloat3;
+typedef DataType<FX::Float4,CG_FLOAT4> DataFloat4;
+typedef DataType<FX::Float2x2,CG_FLOAT2x2> DataFloat2x2;
+typedef DataType<FX::Float3x3,CG_FLOAT3x3> DataFloat3x3;
+typedef DataType<FX::Float4x4,CG_FLOAT4x4> DataFloat4x4;
+typedef DataType<FX::Sampler,CG_SAMPLER1D> DataSampler1D;
+typedef DataType<FX::Sampler,CG_SAMPLER2D> DataSampler2D;
+typedef DataType<FX::Sampler,CG_SAMPLER3D> DataSampler3D;
+typedef DataType<FX::Sampler,CG_SAMPLERCUBE> DataSamplerCUBE;
+typedef DataType<FX::Sampler,CG_SAMPLERRECT> DataSamplerRECT;
+typedef DataType<FX::Sampler,CG_UNKNOWN_TYPE> DataSamplerDEPTH;
+typedef DataType<xs::string,CG_STRING> DataString;
+
+//-------.
+	}//<-'
+}
+
+#endif //__COLLADA_FX__DATA_H__
+/*C1071*/

@@ -257,7 +257,10 @@ COLLADA_(public)
 		{
 			q = p->_deleteList; p->_destruct();			
 			//The model's memory region begins at the earliest feature.
-			operator delete((void*)&p->getModel()[p->_finalFeatureID]);		
+			//This does assert(p->_finalFeatureID<0) which may not hold.
+			//operator delete((void*)&p->getModel()[p->_finalFeatureID]);		
+			assert(+p->_finalFeatureID<=0);
+			operator delete((daeFeature*)&p->getModel()+p->_finalFeatureID);
 		}
 	}
 };
@@ -504,7 +507,7 @@ COLLADA_(public) //UNADVERTISED METHODS
 	 * @return Returns @c _isDoc()||_isDOM(). Or if a non-element element container.
 	 * @remarks This is the primary motivation for @c _isAny(). @c domAny is in the way.
 	 */
-	inline bool _isDoc_or_DOM()const{ return 0x1008000>__DAEP__Object__tags; }
+	inline bool _isDoc_or_DOM()const{ return 0x1008000>(__DAEP__Object__tags&0xFF00FFFF); }
 
 	/**
 	 * This makes @c a<daeElement>() easier read in keeping with @c isDOM() & @c isDoc().

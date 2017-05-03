@@ -112,7 +112,7 @@ daeOK daeObject::_reparent(const daeObject &c)
 	if(&c==nullptr) return DAE_ERR_INVALID_CALL; //paranoia
 	#endif
 	assert(&c!=nullptr);
-	if(c._isData())
+	if(_isData())
 	{
 		const daeDOM *DOM = c.getDOM(); assert(DOM!=nullptr);
 		if(&c==this||DOM!=getDOM()) return DAE_ERR_INVALID_CALL;
@@ -128,7 +128,7 @@ daeOK daeObject::_reparent_element_to_element(const daeObject &cIn)
 	assert(this->_isElement());
 	daeElement *c = (daeElement*)&cIn;
 	daeElement &_this = (daeElement&)*this;		
-	assert(c!=nullptr&&c->_isData()); //if(c._isData())
+	assert(c!=nullptr&&c->_isData());
 	{
 		//daeElement::getDOM() looks in __DAEP__Element_data.
 		const daeDOM *DOM = c->getDOM(); assert(DOM!=nullptr);
@@ -278,7 +278,11 @@ COLLADA_SUPPRESS_C(4355)
 	if(OS==nullptr)
 	{
 		OS = &dae_cpp_dummyPlatform;
-		daeEH::Error<<"No daePlatform provided. Using dummy to avoid a crash.";
+		//If a daeDOM is a global static object not initialized at startup it's
+		//likely to trigger this as the first console output.
+		//There's not an official way to change it but a savvy programmer might
+		//manually call the object's destructor before its constructor to do so.
+		//daeEH::Error<<"No daePlatform provided. Using dummy to avoid a crash.";
 	}
 	_platform = OS;
 	

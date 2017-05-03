@@ -1,104 +1,145 @@
 /*
-* Copyright 2006 Sony Computer Entertainment Inc.
-*
-* Licensed under the MIT Open Source License, for details please see license.txt or the website
-* http://www.opensource.org/licenses/mit-license.php
-*
-*/
-// System includes
+ * Copyright 2006 Sony Computer Entertainment Inc.
+ *
+ * Licensed under the MIT Open Source License, for details please see license.txt or the website
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+#include <FX.pch.h> //PCH
 
-#include <stdio.h>
-#include <cstdlib>
-#include <iostream>
+#include "cfxEffect.h"
+#include "cfxPass.h"
 
-// User includes
-
-#include <cfxPass.h>
-#include <cfxAnnotate.h>
-#include <cfxShader.h>
-#include <cfxTechnique.h>
-#include <cfxGlPipelineSetting.h>
-
-
-// cfxPass 
-cfxPass::cfxPass(cfxTechnique* _technique, const std::string& _name)
-  : technique(_technique),
-    name(_name)
+COLLADA_(namespace)
 {
-  pass = cgCreatePass(technique->getTechnique(), name.c_str());
-}
-cfxPass::~cfxPass()
-{
-	while (!settingArray.empty())
+	namespace FX
+	{//-.
+//<-----'
+
+FX::Shader::Shader(FX::Pass *pass, FX::Cg_Stage stageIn
+,xs::ID prof, xs::string args, xs::ID f, xs::string src)
+:Pass(pass),Generate()
+{	
+	CGGLenum stage = //OPENGL-SPECIFIC
+	stageIn==stageIn.VERTEX?CG_GL_VERTEX:CG_GL_FRAGMENT;	
+
+	if(0&&prof!=nullptr&&prof[0]!='\0')
 	{
-		delete(settingArray[0]);
-		settingArray.erase(settingArray.begin());
+		Cg_Profile = cgGetProfile(prof);
+		
+		//cgGLEnableProfile(Cg_Profile);
+		//CGerror err = cgGetError();
+		if(CG_PROFILE_UNKNOWN==Cg_Profile
+		||!cgIsProfileSupported(Cg_Profile))
+		{
+			daeEH::Warning<<"Cg did not enumerate profile string "<<prof<<"\n"
+			"(Falling back to cgGLGetLatestProfile)";
+			goto profile_unknown;
+		}
+	}
+	else if(0) profile_unknown: //Assuming OpenGL.
+	{
+		Cg_Profile = cgGLGetLatestProfile(stage);
+	}
+	else //The vp30/fp30 profiles just don't work.
+	{
+		Cg_Profile = stage==CG_GL_VERTEX?CG_PROFILE_GLSLV:CG_PROFILE_GLSLF;
+	}
+	
+	xs::string args_0[2] = { args,nullptr };
+
+	FX::Technique *tech = Pass->Technique;
+	CGcontext Cg = tech->FindEffect()->Cg_Context;	
+
+	//From the looks of things there's no way to know
+	//if the code is binary or not.
+	//UNFORTUNATELY cgCreateProgram DOESN'T CHECK FOR
+	//BINARY COMPATIBILITY.
+	CGenum cg_file_type;
+	for(size_t i=1;i<2;i++)
+	{
+		//Is this necessary?
+		#ifdef SN_TARGET_PS3 	
+		cg_file_type = i==0?CG_BINARY:CG_SOURCE;
+		#else
+		cg_file_type = i==0?CG_OBJECT:CG_SOURCE;
+		#endif			
+		Cg_Program = cgCreateProgram(Cg,cg_file_type,src,Cg_Profile,f,args_0);		
+		if(Cg_Program!=nullptr)
+		break;
+		if(i==0) daeEH::Warning<<
+		"(False alarm? Failed to load as binary shader. Trying to compile...)";
 	}
 
-	while (!shaderArray.empty())
+	if(Cg_Program==nullptr)
 	{
-		delete(shaderArray[0]);
-		shaderArray.erase(shaderArray.begin());
+		daeEH::Error<<"Failed to loaded Cg program.";
+		return;
 	}
+	else daeEH::Verbose<<"Loaded Cg program.";
 
+	if(stage==CG_GL_VERTEX)
+	{
+		daeEH::Verbose<<"Vertex program "<<f;
+		Cg_State = cgGetNamedState(Cg,"VertexProgram");
+	}
+	else if(stage==CG_GL_FRAGMENT)
+	{
+		daeEH::Verbose<<"Fragment program "<<f;
+		Cg_State = cgGetNamedState(Cg,"FragmentProgram");
+	}
+	else daeEH::Error<<"Unsupported target profile.";
+
+	Cg_Assignment = cgCreateStateAssignment(Pass->Cg,Cg_State);
+
+	cgSetProgramStateAssignment(Cg_Assignment,Cg_Program);	
+
+	//////EXPERIMENTAL
+	//This is because the old COLLADA-CTS requires lighting-normal
+	//auto-generation, and the old demo.dae file wants tangents too.
+	//If COLLADA wanted this kind of compression it could've said so.
+	if(stage==CG_GL_VERTEX)
+	for(CGparameter p=cgGetFirstParameter(Cg_Program,CG_PROGRAM);p!=nullptr;)
+	{	
+		//Technically this should be recursive.
+		CGparameter q;
+		if(CG_STRUCT==cgGetParameterType(p))
+		q = cgGetFirstStructParameter(p);
+		else q = p;  do
+		{
+			#ifdef _DEBUG
+			const char *name = cgGetParameterName(q);
+			#endif
+			const char *sem = cgGetParameterSemantic(q);
+			if(sem!=nullptr) switch(sem[0])
+			{
+			case 'n': case 'N': //Assuming NORMAL0.
+
+				if(sem[1]=='o'||sem[1]=='O')
+				Generate.NORMAL = true;
+				break;
+
+			case 't': case 'T': //Assuming TANGENT0.
+
+				if(sem[1]=='a'||sem[1]=='A')
+				Generate.TANGENT = true;
+				break;
+
+			case 'b': case 'B': //Assuming BINORMAL0.
+
+				if(sem[1]=='i'||sem[1]=='I')
+				Generate.BINORMAL = true;
+				break;
+			}
+
+		}while(q!=p&&nullptr!=(q=cgGetNextParameter(q)));
+
+		p = cgGetNextParameter(p);		
+	}
 }
-bool cfxPass::apply()
-{
-  std::vector<cfxGlPipelineSetting*>::iterator settingIter = settingArray.begin();
-  while (settingIter != settingArray.end())
-    {
-      (*settingIter)->apply();
-      settingIter++;
-    }
 
-  std::vector<cfxShader*>::iterator shaderIter = shaderArray.begin();
-  while (shaderIter != shaderArray.end())
-    {
-      (*shaderIter)->apply();
-      shaderIter++;
-    }
-
-  return true;
+//-------.
+	}//<-'
 }
 
-bool cfxPass::validate() const
-{
-  return true;
-}
-
-void cfxPass::pushSetting(cfxGlPipelineSetting* setting)
-{
-  settingArray.push_back(setting);
-  printf("setting pushed onto pass\n");
-}
-
-void cfxPass::pushShader(cfxShader* shader)
-{
-  shaderArray.push_back(shader);
-  printf("shader pushed onto pass\n");
-}
-
-cfxTechnique* cfxPass::getTechnique() const
-{
-  return technique;
-}
-
-CGpass cfxPass::getPass() const
-{
-  return pass;
-}
-
-const std::string &cfxPass::getName() const
-{
-	return name;
-}
-
-const std::vector<cfxGlPipelineSetting*> &cfxPass::getSettingArray() const
-{
-	return settingArray;
-}
-
-const std::vector<cfxShader*> &cfxPass::getShaderArray() const
-{
-	return shaderArray;
-}
+/*C1071*/
