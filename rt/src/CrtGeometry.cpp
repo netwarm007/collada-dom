@@ -113,6 +113,16 @@ struct CrtGeometry_fill
 		if(Pred) for(size_t i=0;i<N;i++)
 		o[i] = (float)p[i]; o+=N;
 	}	
+	void Override_up(const RT::Float *p)
+	{
+		//OpenGL doesn't provide a mechanism for
+		//transforming normals separate from the
+		//position inputs.
+		o[0] = (float)p[0];
+		o[1] = (float)p[1];
+		o[2] = (float)p[2];
+		std::swap(o[1]*=_1up,o[(int)up]); o+=3;
+	}	
 	template<int Format>
 	void VBuffer2(RT::Geometry_Elements &e)
 	{
@@ -135,7 +145,10 @@ struct CrtGeometry_fill
 			else //<geometry>
 			Override_if<Fill,3>(p+ep[i]*ps); //POSITION
 			if(1&Format) 		
+			if(!(128&Format)||!(1&Fill))
 			Override_if<1&Fill,3>(n+en[i]*ns.Stride); //NORMAL
+			else
+			Override_up(n+en[i]*ns.Stride); //Separated NORMAL
 			if(2&Format) 
 			Override_if<2&Fill,2>(t0+et0[i]*t0s.Stride); //TEXCOORD
 		}
@@ -171,9 +184,11 @@ struct CrtGeometry_fill
 		}
 		return o-b;
 	}
+	const RT::Up up; const float _1up;
 	float *b,*o; RT::Geometry &g; xs::string m;
 	CrtGeometry_fill(float *b, RT::Geometry &g, xs::string m)
-	:b(b),o(b),g(g),m(m){}
+	:b(b),o(b),g(g),m(m),up(RT::GetUp_Meter(g.Asset).first)
+	,_1up(float(up==RT::Up::Y_UP?1:-1)){}
 };
 size_t RT::Geometry::Size_VBuffer()
 {

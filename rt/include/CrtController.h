@@ -80,6 +80,18 @@ COLLADA_(public)
 	std::vector<RT::Morph_Target> MorphTargets;
 	std::vector<RT::Animator> Animators;
 
+	//This should be stored in RT::Stack on a per
+	//instantiation basis, but there's no pathway
+	//right now, and animation support is limited.
+	std::vector<RT::Float> AnimatedWeights;
+	void Reset_AnimatedWeights()
+	{
+		AnimatedWeights.clear();
+		if(!Animators.empty())
+		for(size_t i=0;i<MorphTargets.size();i++)
+		AnimatedWeights.push_back(MorphTargets[i].Weight);
+	}
+
 	Morph():Using_RELATIVE_method(){}
 	virtual ~Morph(){}
 

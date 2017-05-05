@@ -188,9 +188,20 @@ namespace CrtPhysics //EXPERIMENTAL
 		{}
 		transform(const daeContents &content)
 		{
-			//This is untested with X/Z_UP.
-			//Scaling probably will not work here.
-			MatrixLoadAsset(thisMatrix(),RT::Asset.Up);
+			RT::Matrix &m = thisMatrix();
+			//Not sure if btTransform can handle non-rotation 
+			//matrices. Might want to try and see?
+			if(1)
+			{			
+				//Are these equivalent?
+				RT::MatrixLoadIdentity(thisMatrix());
+				if(RT::Asset.Up==RT::Up::X_UP)
+				RT::MatrixRotateAngleAxis(m,0,0,1,90);				
+				else if(RT::Asset.Up==RT::Up::Z_UP)
+				RT::MatrixRotateAngleAxis(m,1,0,0,90);
+			}
+			else RT::MatrixLoadAsset(thisMatrix(),RT::Asset.Up);
+
 			content.for_each_child(*this);			
 
 			RT::MatrixToBulletPhysicsOrViceVersa((RT::Float*)this);
@@ -590,6 +601,9 @@ void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common in)
 				compound->addChildShape(CrtPhysics::transform(shape->content),current);			
 			}	 
 			else requires_compound = true;
+
+			//Doing this to the compound shape container isn't working below.
+			if(m!=1) current->setLocalScaling(btVector3(m,m,m));
 		}
 	}
 
@@ -603,7 +617,11 @@ void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common in)
 		current = compound;
 	}if(current!=nullptr) 
 	{	
-		Shape = current; if(m!=1) Shape->setLocalScaling(btVector3(m,m,m));
+		Shape = current;
+		
+		//Doing this to the compound shape container isn't working.
+		//So the shapes are scaled individually in the loop.
+		//if(m!=1) Shape->setLocalScaling(btVector3(m,m,m));
 	}
 }
 	

@@ -71,7 +71,14 @@ COLLADA_(namespace)
 	{
 		RT::Animation *Animation; size_t Channel;
 
+		size_t GetMax();
+
 		void Animate(RT::Float*);
+
+		inline void Animate(size_t size, RT::Float *data)
+		{
+			assert(size>GetMax()); Animate(data);
+		}
 	};
 	/**
 	 * @c RT::Animation_Channel::Target is this type of

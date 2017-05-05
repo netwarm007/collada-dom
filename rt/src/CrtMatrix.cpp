@@ -177,18 +177,11 @@ void RT::MatrixRotateAngleAxis(RT::Matrix &dst, RT::Float x, RT::Float y, RT::Fl
 	RT::QuaternionToMatrix(q,qM); RT::MatrixMult(qM,dst);
 }
 
-void RT::MatrixScale(RT::Matrix &dst, RT::Float x, RT::Float y, RT::Float z)
+void RT::MatrixScale(RT::Matrix &m, RT::Float x, RT::Float y, RT::Float z)
 {
-	RT::Matrix m;
-
-	//Build the translation matrix 
-	RT::MatrixLoadIdentity(m);
-	m[M00] = x;
-	m[M11] = y;
-	m[M22] = z;
-
-	//concatinate to previously passed in matrix 
-	RT::MatrixMult(m,dst);
+	m[M00]*=x; m[M01]*=x; m[M02]*=x; 
+	m[M10]*=y; m[M11]*=y; m[M12]*=y; 
+	m[M20]*=z; m[M21]*=z; m[M22]*=z; 
 }
 
 void RT::MatrixTranslate(RT::Matrix &LMatrix, RT::Float LX, RT::Float LY, RT::Float LZ)

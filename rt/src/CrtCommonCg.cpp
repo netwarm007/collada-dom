@@ -643,10 +643,7 @@ void RT::Frame_Cg::SetPassState(FX::Material *fx, int pass)
 	{
 		//Assuming for surface normals:
 		//There's not code on hand for proper 4x4 inversions.
-		RT::Matrix it; RT::Matrix3x3Invert(*_WorldMatrix,it);
-		RT::Matrix3x3Transpose(it);
-		it[M30] = it[M31] = it[M32] = 0;
-		it[M03] = it[M13] = it[M23] = 0; it[M33] = 1;
+		RT::Matrix it; RT::MatrixInvertTranspose0(*_WorldMatrix,it);
 		#if 2==COLLADA_DOM_PRECISION
 		cgGLSetMatrixParameterdc(worldinversetransposeParam,it);
 		#else

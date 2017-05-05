@@ -16,6 +16,10 @@ COLLADA_(namespace)
 	{//-.
 //<-----'
 		
+size_t RT::Animator::GetMax()
+{
+	return Animation->Channels[Channel].Target.Max;
+}
 void RT::Animator::Animate(RT::Float *out)
 {
 	if(Animation->NowPlaying) 

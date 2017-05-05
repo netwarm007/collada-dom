@@ -25,25 +25,34 @@
 //2017: This really should be obsolete. Even the old Cg package includes
 //an implementation of GLUT on Windows.
 #ifndef GLUT_API_VERSION
-#include "Windows_wgl.inl"
-#else
-struct MouseWheel_etc
-{
-	HHOOK hook;	
-	static LRESULT CALLBACK proc(int code, WPARAM w, LPARAM l)
-	{
-		if(w==WM_MOUSEWHEEL)
-		{
-			short delta =
-			GET_WHEEL_DELTA_WPARAM(((MSLLHOOKSTRUCT*)l)->mouseData);
-			if(mouseDown[2]) delta/=WHEEL_DELTA/10;
-			RT::Main.ZoomIn(-delta*MouseWheelSpeed);
-		}		
-		return CallNextHookEx(Windows_for_GLUT.hook,code,w,l);
-	}
-	MouseWheel_etc():hook(SetWindowsHookEx(WH_MOUSE_LL,proc,0,0)){}
-}Windows_for_GLUT;
+#include "Windows_wgl.inl" 
 #endif
+
+//going behind GLUT to add WM_MOUSEWHEEL
+static HHOOK Windows_main_GLUT_hook = 0;	
+static LRESULT CALLBACK Windows_main_GLUT(HWND GLUT, UINT msg, WPARAM w, LPARAM l, UINT_PTR, DWORD_PTR)
+{
+	switch(msg)
+	{
+	case WM_MOUSEWHEEL:
+	{
+		short delta =
+		GET_WHEEL_DELTA_WPARAM(w);
+		if(mouseDown[2]) delta/=WHEEL_DELTA/10;
+		RT::Main.ZoomIn(-delta*MouseWheelSpeed); break;
+	}}		
+	return DefSubclassProc(GLUT,msg,w,l);
+}
+static LRESULT CALLBACK Windows_main_GLUT_hook_proc(int code, WPARAM w, LPARAM l)
+{
+	LRESULT out = CallNextHookEx(Windows_main_GLUT_hook,code,w,l);
+	if(code==HCBT_CREATEWND)
+	{
+		SetWindowSubclass((HWND)w,Windows_main_GLUT,0,0);
+		UnhookWindowsHookEx(Windows_main_GLUT_hook);
+	}
+	return out;
+}
 
 //----------------------------------------------------------------------------------------------------
 //Standard windows mainline, this is the program entry point
@@ -55,11 +64,11 @@ int main(int argc, char *argv[])
 	CreateGLWindow = CreateWGLWindow;
 	COLLADA_viewer_main_loop = Windows_wgl_main_loop; 
 	#else
-	int exit_status;
+	Windows_main_GLUT_hook = 
+	SetWindowsHookEx(WH_CBT,Windows_main_GLUT_hook_proc,0,GetCurrentThreadId());
 	#endif
-	exit_status = 0;
 	//cage.dae didn't even have its textures set up right??
-	exit_status|=COLLADA_viewer_main(argc,argv,"demo.dae"); //cage.dae	 
+	int exit_status = COLLADA_viewer_main(argc,argv,"demo.dae"); //cage.dae	 
 	return (int)exit_status;
 }
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)

@@ -50,14 +50,14 @@ template<int M, int N> struct Transform_Data : Transform
 };
 struct Transform_Type
 {
-	enum{ Rotate=1,Translate,LookAt,Matrix,Scale,Skew };	
+	enum{ ROTATE=1,TRANSLATE,LOOKAT,MATRIX,SCALE,SKEW };	
 };
-typedef Transform_Data<3,RT::Transform_Type::Scale> Transform_scale;
-typedef Transform_Data<3+1,RT::Transform_Type::Rotate> Transform_rotate;
-typedef Transform_Data<3,RT::Transform_Type::Translate> Transform_translate;
-typedef Transform_Data<3*3,RT::Transform_Type::LookAt> Transform_lookat;
-typedef Transform_Data<4*4,RT::Transform_Type::Matrix> Transform_matrix;
-typedef Transform_Data<1+3+3,RT::Transform_Type::Skew> Transform_skew;
+typedef Transform_Data<3,RT::Transform_Type::SCALE> Transform_scale;
+typedef Transform_Data<3+1,RT::Transform_Type::ROTATE> Transform_rotate;
+typedef Transform_Data<3,RT::Transform_Type::TRANSLATE> Transform_translate;
+typedef Transform_Data<3*3,RT::Transform_Type::LOOKAT> Transform_lookat;
+typedef Transform_Data<4*4,RT::Transform_Type::MATRIX> Transform_matrix;
+typedef Transform_Data<1+3+3,RT::Transform_Type::SKEW> Transform_skew;
   
 /** 
  * The @c RT::Material_Instance class holds the material bindings found 

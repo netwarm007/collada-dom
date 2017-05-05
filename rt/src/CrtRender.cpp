@@ -25,11 +25,15 @@ COLLADA_(namespace)
 			int out = RT::Main.Data->FindImage(image)->TexId;
 			if(out!=0) return out;
 		}		
-		static bool nonce = RT::Main.Missing_Image.Refresh();
-		daeEH::Warning<<(nonce
-		?"Using missing image texture: "
-		:"Missing image image is missing: ")<<RT::Main.Missing_Image.URL;
-		return !nonce?0:RT::Main.Missing_Image.TexId;
+		static bool nonce = false; if(!nonce)
+		{
+			nonce = true;
+			RT::Main.Missing_Image.Refresh();
+			daeEH::Warning<<(0!=RT::Main.Missing_Image.TexId
+			?"Using missing image texture: "
+			:"Missing image image is missing: ")<<RT::Main.Missing_Image.URL;
+		}
+		return RT::Main.Missing_Image.TexId;
 	}
 	RT::Image *RT::DBase::FindImage(Collada05::const_image &e)const
 	{
@@ -546,8 +550,8 @@ void RT::Stack::Select_AddData_DrawData(void *g, void *c, RT::Stack_Data *d)
 	if(c!=nullptr) draw.first = draw.second->Geometry;
 	DrawData.push_back(draw);
 }
-void RT::Stack::Select_AddData_Controllers()
-{
+void RT::Stack::Select_AddData_Controllers_and_finish_up()
+{	
 	//<instance_controller> cannot create an instance of nodes.
 	//Therefore if a controller must be independently animated
 	//or bound to a physical system, it must be uniquely bound.
@@ -580,6 +584,22 @@ void RT::Stack::Select_AddData_Controllers()
 			}
 		}		
 	}
+
+	//THESE ARE THE "_and_finish_up" BITS.
+	{	
+		//SCHEDULED FOR REMOVAL
+		_FoundAnyLight = nullptr; 	
+	
+		//Reset/Default camera set up.	
+		Reset_Update(); 
+
+		RT::Main.SetRange.Clear(); FX::Float3 x;
+		for(size_t i=0;i<DrawData.size();i++) for(int j=0;j<2;j++)
+		RT::Main.SetRange+=&RT::MatrixTransform
+		(DrawData[i].Data->Matrix,DrawData[i].first->SetRange.Box[j],x).x;
+		RT::Main.SetRange.FitZoom();		
+		RT::Main.SetDefaultCamera(); RT::Main.Center(); 
+	}
 }
 
 void RT::Stack::Update(bool resetting)
@@ -602,10 +622,20 @@ void RT::Stack::Update(bool resetting)
 				TransformData.push_back(v[i].ResetData[j]);	
 				if(j==16&&!RT::Matrix_is_COLLADA_order)
 				RT::Matrix4x4Transpose(*(RT::Matrix*)(&TransformData.back()-15));
-			}
+			}			
 		}
 		if(TransformData.empty()) //C++98/03
 		TransformData.resize(1);
+
+		for(size_t i=0;i<DrawData.size();i++)
+		{
+			RT::Stack_Draw &d = DrawData[i];
+			for(RT::Controller *p=d.second;p!=nullptr;p=p->Source)
+			{
+				RT::Morph *m = dynamic_cast<RT::Morph*>(p);
+				if(m!=nullptr) m->Reset_AnimatedWeights();				
+			}
+		}
 	}
 	RT::Float *td = &TransformData[0]; //C++98/03	 
 	
@@ -630,8 +660,8 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 	RT::Up_Meter up_m = CrtRender_Up_Meter[up_i];
 	RT::Up &up = up_m.first; RT::Float &m = up_m.second;
 
-	//These are for matrix/lookat.
-	RT::Matrix um,lm; RT::Float *pd;
+	//These are for matrix/lookat/skew.
+	RT::Matrix lm; RT::Float *pd;
 
 	RT::Float x,y,z;	
 	RT::MatrixCopy(Parent->Matrix,Matrix);
@@ -642,28 +672,35 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 		if(tf->Size<=4) //Rotate, Translate, Scale.
 		{
 			x = td[0]; y = td[1]; z = td[2];
-			if(RT::Up::X_UP==up) std::swap(x*=-1,y);
-			if(RT::Up::Z_UP==up) std::swap(y*=-1,z);
+			if(RT::Up::Y_UP!=up)
+			std::swap(y*=-1,RT::Up::X_UP==up?x:z);
 		}
 
 		switch(tf->Type)
 		{
-		case RT::Transform_Type::Rotate:
+		case RT::Transform_Type::ROTATE:
 
+			if(td[3]!=0) //0 is very common for no reason.
 			RT::MatrixRotateAngleAxis(Matrix,x,y,z,td[3]);
 			break;
 
-		case RT::Transform_Type::Translate: 
+		case RT::Transform_Type::TRANSLATE: 
 
 			RT::MatrixTranslate(Matrix,x*m,y*m,z*m);
 			break;
 
-		case RT::Transform_Type::Scale:
+		case RT::Transform_Type::SCALE:
 
+			if(up!=RT::Up::Y_UP)
+			{
+				//Don't know if this is technically correct
+				//but negative scaling makes everything off.
+				x = fabs(x); z = fabs(z);
+			}
 			RT::MatrixScale(Matrix,x,y,z);
 			break;
 
-		case RT::Transform_Type::LookAt: 
+		case RT::Transform_Type::LOOKAT: 
 			
 			//This is the gluLookAt documentation.
 			//(Except without the inversion step.)
@@ -681,6 +718,7 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 			
 			RT::Cross<M20,M21,M22, M00,M01,M02, M10,M11,M12>(lm,lm,lm);
 
+			lm[M30] = lm[M31] = lm[M32] = 0; 
 			 //COLLADA (probably) doesn't want an (inverted) view matrix.
 			//lm[M20] = -lm[M20]; //Invert interest after cross products?
 			//lm[M21] = -lm[M21];
@@ -692,7 +730,7 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 
 			pd = lm; goto finish_lookat_or_skew;
 
-		case RT::Transform_Type::Matrix:
+		case RT::Transform_Type::MATRIX:
 		
 			pd = td; finish_lookat_or_skew: //pd replaces td.
 
@@ -702,27 +740,32 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 				//But should factor it into their translation component.
 				if(up!=RT::Up::Y_UP)
 				{	
-					MatrixLoadAsset(um,up);
-					RT::MatrixMult(*(RT::Matrix*)pd,um);
-					um[M30]*=m; um[M31]*=m; um[M32]*=m;
-					pd = um;
+					RT::Matrix xz;
+					RT::MatrixLoadAsset(xz,up);
+					//Two multiplies translates into a coordinate system
+					//producing a mutant identity matrix with two -1s if
+					//necessary that cancel each other out.
+					RT::MatrixMult(xz,*(RT::Matrix*)pd,lm);
+					RT::MatrixMult(lm,xz,lm);
+					pd = lm;
 				}
-				else //TODO? A custom API could avoid swapping.
+				else //TODO? A CUSTOM API COULD AVOID SWAPPING.
 				{
-					x = pd[M30]; y = pd[M31]; z = pd[M32];					
+					x = pd[M30]; y = pd[M31]; z = pd[M32];
 				}
 				pd[M30]*=m; pd[M31]*=m; pd[M32]*=m;
 			}
 
 			RT::MatrixMult(*(RT::Matrix*)pd,Matrix);
 
-			if(up!=RT::Up::Y_UP)
+			//TODO? A CUSTOM API COULD AVOID SWAPPING.
+			if(pd==td&&0!=up_i) 
 			{
 				pd[M30] = x; pd[M31] = y; pd[M32] = z;
 			}
 			break;
 
-		  case RT::Transform_Type::Skew:
+		  case RT::Transform_Type::SKEW:
 
 			//This is very dodgy. This transform comes from RenderMan.
 			//RenderMan doesn't define it in numbers. Instead it uses
@@ -829,16 +872,29 @@ void RT::Camera_State::Matrix(RT::Matrix *view, RT::Matrix *inverseview)const
 	bool invert = view!=nullptr;	
 	if(!invert) view = inverseview; 
 	if(inverseview==nullptr) inverseview = view;
-	
-	//SCHEDULED FOR REMOVAL
-	//This is the VIEWINVERSE semantic FX code passes to shaders.
-	//NOTE: THE sample SHADERS ONLY SEEM TO USE THE eye POSITION.
-	RT::MatrixCopy(Parent->Matrix,*inverseview);		
+	RT::MatrixCopy(Parent->Matrix,*inverseview);	
+
+	RT::Matrix &i = *inverseview;
+	switch(RT::GetUp_Meter(Parent->Node->Asset).first)
+	{
+	case RT::Up::X_UP:
+
+		std::swap(i[M10],i[M00]*=-1);
+		std::swap(i[M11],i[M01]*=-1);
+		std::swap(i[M12],i[M02]*=-1); break;
+
+	case RT::Up::Z_UP:
+
+		std::swap(i[M10],i[M20]*=-1);
+		std::swap(i[M11],i[M21]*=-1);
+		std::swap(i[M12],i[M22]*=-1); break;
+	}
+
 	RT::MatrixTranslate(*inverseview,X,Y,Z);
 	RT::MatrixRotateAngleAxis(*inverseview,0,1,0,Pan);
 	RT::MatrixRotateAngleAxis(*inverseview,1,0,0,Tilt);
 	RT::MatrixTranslate(*inverseview,0,0,Zoom);
-	//View is used for regular rendering. Matrix is for lighting.
+	//*view is used for regular rendering. *inverseview is for lighting.
 	if(invert) 
 	{
 		RT::Matrix3x4Invert(*inverseview,*view);

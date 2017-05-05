@@ -881,10 +881,17 @@ struct RT::DBase::LoadController_skin
 			if(RT::Asset.Up!=RT::Up::Y_UP)
 			{
 				RT::Matrix up;
-				RT::MatrixLoadAsset(up,RT::Asset.Up);
+				RT::MatrixLoadAsset(up,RT::Asset.Up);				
+				//Two multiplies translates into a coordinate system
+				//producing a mutant identity matrix with two -1s if
+				//necessary that cancel each other out.
 				RT::MatrixMult(up,out->BindShapeMatrix);
+				RT::MatrixMult(out->BindShapeMatrix,up,out->BindShapeMatrix);
 				for(size_t i=0;i<out->Joints_INV_BIND_MATRIX.size();i++)
-				RT::MatrixMult(up,out->Joints_INV_BIND_MATRIX[i]);
+				{
+					RT::MatrixMult(up,out->Joints_INV_BIND_MATRIX[i]);
+					RT::MatrixMult(out->Joints_INV_BIND_MATRIX[i],up,out->Joints_INV_BIND_MATRIX[i]);
+				}
 			}
 			if(RT::Asset.Meter!=1)
 			{

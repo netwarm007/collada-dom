@@ -25,23 +25,29 @@ COLLADA_(namespace)
 #error (It's happening 30/60 times per second.)
 #endif
 static std::vector<RT::Matrix> CrtController_mats(1); 	
+static std::vector<RT::Matrix> CrtController_matsIT(1); 
 /**NOT THREAD-SAFE
  * This implements much of RT::Skin::Update_VBuffer2().
  */
 struct CrtController_skin
 {
 	RT::Skin &skin;
+	
+	enum{ IT=0 }; //Disabling inverse-transpose!!!
 		
 	//TODO: In unusual circumstances it might be necessary
 	//to compute "inverse-transposed" matrices for normals.
 	std::vector<RT::Matrix> &mats,matsIT;
 	
 	CrtController_skin(RT::Skin &skin, RT::Stack_Data **joints)
-	:skin(skin),mats(CrtController_mats),matsIT(mats),joints(joints)
+	:skin(skin),mats(CrtController_mats)
+	,matsIT(IT?CrtController_matsIT:mats),joints(joints)
 	{
 		 //CrtController_mats 		
 		assert(!mats.empty()); //C++98/03
 		mats.resize(std::max(mats.size(),skin.Joints.size()));
+		if(IT)
+		matsIT.resize(std::max(mats.size(),skin.Joints.size()));
 	}
 
 	template<int Stride> void VBuffer2()
@@ -141,6 +147,10 @@ void RT::Skin::Update_VBuffer2(RT::Stack_Data **joints)
 		RT::MatrixMult(Joints_INV_BIND_MATRIX[i],joints[i]->Matrix,skin.mats[i]);
 		while(i<Joints.size()) //Just in case.
 		RT::MatrixCopy(joints[i]->Matrix,skin.mats[i++]);
+
+		if(skin.IT)
+		for(i=0;i<Joints.size();i++)
+		RT::MatrixInvertTranspose0(skin.mats[i],skin.matsIT[i]);		
 	}
 	if(Geometry->Normals==nullptr) skin.VBuffer2<1>();
 	if(Geometry->Normals!=nullptr) skin.VBuffer2<2>();	
@@ -185,15 +195,11 @@ struct CrtController_morph
 		else w = 1;
 		
 		//i is the initial morph-target.
-		i = fabs(w)>=nonzero?0:1; 
-		if(i!=0) //The weights are normalized?
-		{
-			//In an animation targets may have 0 weights.
-			//(Likely only 2 target weights are nonzero.)
-			while(i<=iN&&CrtController_weights[i-1]<nonzero) 
-			i++;
-		}
-		if(i>=iN) i = 0; //All weights are 0?
+		//In an animation targets may have 0 weights.
+		//(Likely only 2 target weights are nonzero.)
+		for(i=0;fabs(w)<nonzero&&i<iN;i++)
+		w = CrtController_weights[i];
+		if(i>iN){ i=0;w=1; } //All weights are 0?
 	}
 
 	template<int Stride> void VBuffer2()
@@ -260,16 +266,19 @@ struct CrtController_morph
 };
 void RT::Morph::Update_VBuffer2(RT::Stack_Data **joints)
 {	
-	//SCHEDULED FOR REMOVAL
-	//These are copied in case they need to be
-	//animated. The animation code expects the
-	//animated data to be contiguous in memory.
-	//Animating shouldn't clobber the defaults.
-	CrtController_weights.resize(MorphTargets.size());
-	for(size_t i=0;i<CrtController_weights.size();i++)
-	CrtController_weights[i] = MorphTargets[i].Weight;
-	for(size_t i=0;i<Animators.size();i++)
-	Animators[i].Animate(&CrtController_weights[0]);
+	if(!AnimatedWeights.empty())
+	{
+		size_t s = AnimatedWeights.size();
+		for(size_t i=0;i<Animators.size();i++)
+		Animators[i].Animate(s,&AnimatedWeights[0]);
+		CrtController_weights = AnimatedWeights;
+	}
+	else if(!MorphTargets.empty())
+	{
+		CrtController_weights.resize(MorphTargets.size());
+		for(size_t i=0;i<CrtController_weights.size();i++)
+		CrtController_weights[i] = MorphTargets[i].Weight;
+	}
 
 	//ALGORITHM
 	//This helper class makes templates more manageable.

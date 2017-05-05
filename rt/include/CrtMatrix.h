@@ -57,11 +57,7 @@ inline void MatrixCopy(const RT::Matrix &src, RT::Matrix &dst)
 {
 	memcpy(dst,src,sizeof(RT::Matrix));
 }
-
-//4x4 IS INVERTING THE TRANSLATION COMPONENT IN PLACE.
-void Matrix3x4Invert(const RT::Matrix &LM, RT::Matrix &LMI);
-void Matrix3x3Invert(const RT::Matrix &LM, RT::Matrix &LMI);
-
+	
 inline void Matrix3x3Transpose(RT::Float *m)
 {
 	std::swap(m[M01],m[M10]);
@@ -74,6 +70,15 @@ inline void Matrix4x4Transpose(RT::Float *m)
 	std::swap(m[M03],m[M30]);
 	std::swap(m[M13],m[M31]);
 	std::swap(m[M23],m[M32]);
+}
+
+void Matrix3x4Invert(const RT::Matrix &LM, RT::Matrix &LMI);
+void Matrix3x3Invert(const RT::Matrix &LM, RT::Matrix &LMI);
+inline void MatrixInvertTranspose0(const RT::Matrix &m, RT::Matrix &it)
+{		
+	//Assuming for surface normals:
+	//There's not code on hand for proper 4x4 inversions.
+	RT::Matrix3x3Invert(m,it); RT::Matrix3x3Transpose(it); it[M33] = 0;
 }
 
 void MatrixToQuat(const RT::Matrix &rotMat, RT::Quaternion &RotQuat);

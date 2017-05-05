@@ -186,13 +186,12 @@ COLLADA_(public) //new APIs
 			Data.reserve(1+node->CountDescendants());	
 			Select_AddData(node,nullptr,-1);
 			std::sort(DrawData.begin(),DrawData.end());
-			Select_AddData_Controllers();
-		}
-		Reset_Update(); _FoundAnyLight = nullptr;
+			Select_AddData_Controllers_and_finish_up();
+		}		
 	}private:
 	bool Select_AddData(RT::Node*,RT::Stack_Data*,size_t);
 	void Select_AddData_DrawData(void*,void*,RT::Stack_Data*);
-	void Select_AddData_Controllers();	
+	void Select_AddData_Controllers_and_finish_up();	
 
 COLLADA_(public) //EXPERIMENTAL
 	/**
@@ -228,11 +227,6 @@ COLLADA_(public) //old "CrtRender" APIs
 				
 	void SetMaterial(RT::Material *mat);
 	
-	/** 
-	 * Set the camera instance we will be rendering from.
-	 */
-	void ResetCamera();
-
 	//SCHEDULED FOR REMOVAL
 	//This is keeping old/lousy code from breaking.
 	RT::Stack_Data &FindAnyLight(),*_FoundAnyLight;
@@ -256,7 +250,12 @@ COLLADA_(public)
 	 * @c Draw() calls @c Draw_Triangles() internally.
 	 * It first sets up lights and may do more passes.
 	 */
-	void Draw(),Draw_Triangles(); RT::Matrix _View;
+	void Draw(),Draw_Triangles(); 
+	
+	/** 
+	 * Sets up the camera instance to be rendered from.
+	 */
+	void _ResetCamera(); RT::Matrix _View;
 };
 
 /**UNUSED?
@@ -384,6 +383,9 @@ COLLADA_(public) //See CrtRender.cpp.
 	 * @param view can be @c nullptr if @a inverseview is desired.
 	 * Traditionally the "view" is inverted, so its inverse is in
 	 * fact a "world" matrix, not inverted in the typical meaning.
+	 *
+	 * @note This had been a data member, but this struct is best
+	 * kept lightweight so it can be used to save cameras' states.
 	 */
 	void Matrix(RT::Matrix *view, RT::Matrix *inverseview=nullptr)const;
 };
@@ -462,7 +464,7 @@ struct Frame_Asset
 		//   0,M01,  0 
 		//-M10,  0,  0 
 		//   0,  0,M22
-		if(RT::Up::X_UP==Up) std::swap(x*=-1,y);
+		if(RT::Up::X_UP==Up) std::swap(y*=-1,x);
 		//M00,  0,   0
 		//  0,  0,-M12
 		//  0,M21,   0

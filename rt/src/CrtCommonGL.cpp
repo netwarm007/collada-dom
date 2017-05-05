@@ -54,7 +54,7 @@ void RT::Stack::SetMaterial(RT::Material *mat)
 	else glDisable(GL_TEXTURE_2D); CurrentMaterial = mat;
 }
 
-void RT::Stack::ResetCamera()
+void RT::Stack::_ResetCamera()
 {
 	RT::Camera *c = RT::Main.Camera;
 
@@ -95,6 +95,7 @@ void RT::Stack::ResetCamera()
 	case 2: glOrtho(-c->Xmag,c->Xmag,-c->Ymag,c->Ymag,nZ,fZ); break;
 	case 3: gluPerspective(c->Yfov,c->Aspect,nZ,fZ); break;
 	}			
+	glMatrixMode(GL_MODELVIEW);
 
 	//While not strictly necessary, cameras have aspect ratios, and whatever
 	//is outside of the ratio is not part of the intended image. Distortions
@@ -106,29 +107,20 @@ void RT::Stack::ResetCamera()
 		glViewport(0,(RT::Main.Height-h)/2,RT::Main.Width,h);
 	}
 	else glViewport((RT::Main.Width-w)/2,0,w,RT::Main.Height);
-
-	//REMINDER: SetupRenderingWithShadowMap depends on this being here, even
-	//though it's not used by the viewer project or anything for that matter. 
-	{
-		glMatrixMode(GL_MODELVIEW);		
-		//glLightfv uses this and the line
-		//drawing code below needs it. The
-		//lights are not changed afterward.
-		GL::LoadMatrix(_View);
-	}
 }
 		
 void RT::Stack::Draw()
 {
 	//The camera is always updated in case it's animated.
 	RT::Main.Matrix(&_View,&RT::Main.Cg._InverseViewMatrix);
-	ResetCamera();
+	GL::LoadMatrix(_View);
+	_ResetCamera();	
 
 	//draw lines to each parent node?
+	GLboolean lit = glIsEnabled(GL_LIGHTING);
 	if(RT::Main.ShowHierarchy)
 	{	
 		//Draw blue lines.
-		GLboolean lit = glIsEnabled(GL_LIGHTING);
 		if(lit) glDisable(GL_LIGHTING);
 		glDisable(GL_TEXTURE_2D);		
 		glColor3f(1,0.5,1); 
@@ -143,15 +135,13 @@ void RT::Stack::Draw()
 		//This has some huge axes lines.
 		glColor3f(0.25,0.25,1); 
 		RT::Main.Physics.VisualizeWorld();
-		#endif
+		#endif		
 		glEnd(); glLineWidth(1);
-		glEnable(GL_TEXTURE_2D);
-		if(lit) glEnable(GL_LIGHTING);
-	}		
-	if(!RT::Main.ShowGeometry)
-	return;
+		glColor3f(0.75f,0.75f,0.25f);
+		glPointSize(30);			
+	}
 
-	//reset all lights
+	//reset all lights	
 	int l=0,lN = 7;
 	for(size_t i=0;i<Data.size();i++)
 	if(!Data[i].Node->Lights.empty())
@@ -163,7 +153,17 @@ void RT::Stack::Draw()
 		if(l==lN) break;
 	}	
 	while(l<lN) glDisable(GL_LIGHT0+l++);
-				
+	
+	if(RT::Main.ShowHierarchy)
+	{
+		glPointSize(1); 
+		glEnable(GL_TEXTURE_2D);
+		if(lit) glEnable(GL_LIGHTING);
+	}		
+
+	if(!RT::Main.ShowGeometry)
+	return;
+
 	//Are we using shadow maps?
 	//!!!GAC Shadow map code may not be functional right now
 	if(RT::Main.ShadowMap.Use&&RT::Main.ShadowMap.Initialized)
@@ -206,15 +206,6 @@ void RT::Stack::Draw_Triangles()
 		VBuffer1.new_Memory = new float[VBuffer1.Capacity];		
 		if(0!=VBuffer2.Capacity)
 		VBuffer2.new_Memory = new float[VBuffer2.Capacity];
-		
-		//Default camera set up.
-		//THIS NEEDS ITS OWN API.
-		RT::Main.SetRange.Clear(); FX::Float3 x;
-		for(size_t i=0;i<DrawData.size();i++) for(int j=0;j<2;j++)
-		RT::Main.SetRange+=&RT::MatrixTransform
-		(DrawData[i].Data->Matrix,DrawData[i].first->SetRange.Box[j],x).x;
-		RT::Main.SetRange.FitZoom();		
-		RT::Main.SetDefaultCamera(); RT::Main.Center(); 
 	}
 	
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -225,6 +216,7 @@ void RT::Stack::Draw_Triangles()
 		cd = &ControllerData.front(); cd_end = &ControllerData.back()+1;
 	}
 
+	RT::Up_Meter um;
 	RT::Matrix um_m; size_t um_i = -1;
 	//This is drawing <instance_geometry> and <instance_controller>
 	//in shared <geometry> and <skeleton> order. Not material order.
@@ -236,7 +228,7 @@ void RT::Stack::Draw_Triangles()
 		if(um_i!=g->Asset)
 		{
 			um_i = g->Asset;
-			RT::Up_Meter um = RT::GetUp_Meter(um_i);
+			um = RT::GetUp_Meter(um_i);
 			RT::MatrixLoadAsset(um_m,um.first,um.second);
 		}
 
@@ -297,10 +289,8 @@ void RT::Stack_Data::ShowHierarchy_glVertex3d()
 }
 int RT::Stack_Data::Light(int l)
 {
-	glPushMatrix(); GL::MultMatrix(Matrix);
-	
 	//This is alternatively the color black, 0 point, or a Z direction.
-	float vp[4] = { 0,0,0,1 };
+	FX::Float4 vp(0,1);
 
 	//This handles the new lighting model, l is the GL light to set up.
 	for(size_t i=0;i<Node->Lights.size();i++,l++)
@@ -311,19 +301,30 @@ int RT::Stack_Data::Light(int l)
 		if(RT::Light_Type::AMBIENT==light->Type)		
 		{
 			glLightfv(GL_LIGHT0+l,GL_AMBIENT,&light->Color.r);
-			glLightfv(GL_LIGHT0+l,GL_DIFFUSE,vp);
-			glLightfv(GL_LIGHT0+l,GL_SPECULAR,vp);	
+			glLightfv(GL_LIGHT0+l,GL_DIFFUSE,&vp.x);
+			glLightfv(GL_LIGHT0+l,GL_SPECULAR,&vp.x);	
 		}
 		else
 		{
-			glLightfv(GL_LIGHT0+l,GL_AMBIENT,vp);
+			glLightfv(GL_LIGHT0+l,GL_AMBIENT,&vp.x);
 			glLightfv(GL_LIGHT0+l,GL_DIFFUSE,&light->Color.r);
 			glLightfv(GL_LIGHT0+l,GL_SPECULAR,&light->Color.r);	
 		}
 		
 		if(RT::Light_Type::DIRECTIONAL!=light->Type)
 		{
-			glLightfv(GL_LIGHT0+l,GL_POSITION,vp);		
+			vp.x = Matrix[M30]; vp.y = Matrix[M31]; vp.z = Matrix[M32];
+
+			if(RT::Main.ShowHierarchy) 			
+			{	
+				FX::Float3 c = light->Color; c.Normalize();
+				glColor3f(c.x,c.y,c.z);
+				glBegin(GL_POINTS);		
+				glVertex3d(vp.x,vp.y,vp.z);
+				glEnd(); 
+			}
+
+			glLightfv(GL_LIGHT0+l,GL_POSITION,&vp.x);		
 			glLightf(GL_LIGHT0+l,GL_CONSTANT_ATTENUATION,light->ConstantAttenuation);
 			glLightf(GL_LIGHT0+l,GL_LINEAR_ATTENUATION,light->LinearAttenuation);
 			glLightf(GL_LIGHT0+l,GL_QUADRATIC_ATTENUATION,light->QuadraticAttenuation);
@@ -331,12 +332,27 @@ int RT::Stack_Data::Light(int l)
 
 		if(RT::Light_Type::POINT!=light->Type)
 		{
+			FX::Float4 z(0,1);
+			//It seems like Z_UP might want -1 instead, but +1 just works.
+			//glLight says 1 is -1:
+			//"The initial position is (0,0,1,0); thus, the initial light 
+			//source is directional, parallel to, and in the direction of 
+			//the -z axis."
+			switch(RT::GetUp_Meter(Node->Asset).first)
+			{
+			case RT::Up::X_UP: 
+			//1 is consistent with FxComposer.
+			//(COLLADA-CTS is too cool for surface normals.)
+			case RT::Up::Y_UP: z.z = 1; break;
+			case RT::Up::Z_UP: z.y = 1; break; //Why not -1?
+			}
+			RT::MatrixRotate(Matrix,z,vp);
+			
 			if(RT::Light_Type::DIRECTIONAL==light->Type)
 			{
-				vp[2] = 1; vp[3] = 0; glLightfv(GL_LIGHT0+l,GL_POSITION,vp);
-				vp[2] = 0; vp[3] = 1;
+				vp.w = 0; glLightfv(GL_LIGHT0+l,GL_POSITION,&vp.x);				
 			}
-			else glLightfv(GL_LIGHT0+l,GL_SPOT_DIRECTION,vp);
+			else glLightfv(GL_LIGHT0+l,GL_SPOT_DIRECTION,&vp.x);
 		}
 
 		if(RT::Light_Type::SPOT==light->Type)
@@ -348,7 +364,7 @@ int RT::Stack_Data::Light(int l)
 		else glLightf(GL_LIGHT0+l,GL_SPOT_CUTOFF,180); //Necessary?
 	}
 
-	glPopMatrix(); return l;
+	return l;
 }
 
 /*REFERENCE
@@ -474,10 +490,6 @@ void RT::Frame_ShadowMap::SetupRenderingWithShadowMap()
 		glMatrixMode(GL_MODELVIEW);
 		glPopMatrix();
 	}
-
-	//need to get the current camera and reset it again because we have since over written 
-	//the model view setup by SceneUpdate
-	RT::Main.Stack.ResetCamera();
 }
 
 //-------.

@@ -187,7 +187,7 @@ bool RT::Image::Refresh()
 		//This API calls glTexImage2D.
 		//gluBuild2DMipmaps(GL_TEXTURE_2D,Format,Width,Height,Format,GL_UNSIGNED_BYTE,Data);
 		glTexImage2D(GL_TEXTURE_2D,0,Format,Width,Height,0,Format,GL_UNSIGNED_BYTE,Data);
-		assert(!glGetError());
+		
 		//Note: cfxSampler.cpp does this according to the min-filter.
 		//(So this--while harmless--may not be right place for this.)
 		if(mipmap==GL_LINEAR_MIPMAP_LINEAR)
