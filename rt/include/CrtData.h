@@ -58,11 +58,11 @@ inline xs::string DocURI(const DAEP::Element *e)
 	return dae(e)->getDoc()->getDocURI()->data();
 }
 
-template<class array> //xs::const_any or <*_array> class
-/**
+//Since Collada08 was introduced this became a helper template.
+template<class array, class source>
+/**INTERNAL
  * This is a new class to try to formalize usage of <accessor>
  * elements.
- * @see @c RT::Accessor<>.
  * @see @c RT::Accessor05.
  * @see @c RT::Accessor08.
  */
@@ -72,8 +72,10 @@ COLLADA_(public)
 
 	void bind(){ array::operator=(nullptr); }
 
-	const_daeDocumentRef document;
-	Collada05::const_accessor accessor;
+	const_daeDocumentRef document;	
+
+	typename source::technique_common::accessor accessor;
+
 	Accessor(const daeDocument *doc):document(doc)
 	{}
 	Accessor(const DAEP::Element *e):document(dae(e)->getDocument())
@@ -85,8 +87,7 @@ COLLADA_(public)
 	 */
 	daeName bind(input &in)
 	{
-		accessor = document->idLookup
-		<Collada05::const_mesh::source>
+		accessor = document->idLookup<source>
 		(in->source)->technique_common->accessor;
 		array::operator=(xs::anyURI(accessor->source->*"",document).get<array>());
 		return in->semantic;
@@ -125,8 +126,8 @@ COLLADA_(public)
 
 	template<class S> void get16(S &dst)
 	{
-		Collada05::const_float_array fa =
-		dae(*this)->a<Collada05::const_float_array>();
+		typename source::float_array fa =
+		dae(*this)->a<typename source::float_array>();
 		if(fa!=nullptr) get16(dst,fa->value);
 	}
 	template<class S, class T>

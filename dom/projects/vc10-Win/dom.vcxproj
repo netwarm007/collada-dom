@@ -139,6 +139,7 @@
       </ForcedIncludeFiles>
       <GenerateXMLDocumentationFiles>false</GenerateXMLDocumentationFiles>
       <FloatingPointModel>Precise</FloatingPointModel>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

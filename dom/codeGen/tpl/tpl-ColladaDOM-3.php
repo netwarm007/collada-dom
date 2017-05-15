@@ -102,7 +102,7 @@ foreach($meta['elements'] as $k=>$ea) //if(empty($abstract[$k]))
 "	/**DOCUMENTATION-ONLY
 	 * THIS ABSTRACT TYPE INSTANCE IS DEFINED IN CASE ITS ANNOTATIONS CAN BE OF USE";	
 	echoDoxygen(@$meta['element_documentation'][$k],"\t",
-	($local__).getFriendlyType($type),$head);
+	getFriendlyType($local__.$type),$head);
 	$match = explode(':',$type);
 	if(!empty($type)&&2===count($match))
 	{
@@ -141,7 +141,7 @@ foreach($meta['elements'] as $k=>$ea) //if(empty($abstract[$k]))
 			//synthetic types should not exist if there is not a conflict, and
 			//they are currently not synthesized if a global type has the name
 			echoCode("
-	typedef struct $const_$name $name;");
+	typedef struct $1 $name;",getFriendlyName($const_.$k));
 			continue; //HACK: this is a deviant patway, so not indenting below
 		}			
 		//__using_XSD should not require __alias.

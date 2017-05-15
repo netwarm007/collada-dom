@@ -16,6 +16,10 @@ COLLADA_(namespace)
 	{//-.
 //<-----'
 
+#ifdef NDEBUG
+#error sizeof(Collada05::const_float_array) is unknown.
+#endif
+//DEPENDENCY ON "float_array.h"
 /**
  * @c Geometry_Elements uses this to fill the array.
  */

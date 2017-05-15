@@ -21,7 +21,7 @@ typedef Collada05_XSD::cg_pipeline_stage Cg_Stage;
 typedef Collada05_XSD::glsl_pipeline_stage GLSL_Stage;
 //1.5.0 has more shader types and does not differentiate.
 //(Possibly the existence of the Cg handles could be used.)
-//typedef Collada08_XSD::fx_pipeline_stage_enum FX_Stage08;
+typedef Collada08_XSD::fx_pipeline_stage_enum FX_Stage08;
 
 class Shader : public FX::Annotatable, public FX::Paramable
 {
@@ -46,8 +46,13 @@ COLLADA_(public)
 
 	using Paramable::Apply;
 
+	Shader(FX::Pass *p):Pass(p),Generate()
+	,Cg_Profile(),Cg_Program(),Cg_State(),Cg_Assignment()
+	{}
 	Shader(FX::Pass*,FX::Cg_Stage,xs::ID prof, xs::string args, xs::ID f, xs::string src);
 	Shader(FX::Pass*,FX::GLSL_Stage,xs::ID,xs::string,xs::ID,xs::string);
+	Shader(FX::Pass*,FX::FX_Stage08,xs::ID,xs::string,xs::ID,xs::string);	
+	void _InitCg(CGGLenum,xs::ID,xs::string,xs::ID,xs::string);
 };
 
 class Pass : public FX::Annotatable

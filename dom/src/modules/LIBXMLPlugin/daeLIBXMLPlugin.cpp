@@ -288,9 +288,10 @@ bool daeLibXMLPlugin::_read(daeIO &IO, daeContents &content)
 	Reader RAII;	
 	if(nullptr!=req.remoteURI)
 	{
-		IO.getLock();
 		//Reminder: Windows file descriptors are bound to the CRT.
-		char nonnull;		
+		char nonnull;
+		//Reminder: libXML prints confusing errors if length is 0.
+		if(0!=IO.getLock())
 		if(IO.readIn(&nonnull,0)!=DAE_ERR_NOT_IMPLEMENTED)
 		RAII.set_up_xmlReaderForIO(IO);
 		else
@@ -303,6 +304,8 @@ bool daeLibXMLPlugin::_read(daeIO &IO, daeContents &content)
 	}
 	else if(nullptr!=req.string)
 	{
+		//Reminder: libXML prints confusing errors if length is 0.
+		if(!req.string.empty())
 		RAII.set_up_xmlReaderForMemory(req.string);
 		if(RAII.reader==nullptr)
 		{

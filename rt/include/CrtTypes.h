@@ -10,6 +10,16 @@
 
 #include "RT.pch.h"
 
+//SCHEDULED FOR REMOVAL
+#define COLLADA_DOM_LITE
+//RT::RigidBody
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(float_array))
+//RT::Geometry_Semantics
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(physics_material))
+//RT::RigidConstraint
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(rigid_constraint))
+#undef COLLADA_DOM_LITE
+
 COLLADA_(namespace)
 {
 	#ifndef COLLADA_RT_MAX_DEPTH
@@ -18,16 +28,40 @@ COLLADA_(namespace)
 	//it also prevents deep graphs that are acyclical.
 	#define COLLADA_RT_MAX_DEPTH 32
 	#endif
+
+	namespace DAEP
+	{
+		#define _ \
+		struct const_COLLADA;\
+		struct const_animation;\
+		struct const_controller;\
+		struct const_camera;\
+		struct const_effect;\
+		struct const_geometry;\
+		struct const_image;\
+		struct const_light;\
+		struct const_material;\
+		struct const_node;\
+		struct const_physics_model;\
+		struct const_rigid_body;\
+		struct const_rigid_constraint;\
+		struct const_scene;
+		COLLADA_(http_www_collada_org_2005_11_COLLADASchema,namespace)
+		{
+			_		
+		}
+		COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace)
+		{
+			_
+		}
+		#undef _
+	}
 	
 	namespace RT
 	{
 	class DBase; 
 	extern class Frame Main;	
-	template<class=xs::const_any> class Accessor;
-	typedef Accessor<Collada05::const_float_array> Accessor05;
-	#ifdef COLLADA__http_www_collada_org_2008_03_COLLADASchema__namespace
-	typedef Accessor<Collada08::const_float_array> Accessor08;
-	#endif	
+	template<class,class> class Accessor; //EXPERIMENTAL
 	class Animation;
 	struct Animator;
 	class Camera;		
@@ -44,8 +78,7 @@ COLLADA_(namespace)
 	struct RangeFinder;
 	struct RigidBody;
 	class Stack_Data;
-	struct Target;	
-	typedef Collada05_XSD::UpAxisType Up;
+	struct Target;		
 	//SCHEDULED FOR REMOVAL?
 	//Is/was M00 a PlayStation convention?
 	//#ifndef M00
@@ -59,7 +92,14 @@ COLLADA_(namespace)
 	//These might be double. FX::Float3 is always float based.	
 	typedef daeDouble Float; 	
 	typedef DAEP::Class<RT::Float[4*4]> Matrix; 
-	typedef DAEP::Class<RT::Float[4]> Quaternion;	
+	typedef DAEP::Class<RT::Float[4]> Quaternion;		
+	struct Up
+	{
+		static const int X_UP=0,Y_UP=1,Z_UP=2;
+		int value;
+		operator int&()const{ return (int&)value; }				
+		Up(int cp=(int)Y_UP):value(cp){}
+	};
 	typedef std::pair<RT::Up,RT::Float> Up_Meter;
 	const RT::Up_Meter &GetUp_Meter(size_t);
 	}
@@ -162,5 +202,3 @@ COLLADA_(namespace)
 
 #endif //__COLLADA_RT__TYPES_H__
 /*C1071*/
-
-

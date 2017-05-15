@@ -20,7 +20,7 @@ struct Light_Type
 {
 	enum
 	{
-	UNKNOWN=0,
+	DEFAULT=0,
 	AMBIENT,
 	DIRECTIONAL,
 	POINT,
@@ -36,6 +36,7 @@ COLLADA_(public)
 	 */
 	int Type;
 
+	//4 for glLight??
 	FX::Float4 Color;/**< The color of the light (all types)*/
 	float FalloffAngle;/**< Falloff angle for spot light (spot) */
 	float FalloffExponent;/**< Falloff exponent for spot light (spot) */
@@ -53,7 +54,7 @@ COLLADA_(public)
 	,ConstantAttenuation(1)
 	,LinearAttenuation()
 	,QuadraticAttenuation()
-	,Type(RT::Light_Type::POINT){}
+	,Type(RT::Light_Type::DEFAULT){}
 	~Light(){}
 };
 

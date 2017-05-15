@@ -16,10 +16,8 @@ COLLADA_(namespace)
 	{//-.
 //<-----'
 		
-#ifdef NDEBUG
-#error Increase the precision if keeping. (To 15.)
-#endif
-static const RT::Float DEGREES_TO_RADIANS = (RT::Float)0.017453292;
+static const RT::Float 
+DEGREES_TO_RADIANS = (RT::Float)0.017453292519943;
 
 //SCHEDULED FOR REMOVAL
 //These are added to implement <lookat> only.

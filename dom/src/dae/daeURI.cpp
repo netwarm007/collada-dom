@@ -262,7 +262,8 @@ void daeURI_base::_setURI_concat(const daeURI &base, size_t trim, daeString rel)
 	daeArray<daeStringCP,520> buf; 
 	buf.assign(base.data(),i+1);
 	//trim the ../ directives if trim!=0
-	while(i>too_far&&toslash(buf[i])!='/') i--;
+	while(i>too_far&&toslash(buf[i])!='/') 
+	i--;
 	for(;i>too_far&&trim>0;trim--)
 	{
 		if(buf[i-1]=='.') switch(toslash(buf[i-2]))
@@ -270,7 +271,8 @@ void daeURI_base::_setURI_concat(const daeURI &base, size_t trim, daeString rel)
 		case '/': trim++; break; //This is /./
 		case '.': if(toslash(buf[i-3])=='/') trim+=2; break; //This is /../
 		}
-		while(i>too_far&&toslash(buf[i])!='/') i--;
+		for(i--;i>too_far&&toslash(buf[i])!='/';) 
+		i--;
 	}
 	if(!protocol_relative) //Don't end up with :///.
 	{
@@ -510,11 +512,30 @@ static void daeURI_cpp_RFC3986_lower(daeStringCP *p, const daeStringCP *const pN
 }
 daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
 {	
-	const_daeURIRef base;
+	//This is made quite complicated to allow for 
+	//document-less relative/compounded URIs that
+	//will be stripped of their relative-ness now
+	//that they are resolved.	
+	const_daeURIRef base;	
+	if(ops&RFC3986::rebase)
+	baseLookup(DOM,base);	
+	daeStringCP *buf_str; 
 	daeArray<daeStringCP,520> buf;
-	daeURI_parser parser(getURI_baseless(buf));	
-	daeStringCP d,*p,*const pp = buf.data();
+	if(base!=nullptr)
 	{
+		buf_str = getURI_baseless(buf).data();		
+	}
+	else if(_this()._refString.isView()) //OPTIMIZING
+	{
+		buf_str = buf.assign_and_0_terminate(data(),size()).data();
+	}
+	else buf_str = (daeStringCP*)data(); //OPTIMIZING
+	
+	daeURI_parser parser(buf_str);	
+	daeStringCP d,*p,*const pp = buf_str;
+	{
+		typedef void buf,buf_str;
+
 		if(ops&RFC3986::toslash)
 		for(p=pp;*p!='\0';p++) *p = toslash(*p);
 		if(ops&RFC3986::lower)
@@ -533,7 +554,7 @@ daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
 			//daeURI_cpp_RFC3986_normalize could use work.
 			p = pp+parser.getURI_uptoCP<'/'>();		
 			//daeURI_cpp_RFC3986_normalize must start after the leading ../s.
-			while(p[0]=='.'&&p[1]=='.'&&'/'==p[2]) p++;
+			while(p[0]=='.'&&p[1]=='.'&&'/'==p[2]) p+=3;
 			//daeURI_cpp_RFC3986_normalize is 0 terminator based.
 			daeStringCP *pathN = pp+parser.getURI_uptoCP<'?'>();	
 			d = *pathN; *pathN = '\0';
@@ -541,13 +562,8 @@ daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
 			*pathN = d; //repair *pathN = '\0';			
 			//Move query/fragment back into place.
 			//This invalidates parser from here on.
-			memmove(p,pathN,buf.size()-(pathN-pp));
-		}typedef void parser;		
-		if(ops&RFC3986::rebase)
-		{
-			//If not relative, no base is required.
-			if(isRelativeURI()) baseLookup(DOM,base);	
-		}
+			memmove(p,pathN,parser.size()-(pathN-pp));
+		}typedef void parser;				
 		if(ops&RFC3986::decode) daeURI_cpp_RFC3986_decode(pp);		
 	}
 	//RFC3986 Section 5. Reference Resolution
@@ -556,6 +572,9 @@ daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
 }
 const_daeURIRef &daeURI_base::baseLookup(const daeDOM &DOM, const_daeURIRef &base)const
 {
+	//If these conditions are not met then the base will probably produce a bad URI.
+	if(!is_baseLookup_friendly()) return base;
+
 	const_daeDocRef doc = getDoc();
 	base = &(doc==nullptr?DOM.getDefaultBaseURI():doc->getDocURI());
 	if(this==base) base = &(doc!=nullptr?DOM.getDefaultBaseURI():DOM.getEmptyURI());

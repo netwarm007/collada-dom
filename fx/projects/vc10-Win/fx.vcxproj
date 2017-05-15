@@ -81,7 +81,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;PRECOMPILING_COLLADA_FX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -97,6 +97,7 @@
     <ClCompile Include="..\..\src\cfxData.cpp" />
     <ClCompile Include="..\..\src\cfxEffect.cpp" />
     <ClCompile Include="..\..\src\cfxLoader.cpp" />
+    <ClCompile Include="..\..\src\cfxLoader08.cpp" />
     <ClCompile Include="..\..\src\cfxParam.cpp" />
     <ClCompile Include="..\..\src\cfxPass.cpp" />
     <ClCompile Include="..\..\src\CfxPCH.cpp">

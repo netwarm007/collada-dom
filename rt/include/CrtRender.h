@@ -9,7 +9,6 @@
 #define __COLLADA_RT__RENDER_H__  
 		 
 #include "CrtNode.h"
-#include "CrtScene.h"
 #include "CrtCamera.h"
 #include "CrtPhysics.h"
 #include "CrtTexture.h"
@@ -65,7 +64,7 @@ COLLADA_(public) //RT::Stack usese these.
 	
 	Stack_Data():Physics(){}
 
-	int Light(int); void ShowHierarchy_glVertex3d();
+	int Light(int); void ShowHierarchy_glVertex3d();	
 
 	RT::Float *Update_Matrix(RT::Float*);
 };
@@ -246,11 +245,12 @@ COLLADA_(public)
 	 */
 	void Update(bool=false);
 	
+	void Draw_ShowHierarchy(); 
 	/**
 	 * @c Draw() calls @c Draw_Triangles() internally.
 	 * It first sets up lights and may do more passes.
 	 */
-	void Draw(),Draw_Triangles(); 
+	void Draw(),Draw_Triangles();
 	
 	/** 
 	 * Sets up the camera instance to be rendered from.
@@ -272,8 +272,8 @@ struct Frame_ShadowMap
 	{}
 
 	void Init();
-	void SetupRenderingToShadowMap();
-	void SetupRenderingWithShadowMap();	
+	void PushRenderingToShadowMap();
+	void PopRenderingToShadowMap();	
 };
 
 /**
@@ -435,26 +435,7 @@ struct Frame_Asset
 	 * For animation runtime. (Just extra asset-wide data.)
 	 */
 	RT::Float TimeMin,TimeMax;
-					   
-	template<class T>
-	/** 
-	 * Implements @c operator=().
-	 */
-	void _OverrideWith(const daeElement*);
-	/** 
-	 * Assign @c Up and @c Meter according to 
-	 * an <instance_*> reference.
-	 */
-	void operator=(const daeElement*);	
-	/** 
-	 * Assign @c Up and @c Meter according to 
-	 * an <instance_*> reference.
-	 */
-	inline void operator=(const DAEP::Element *cp)
-	{
-		return operator=(dae(cp));
-	}
-	 
+		
 	/** 
 	 * @c SetGravity() uses this.
 	 */
@@ -470,6 +451,44 @@ struct Frame_Asset
 		//  0,M21,   0
 		if(RT::Up::Z_UP==Up) std::swap(y*=-1,z);
 	}
+
+	template<class E>
+	/** 
+	 * Assign @c Up and @c Meter according to 
+	 * an <instance_*> reference.
+	 */
+	inline void operator=(const E &cp)
+	{
+		operator=(cp.operator->());
+	}	
+	template<class E>
+	/** 
+	 * Assign @c Up and @c Meter according to 
+	 * an <instance_*> reference.
+	 */
+	inline void operator=(const E *cp)
+	{
+		_operator_YY(dae(cp),DAEP::Schematic<E>::schema()); 
+	}
+	#ifdef PRECOMPILING_COLLADA_RT
+	inline void operator=(const Collada05_XSD::asset *cp)
+	{
+		Up = cp->up_axis->value->*Up;
+		Meter = cp->unit->meter->*Meter;
+	}
+	inline void operator=(const Collada08_XSD::asset_type *cp)
+	{
+		Up = cp->up_axis->value->*Up;
+		Meter = cp->unit->meter->*Meter;
+	}	
+	void _operator_YY(const daeElement*,Collada05_XSD::__NB__);
+	void _operator_YY(const daeElement*,Collada08_XSD::__NB__);	
+	#endif			 	 
+	template<class T>
+	/** 
+	 * Implements @c operator=().
+	 */
+	void _OverrideWith(const daeElement*);
 };
 
 /**SINGLETON
@@ -588,17 +607,12 @@ struct Main_Asset
 	{
 		RT::Asset.Up = up; RT::Asset.Meter = meter;
 	}
-	Main_Asset(const Collada05_XSD::asset *cp)
-	:Up(RT::Asset.Up),Meter(RT::Asset.Meter)	
-	{
-		RT::Asset.Up = cp->up_axis->value->*Up;
-		RT::Asset.Meter = cp->unit->meter->*Meter;
-	}
-	Main_Asset(const DAEP::Element *cp)
+	template<class E>
+	Main_Asset(const E &cp)
 	:Up(RT::Asset.Up),Meter(RT::Asset.Meter)
 	{
-		RT::Asset = cp;
-	}
+		RT::Asset = cp.operator->();
+	}	
 	Main_Asset(const RT::Asset_Index &cp)
 	:Up(RT::Asset.Up),Meter(RT::Asset.Meter)
 	{

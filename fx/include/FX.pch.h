@@ -8,22 +8,11 @@
 #ifndef __COLLADA_FX__PCH_H__
 #define __COLLADA_FX__PCH_H__
 
-//These shouldn't be necessary.
-//#include <assert.h>
-//#include <stdio.h>
-//#include <stdarg.h>
-#include <stdlib.h>
-//#include <string.h>
-#include <math.h>
-//#include <cstdlib>
-//#include <iostream>
-//#include <string>
 #include <vector>
 
 #ifdef _WIN32 
 #define NOMINMAX
-//#define WIN32_LEAN_AND_MEAN	
-//glu.h wants APIENTRY defined.
+//glu.h wanted APIENTRY defined.
 #include <windows.h> 
 //These conflict with ColladaDOM/the schemas.
 #undef VOID
@@ -33,24 +22,17 @@
 #endif
 
 //2017: Trying to simplify Cg/OpenGL set up.
-
 #include <Cg/cgGL.h> 
-#ifdef NDEBUG
-#error Remove GLU (gluPerspective/gluLookat)
-#endif
 #ifdef SN_TARGET_PS3
 //Can't say what these all do without a PS3.
 #define GL_GLEXT_PROTOTYPES
 #include <PSGL/psgl.h>
-#include <PSGL/psglu.h> //Can do without.
 #include <GLES/gl.h>
 #include <GLES/glext.h>
 #elif defined(__APPLE__)
 #define GL_GLEXT_PROTOTYPES
-#include <OpenGL/glu.h> //Can do without.
 #include <OpenGL/glext.h>
 #else
-#include <gl/glu.h> //Can do without.
 #include <gl/glext.h>
 #endif
 
@@ -69,22 +51,30 @@
 #define COLLADA_NOLEGACY
 #include <ColladaDOM.inl>
 #include "../../xmlns/http_www_collada_org_2005_11_COLLADASchema/config.h"
-
+#include "../../xmlns/http_www_collada_org_2008_03_COLLADASchema/config.h"
+   
+#ifdef PRECOMPILING_COLLADA_FX
 #if COLLADA_DOM_GENERATION!=1
 #error The below inclusion guards expect COLLADA_DOM_GENERATION to be equal to 1.
-#endif
-#ifndef __COLLADA_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
-//These lines suppress the inclusion of these rather large chunks of this schema.
-//If including code uses them it must include them before this header is included.
-#ifndef PRECOMPILING_COLLADA_FX
-#define __profile_CG_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
-#define __profile_GLSL_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
-#define __profile_GLES_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
 #endif
 #define COLLADA_DOM_LITE
 #include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(effect))
 #include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(material))
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(effect_type))
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(image_type))
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(material_type))
 #undef COLLADA_DOM_LITE
+#else 
+COLLADA_(namespace)
+{
+	COLLADA_(http_www_collada_org_2005_11_COLLADASchema,namespace){}
+	COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace){}
+	namespace DAEP
+	{
+	COLLADA_(http_www_collada_org_2005_11_COLLADASchema,namespace){}
+	COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace){}
+	}
+}
 #endif
 
 COLLADA_(namespace)
@@ -94,6 +84,8 @@ COLLADA_(namespace)
 		namespace xs = ::COLLADA::DAEP::xs;
 		namespace Collada05_XSD = ::COLLADA::http_www_collada_org_2005_11_COLLADASchema;
 		namespace Collada05 = ::COLLADA::DAEP::http_www_collada_org_2005_11_COLLADASchema;
+		namespace Collada08_XSD = ::COLLADA::http_www_collada_org_2008_03_COLLADASchema;
+		namespace Collada08 = ::COLLADA::DAEP::http_www_collada_org_2008_03_COLLADASchema;
 	}
 
 	//EXPERIMENTAL (OpenGL is such a PITA.)

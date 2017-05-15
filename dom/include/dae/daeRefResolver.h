@@ -474,9 +474,9 @@ COLLADA_(public) //LEGACY QUERY API
 	 * @see @c dae.h header's definition.
 	 * @return Returns @c getDOM()->getRefResolvers().resolveObject(*this). 
 	 */
-	inline daeObjectRef getTargetedObject()const
+	inline daeObjectRef getTargetedObject(const daeRefRequest &req=daeName())const
 	{
-		daeRefRequest req; get(req); return req.object;
+		 get(const_cast<daeRefRequest&>(req)); return req.object;
 	}
 
 	/**LEGACY SUPPORT
@@ -486,12 +486,10 @@ COLLADA_(public) //LEGACY QUERY API
 	 * @remarks If the target is a document, 
 	 * @c getTargetedFragment() should NOT return the document's root element.
 	 */
-	inline daeElementRef getTargetedFragment()const
+	inline daeElementRef getTargetedFragment(const daeRefRequest &req=daeName())const
 	{
-		daeRefRequest req; 
-		if(DAE_OK==get(req)&&req.object->_isElement())
-		return (daeElementRef&)req.object;
-		return nullptr;
+		if(DAE_OK==get(const_cast<daeRefRequest&>(req))&&req.object->_isElement())
+		return (daeElementRef&)req.object; return nullptr;
 	}
 
 	COLLADA_DEPRECATED("Use getTargetedObject()->a<daeDocument>()\n\

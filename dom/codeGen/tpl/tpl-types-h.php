@@ -155,7 +155,10 @@ if(inline_CM)
 }
 //__NS__ makes multiple-inherited access unambiguous
 echo " 
-template<int> struct __NS__:DAEP::Note<>{}; //\"NOTESPACE\"
+template<int> struct __NS__:DAEP::Note<> //\"NOTESPACE\"
+{
+	typedef __NB__::__<> concern; 
+};
 //-------.
 	}//<-'
 	namespace DAEP

@@ -13,6 +13,7 @@
 #include "CrtTexture.h"
 #include "CrtGeometry.h"
 #include "CrtAnimation.h"
+#include "CrtScene.h"
 
 COLLADA_(namespace)
 {
@@ -42,43 +43,15 @@ RT::Node::~Node()
 }
 #undef _
 
-void RT::DBase::LoadCOLLADA(Collada05::const_COLLADA COLLADA)
+bool RT::DBase::LoadCOLLADA_1_4_1(Collada05::const_COLLADA COLLADA)
 {	
-	RT::Asset.Meter = COLLADA->asset->unit->meter->*RT::Float(1);
-	RT::Asset.Up = COLLADA->asset->up_axis->value->*RT::Up::Y_UP;
-	switch(RT::Asset.Up)
-	{
-	case RT::Up::X_UP: 				
-	daeEH::Verbose<<"X"<<"-axis is Up axis!"; break;
-	case RT::Up::Y_UP:
-	daeEH::Verbose<<"Y"<<"-axis is Up axis!"; break;
-	case RT::Up::Z_UP:
-	daeEH::Verbose<<"Z"<<"-axis is Up axis!"; break;
-	}			
-
-	RT::Main.COLLADA_FX.Cg = RT::Main.Cg.Context;
-	{
-		//This preloads some libraries. It's unsaid why.
-		//FOR 1) Animations need to be pre-loaded to link 
-		//them. Animations don't seem to have dependencies. 
-		//for(size_t i=0;i<COLLADA->library_images.size();i++)
-		//if(RT::Main.LoadImages)
-		//LoadLibrary("Image",COLLADA->library_images[i]->image,&DBase::LoadImage);	
-		//for(size_t i=0;i<COLLADA->library_effects.size();i++)
-		//LoadLibrary("Effect",COLLADA->library_effects[i]->effect,&DBase::LoadEffect);
-		//for(size_t i=0;i<COLLADA->library_materials.size();i++)
-		//LoadLibrary("Material",COLLADA->library_materials[i]->material,&DBase::LoadMaterial);
-		if(RT::Main.LoadAnimations)
-		for(size_t i=0;i<COLLADA->library_animations.size();i++)
-		LoadLibrary("Animation",COLLADA->library_animations[i]->animation,&DBase::LoadAnimation);
-
-		//This had loaded the <instance_visual_scene> but COLLADA only 
-		//allows for one such scene that is also associated with physics
-		//and so on, so this just loads the main scene. The end-user would
-		//have to manually mix and match physics, etc. to select differently.
-		LoadScene(COLLADA->scene);
-	}
-	RT::Main.COLLADA_FX.Cg = nullptr;
+	if(COLLADA==nullptr) return false;
+	LoadCOLLADA(COLLADA); return true;
+}
+bool RT::DBase::LoadCOLLADA_1_5_0(Collada08::const_COLLADA COLLADA)
+{	
+	if(COLLADA==nullptr) return false;
+	LoadCOLLADA(COLLADA); return true;
 }
 
 //-------.

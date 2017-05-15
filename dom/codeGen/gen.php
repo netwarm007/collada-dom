@@ -395,6 +395,7 @@ echo genH($_globals['target_namespace']/*'domTypes'*/,'types-h');
 echo genCPP('Types','types-cpp');
 echo genH($_globals['target_namespace']/*'domElements'*/,'elements-h',$combined,FILE_APPEND);
 //these are effectively no longer used
+if(!inline_CM) //Generates a junk file.
 echo genH('domConstants','constants-h');
 echo genCPP('Constants','constants-cpp');
 cleanupGen();

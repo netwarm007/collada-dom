@@ -587,7 +587,35 @@ COLLADA_(public)
 	 */
 	static const int __DAEP__Schema__extent_of_attributes = 0x3F&ULL>>32;
 };
-  
+
+template<class SchemaType=class Undefined, int NoteID=-1> 
+/**
+ * @class COLLADA::DAEP::Note
+ *
+ * DAEP NOTE is used to bind compile-time-constant data
+ * to the elements' children and attribute data members.
+ * It's evolved out of a need to notify the database of
+ * changes, but now it is a vector for arbitrary tacked
+ * on values, like "notes" at the end of a book chapter.
+ * Otherwise the values would have to appear within the
+ * the DAEP Child/Value template parameters list, which
+ * are already very baroque because of how C++ template
+ * member-pointers demand so many additional parameters.
+ * @see @c COLLADA_NOTE().
+ */
+struct Note
+{
+	/**
+	 * These implement defaults that the specialization
+	 * should inherit from in order to cover all of its
+	 * bases. Note, @c concern can be any unusable type. 
+	 */
+	enum{ is_fixed=0,has_default=0 };
+	
+	/**C2838 @see @c DAEP::Schematic under MSVC2015. */
+	struct concern{ typedef void schema; };
+};
+
 template<class T> 
 /** 
  * @class COLLADA::DAEP::Schematic
@@ -627,7 +655,7 @@ COLLADA_(public)
 	 * if that name is non-singular.
 	 */
 	typedef dae_Array<type> content;	
-
+		
 	/**
 	 * This is a type-ID for an element type, that is valid for
 	 * a given generated schema. It's meaningless if types come
@@ -674,6 +702,11 @@ COLLADA_(public)
 	static const bool is_plain_old_element
 	//Should is_group be included? Can a group be a type-in-itself in other words?
 	= !(is_group||is_abstract||allows_any||allows_any_attribute||is_all);
+
+	/**EXPERIMENTAL
+	 * This provides a unique type for the code-generator schema of @a T.
+	 */
+	typedef typename DAEP::Note<typename _::_::notestart>::concern::schema schema;
 };
 /**EXPERIMENTAL, TEMPLATE-SPECIALIZATION
  * @c xs::any (@c xsAny) requires this.
@@ -689,31 +722,6 @@ COLLADA_(public)
 };
 /** Don't know if this is best, but it's simpler for now. */
 template<class T> class Schematic<const T> : Schematic<T>{};
-
-template<class SchemaType=class Undefined, int NoteID=-1> 
-/**
- * @class COLLADA::DAEP::Note
- *
- * DAEP NOTE is used to bind compile-time-constant data
- * to the elements' children and attribute data members.
- * It's evolved out of a need to notify the database of
- * changes, but now it is a vector for arbitrary tacked
- * on values, like "notes" at the end of a book chapter.
- * Otherwise the values would have to appear within the
- * the DAEP Child/Value template parameters list, which
- * are already very baroque because of how C++ template
- * member-pointers demand so many additional parameters.
- * @see @c COLLADA_NOTE().
- */
-struct Note
-{
-	/**
-	 * These implement defaults that the specialization
-	 * should inherit from in order to cover all of its
-	 * bases. Note, @c concern can be any unusable type. 
-	 */
-	typedef enum{ is_fixed=0,has_default=0 }concern;
-};
 
 template<class Note=void, class Noted=Note, class Sig=signed>
 /**
@@ -1015,7 +1023,7 @@ template<class T>
  */
 struct Default
 {
-	typedef const T type; typedef const T narrow_test; 
+	typedef const T type; 
 };
 template<class T, int N>
 /**PARTIAL-TEMPLATE SPECIALIZATION 
@@ -1023,7 +1031,7 @@ template<class T, int N>
  */
 struct Default<T[N]>
 {
-	typedef const T *const type; typedef const T *narrow_test; 
+	typedef const T *const type;
 };
 template<class T, int N>
 /**PARTIAL-TEMPLATE SPECIALIZATION 
@@ -1033,7 +1041,7 @@ template<class T, int N>
  */
 struct Default<daeArray<T,N>>
 {
-	typedef const daeArray<T> &type; typedef daeArray<T> narrow_test;
+	typedef const daeArray<T> &type;
 };
 template<int ID, class T, class CC, typename CC::_ PtoM>
 /**PARTIAL-TEMPLATE SPECIALIZATION 
@@ -1043,7 +1051,6 @@ template<int ID, class T, class CC, typename CC::_ PtoM>
 struct Default<DAEP::Value<ID,T,CC,PtoM>>
 {	
 	typedef const typename DAEP::Value<ID,T,CC,PtoM>::underlying_type &type;
-	typedef typename DAEP::Value<ID,T,CC,PtoM>::underlying_type narrow_test;
 };
 
 template<int ID, class T, class CC, typename CC::_ PtoM, class EBO=
@@ -1228,15 +1235,13 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 	 */
 	inline typename DAEP::Default<T>::type operator->*(const T &other)const
 	{
-		if(&object()==nullptr) return other; return (underlying_type&)value;
+		if(&object()==nullptr) return other; return *this;
 
-		#ifdef NDEBUG
-		#error Raise warnings that user code may be suppressing.
-		#endif
 		//This is designed to catch "narrowing" issues, since the return type
 		//is T and not underlying_type. Something like using 1 to get a float
 		//can be quiet error.
-		DAEP::Default<T>::narrow_test test((underlying_type&)value);
+		daeCTC<(std::numeric_limits<underlying_type>::digits10<=
+		std::numeric_limits<typename DAEP::Default<T>::type>::digits10)>(); 
 	}
 
 	/**

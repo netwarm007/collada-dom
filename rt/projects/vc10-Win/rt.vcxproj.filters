@@ -48,11 +48,11 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\CrtPCH.cpp" />
+    <ClCompile Include="..\..\src\CrtSceneRead08.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\RT.pch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\CrtAnimation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -96,6 +96,10 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\CrtTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\RT.pch.h" />
+    <ClInclude Include="..\..\include\CrtSceneYY.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

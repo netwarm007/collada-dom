@@ -13,10 +13,7 @@
 #endif
 	  
 //2017 adds poorly worded NO_GLUT macro
-#ifdef NO_GLUT
-#include <gl\gl.h>   
-#include <gl\glu.h>   
-#else
+#ifndef NO_GLUT
 #include <gl\glut.h>   
 #endif
 
@@ -40,7 +37,13 @@ static LRESULT CALLBACK Windows_main_GLUT(HWND GLUT, UINT msg, WPARAM w, LPARAM 
 		GET_WHEEL_DELTA_WPARAM(w);
 		if(mouseDown[2]) delta/=WHEEL_DELTA/10;
 		RT::Main.ZoomIn(-delta*MouseWheelSpeed); break;
-	}}		
+	}
+	//GLUT has a bug when letting up outside its window.
+	case WM_CAPTURECHANGED:	
+		
+		if(GLUT!=(HWND)l) 
+		mouseDown[0] = mouseDown[1] = mouseDown[2] = false; break;
+	}		
 	return DefSubclassProc(GLUT,msg,w,l);
 }
 static LRESULT CALLBACK Windows_main_GLUT_hook_proc(int code, WPARAM w, LPARAM l)

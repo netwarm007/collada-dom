@@ -24,8 +24,8 @@ COLLADA_(namespace)
 #error This can benefit from SSE optimization.
 #error (It's happening 30/60 times per second.)
 #endif
-static std::vector<RT::Matrix> CrtController_mats(1); 	
-static std::vector<RT::Matrix> CrtController_matsIT(1); 
+static std::vector<RT::Matrix> CrtController_mats; 	
+static std::vector<RT::Matrix> CrtController_matsIT; 
 /**NOT THREAD-SAFE
  * This implements much of RT::Skin::Update_VBuffer2().
  */
@@ -33,21 +33,17 @@ struct CrtController_skin
 {
 	RT::Skin &skin;
 	
-	enum{ IT=0 }; //Disabling inverse-transpose!!!
-		
 	//TODO: In unusual circumstances it might be necessary
 	//to compute "inverse-transposed" matrices for normals.
 	std::vector<RT::Matrix> &mats,matsIT;
 	
 	CrtController_skin(RT::Skin &skin, RT::Stack_Data **joints)
-	:skin(skin),mats(CrtController_mats)
-	,matsIT(IT?CrtController_matsIT:mats),joints(joints)
+	:skin(skin),joints(joints),mats(CrtController_mats)
+	,matsIT(skin.Geometry->Normals!=nullptr?CrtController_matsIT:mats)
 	{
-		 //CrtController_mats 		
-		assert(!mats.empty()); //C++98/03
+		//CrtController_mats 		
 		mats.resize(std::max(mats.size(),skin.Joints.size()));
-		if(IT)
-		matsIT.resize(std::max(mats.size(),skin.Joints.size()));
+		if(&matsIT!=&mats) matsIT.resize(mats.size());
 	}
 
 	template<int Stride> void VBuffer2()
@@ -142,13 +138,14 @@ void RT::Skin::Update_VBuffer2(RT::Stack_Data **joints)
 	//This helper class makes templates more manageable.
 	CrtController_skin skin(*this,joints);	
 	{	
+		//CrtController_skin::CrtController_skin() could do all of this just
+		//as well, but this is done here to illustrate the set up processing.
 		size_t i,iN = std::min(Joints.size(),Joints_INV_BIND_MATRIX.size());
 		for(i=0;i<iN;i++)
 		RT::MatrixMult(Joints_INV_BIND_MATRIX[i],joints[i]->Matrix,skin.mats[i]);
 		while(i<Joints.size()) //Just in case.
 		RT::MatrixCopy(joints[i]->Matrix,skin.mats[i++]);
-
-		if(skin.IT)
+		if(&skin.matsIT!=&skin.mats)
 		for(i=0;i<Joints.size();i++)
 		RT::MatrixInvertTranspose0(skin.mats[i],skin.matsIT[i]);		
 	}
@@ -157,7 +154,7 @@ void RT::Skin::Update_VBuffer2(RT::Stack_Data **joints)
 }
 
 //NOT THREAD-SAFE
-static std::vector<RT::Float> CrtController_weights(1);
+static std::vector<RT::Float> CrtController_weights;
 /**NOT THREAD-SAFE
  * This implements much of RT::Morph::Update_VBuffer2().
  *

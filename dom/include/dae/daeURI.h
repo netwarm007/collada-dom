@@ -903,6 +903,20 @@ COLLADA_(public) //UTILITIES
 	LINKAGE daeOK resolve_RFC3986(const daeDOM&, int RFC3986_ops=RFC3986::ALL);
 
 	/**HELPER
+	 * @c baseLookup() depends on these conditions to produce a correct URI.
+	 * It uses @c getDoc() to get the base, or defaults to default-base-URLs.
+	 * @see @c baseLookup()
+	 * @see @c resolve_RFC3986() for an example of how to use this to resolve
+	 * a URI while satifying the constness guarantees of the @c setURI() APIs.
+	 */
+	inline bool is_baseLookup_friendly()const
+	{
+		return isRelativeURI()&&nullptr!=getDoc()||_path==0||_rel_half==_authority;
+	}
+	/**WARNING, HELPER
+	 * This returns the inputted @a base if @c getDoc()==nullptr and the default
+	 * URLs would produce an incorrect base.
+	 * 
 	 * This implements some rather convoluted logic for locating the natural base
 	 * of a URL, based on A) its parent object, or B) via @a DOM's default base URL. 
 	 * It's not that tricky, except for the @c this==base cases. It needs to work for
@@ -914,7 +928,7 @@ COLLADA_(public) //UTILITIES
 	 * ease development of coding a resolver. 
 	 * @see resolve_RFC3986().
 	 * @param base will not be @c nullptr upon return.
-	 * @return Returns @a base.
+	 * @return Returns @a base unaltered if @c false==is_baseLookup_friendly().
 	 */
 	LINKAGE const_daeURIRef &baseLookup(const daeDOM &DOM, const_daeURIRef &base)const;
 

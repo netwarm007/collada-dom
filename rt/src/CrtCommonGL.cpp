@@ -27,15 +27,15 @@ void RT::Stack::SetMaterial(RT::Material *mat)
 	 //In COLLADA 1.4 a material is required to have a reference to an effect
 	assert(effect!=nullptr);
 
-	FLOAT shininess = effect->Shininess;
+	FLOAT shininess = mat->Shininess;
 	//if the scale is 0.0 to 1.0, make it 0.0 to 100.0
-	if(shininess<1.0) shininess = shininess*128; 
+	if(shininess<1) shininess = shininess*128; 
 
 	//	diffuse.a	=	effect->Transparency;
-	glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,&effect->Emission.f0);
-	glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,&effect->Ambient.f0);
-	glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,&effect->Diffuse.f0);
-	glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,&effect->Specular.f0);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,&mat->Emission.f0);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,&mat->Ambient.f0);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,&mat->Diffuse.f0);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,&mat->Specular.f0);
 	glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess);
 
 	//This looped through the textures, but it's 
@@ -45,7 +45,10 @@ void RT::Stack::SetMaterial(RT::Material *mat)
 	{
 		int TexId = effect->Textures[0]->TexId;
 		if(TexId==0) //HACK: Load missing texture?
-		TexId = FX::Loader::GetID_TexId(nullptr);
+		{
+			Collada05::const_image yy = nullptr;
+			TexId = FX::Loader::GetID_TexId(yy);
+		}
 
 		glEnable(GL_TEXTURE_2D);
 		//GL.ActiveTexture(GL_TEXTURE0+i);
@@ -93,7 +96,11 @@ void RT::Stack::_ResetCamera()
 	glLoadIdentity(); switch(c->Refresh())
 	{
 	case 2: glOrtho(-c->Xmag,c->Xmag,-c->Ymag,c->Ymag,nZ,fZ); break;
-	case 3: gluPerspective(c->Yfov,c->Aspect,nZ,fZ); break;
+	case 3: //gluPerspective(c->Yfov,c->Aspect,nZ,fZ); break;
+		
+		float top = nZ*tan(RT::DEGREES_TO_RADIANS*c->Yfov/2);
+		float right = top*c->Aspect;
+		glFrustum(-right,right,-top,top,nZ,fZ); break;
 	}			
 	glMatrixMode(GL_MODELVIEW);
 
@@ -108,42 +115,17 @@ void RT::Stack::_ResetCamera()
 	}
 	else glViewport((RT::Main.Width-w)/2,0,w,RT::Main.Height);
 }
-		
+
 void RT::Stack::Draw()
 {
 	//The camera is always updated in case it's animated.
 	RT::Main.Matrix(&_View,&RT::Main.Cg._InverseViewMatrix);
 	GL::LoadMatrix(_View);
 	_ResetCamera();	
-
-	//draw lines to each parent node?
-	GLboolean lit = glIsEnabled(GL_LIGHTING);
-	if(RT::Main.ShowHierarchy)
-	{	
-		//Draw blue lines.
-		if(lit) glDisable(GL_LIGHTING);
-		glDisable(GL_TEXTURE_2D);		
-		glColor3f(1,0.5,1); 
-		glLineWidth(1); 
-		glBegin(GL_LINES);		
-		for(size_t i=1;i<Data.size();i++)
-		{
-			Data[i].ShowHierarchy_glVertex3d();
-			Data[i].Parent->ShowHierarchy_glVertex3d();
-		}
-		#ifdef _DEBUG
-		//This has some huge axes lines.
-		glColor3f(0.25,0.25,1); 
-		RT::Main.Physics.VisualizeWorld();
-		#endif		
-		glEnd(); glLineWidth(1);
-		glColor3f(0.75f,0.75f,0.25f);
-		glPointSize(30);			
-	}
-
+							 
 	//reset all lights	
 	int l=0,lN = 7;
-	for(size_t i=0;i<Data.size();i++)
+	for(size_t i=0;i<Data.size();i++)	
 	if(!Data[i].Node->Lights.empty())
 	{
 		int ll = l; 
@@ -151,31 +133,30 @@ void RT::Stack::Draw()
 		//Enable the light and lighting
 		while(ll<l) glEnable(GL_LIGHT0+ll++);
 		if(l==lN) break;
-	}	
-	while(l<lN) glDisable(GL_LIGHT0+l++);
-	
-	if(RT::Main.ShowHierarchy)
-	{
-		glPointSize(1); 
-		glEnable(GL_TEXTURE_2D);
-		if(lit) glEnable(GL_LIGHTING);
-	}		
-
-	if(!RT::Main.ShowGeometry)
-	return;
-
-	//Are we using shadow maps?
-	//!!!GAC Shadow map code may not be functional right now
-	if(RT::Main.ShadowMap.Use&&RT::Main.ShadowMap.Initialized)
-	{
-		//Render the shadow pass
-		RT::Main.ShadowMap.SetupRenderingToShadowMap();
-		Draw_Triangles();		
-		//Now render the scene 
-		RT::Main.ShadowMap.SetupRenderingWithShadowMap();
-		Draw_Triangles();
 	}
-	else Draw_Triangles();
+	while(l<lN) glDisable(GL_LIGHT0+l++);
+		
+	if(RT::Main.ShowGeometry)
+	{
+		//Are we using shadow maps?
+		//!!!GAC Shadow map code may not be functional right now
+		if(RT::Main.ShadowMap.Use&&RT::Main.ShadowMap.Initialized)
+		{
+			//Render the shadow pass
+			RT::Main.ShadowMap.PushRenderingToShadowMap();
+			Draw_Triangles();		
+			//Now render the scene 
+			RT::Main.ShadowMap.PopRenderingToShadowMap();
+			Draw_Triangles();
+		}
+		else Draw_Triangles();
+	}
+	
+	//This should be last.	
+	if(RT::Main.ShowHierarchy) 
+	{
+		GL::LoadMatrix(_View); Draw_ShowHierarchy();
+	}
 }
 void RT::Stack::Draw_Triangles()
 {	
@@ -286,15 +267,111 @@ void RT::Stack::Draw_Triangles()
 void RT::Stack_Data::ShowHierarchy_glVertex3d()
 {
 	glVertex3d(Matrix[M30],Matrix[M31],Matrix[M32]);	
-}
-int RT::Stack_Data::Light(int l)
+}		
+void RT::Stack::Draw_ShowHierarchy()
 {
-	//This is alternatively the color black, 0 point, or a Z direction.
-	FX::Float4 vp(0,1);
+	//Do set up.
+	GLboolean lit = glIsEnabled(GL_LIGHTING);
+	int df; glGetIntegerv(GL_DEPTH_FUNC,&df);
+	if(lit) glDisable(GL_LIGHTING);
+	glDepthFunc(GL_LESS);
+	glDisable(GL_TEXTURE_2D);		
+		
+	//GL_LINES
+	//Draw lines to each parent node.		
+	glColor3f(1,0.5,1); 
+	glLineWidth(1); 
+	glBegin(GL_LINES);		
+	for(size_t i=1;i<Data.size();i++)
+	{
+		Data[i].ShowHierarchy_glVertex3d();
+		Data[i].Parent->ShowHierarchy_glVertex3d();
+	}
+	//It would be good to visualize shapes.
+	//The Bullet Physics visualizer insists
+	//on unneeded axes that are not to scale.
+	#ifdef _DEBUG	
+	{
+		//Debug only. Visualize Physics sims.
+		glColor3f(0.25,0.25,1); 
+		RT::Main.Physics.VisualizeWorld();
+	}
+	#endif		
+	glEnd(); glLineWidth(1);
 
+	//GL_POINTS
+	//Draw icons for lights & cameras.
+	const float ps = 30; 
+	//Don't obscure the camera with icon.
+	if(RT::Main.Parent!=&Data[0])
+	{
+		//Make the inner icon a 2px line.
+		//Don't worry about stacked ones.
+		glPointSize(ps-4);
+		//Carve out a hole in the middle.		
+		//Don't worry about Z-sorting it.
+		glColorMask(0,0,0,0);
+		glBegin(GL_POINTS); 
+		RT::Main.Parent->ShowHierarchy_glVertex3d();
+		glEnd();
+		glColorMask(1,1,1,1);
+	}
+	glPointSize(ps);
+	glBegin(GL_POINTS);
+	for(size_t i=0;i<Data.size();i++)
+	{	
+		RT::Stack_Data &d = Data[i];
+		size_t cameras = d.Node->Cameras.empty()?0:1;		
+		//This is drawn in front of the icons.
+		if(cameras!=0)
+		{	
+			//Cameras are black and unstacked.
+			glColor3f(0,0,0);				
+			d.ShowHierarchy_glVertex3d();
+		}
+		for(size_t i=0;i<d.Node->Lights.size();i++)
+		{
+			//In the event that lights/cameras are stacked
+			//on a common node:
+			//(Note: If two nodes overlap, they just are.)
+			int stacked = i+cameras; if(stacked!=0)
+			{
+				int px = &d==RT::Main.Parent?2:5;
+
+				glEnd(); //glPointSize is fixed.
+				glPointSize(ps+stacked*2*px);
+				glBegin(GL_POINTS);
+			}
+
+			FX::Float3 hue = d.Node->Lights[i]->Color; 
+			//NaN is undefined and may appear like cameras.
+			hue+=0.00001f; hue.Normalize();
+			glColor3f(hue.r,hue.g,hue.b);			
+			d.ShowHierarchy_glVertex3d();
+
+			if(stacked!=0) //glPointSize is fixed.
+			{
+				glEnd(); glPointSize(ps);
+				glBegin(GL_POINTS);
+			}
+		}
+	}
+	glEnd(); glPointSize(1);
+
+	//Undo set up.
+	glEnable(GL_TEXTURE_2D);
+	glDepthFunc(df);
+	if(lit) glEnable(GL_LIGHTING);
+}
+
+int RT::Stack_Data::Light(int l)
+{	
 	//This handles the new lighting model, l is the GL light to set up.
 	for(size_t i=0;i<Node->Lights.size();i++,l++)
 	{
+		//This is alternatively the color black, 0 point, or a Z direction.
+		FX::Float4 vp(0,1);
+
 		RT::Light *light = Node->Lights[i];		
 		
 		//There's only one color in the light, try to set the GL parameters sensibly.		
@@ -312,16 +389,20 @@ int RT::Stack_Data::Light(int l)
 		}
 		
 		if(RT::Light_Type::DIRECTIONAL!=light->Type)
-		{
+		{	
 			vp.x = Matrix[M30]; vp.y = Matrix[M31]; vp.z = Matrix[M32];
 
-			if(RT::Main.ShowHierarchy) 			
-			{	
-				FX::Float3 c = light->Color; c.Normalize();
-				glColor3f(c.x,c.y,c.z);
-				glBegin(GL_POINTS);		
-				glVertex3d(vp.x,vp.y,vp.z);
-				glEnd(); 
+			if(l==i&&RT::Light_Type::DEFAULT==light->Type)
+			{
+				switch(i)
+				{
+				case 0: vp.x = +RT::Main.SetRange.Zoom; break;
+				case 1: vp.y = +RT::Main.SetRange.Zoom; break;
+				case 2: vp.z = +RT::Main.SetRange.Zoom; break;
+				case 3: vp.x = -RT::Main.SetRange.Zoom; break;
+				case 4: vp.y = -RT::Main.SetRange.Zoom; break;
+				case 5: vp.z = -RT::Main.SetRange.Zoom; break;
+				}
 			}
 
 			glLightfv(GL_LIGHT0+l,GL_POSITION,&vp.x);		
@@ -332,7 +413,7 @@ int RT::Stack_Data::Light(int l)
 
 		if(RT::Light_Type::POINT!=light->Type)
 		{
-			FX::Float4 z(0,1);
+			FX::Float3 z(0);
 			//It seems like Z_UP might want -1 instead, but +1 just works.
 			//glLight says 1 is -1:
 			//"The initial position is (0,0,1,0); thus, the initial light 
@@ -430,7 +511,7 @@ void RT::Frame_ShadowMap::Init()
 	Initialized = true;
 }
 
-void RT::Frame_ShadowMap::SetupRenderingToShadowMap()
+void RT::Frame_ShadowMap::PushRenderingToShadowMap()
 {
 	//set tc flag so polygroups will know which shader to use 
 	RenderingTo = true;
@@ -450,22 +531,29 @@ void RT::Frame_ShadowMap::SetupRenderingToShadowMap()
 		//position and what now but for just for now going to 
 		//set a hard value 
 		glMatrixMode(GL_PROJECTION);
+		//glPopMatrix is done by PopRenderingToShadowMap().
 		glPushMatrix();
 		glLoadIdentity();
 		//Not implemented yet: need to look into perspective range
-		gluPerspective(35,(double)Width/Height,1,30);
+		//gluPerspective(35,(double)Width/Height,1,30);
+		float top = 1*tan(RT::DEGREES_TO_RADIANS*35/2);
+		float right = top*Width/Height;
+		glFrustum(-right,right,-top,top,1,30);
 
 		//setup light view
 		glMatrixMode(GL_MODELVIEW);
-		glPushMatrix();
-		glLoadIdentity();
+		//glPopMatrix is done by PopRenderingToShadowMap().
+		glPushMatrix();		
 		//light is directly above for now 
-		gluLookAt(0,30,0, //eye (light)  position
-		0,0,0, //target
-		0,1,0); //up vector
+		//gluLookAt(0,30,0, 0,0,0, 0,1,0);
+		RT::Matrix m;
+		RT::MatrixLoadIdentity(m);
+		RT::MatrixRotateAngleAxis(m,1,0,0,180);
+		m[31] = 30;
+		glLoadMatrixf(m);
 	}
 }	 
-void RT::Frame_ShadowMap::SetupRenderingWithShadowMap()
+void RT::Frame_ShadowMap::PopRenderingToShadowMap()
 {
 	//daeEH::Verbose<<"Setting Rendering with shadowmap.";
 

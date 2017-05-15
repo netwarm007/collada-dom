@@ -7,10 +7,11 @@
  */
 #include <RT.pch.h> //PCH
 
-#include "CrtRender.h"
+#include "CrtScene.h"
 #include "CrtLight.h"
 #include "CrtGeometry.h"
 #include "CrtAnimation.h"
+#include "CrtRender.h"
 
 COLLADA_(namespace)
 {
@@ -35,7 +36,17 @@ COLLADA_(namespace)
 		}
 		return RT::Main.Missing_Image.TexId;
 	}
+	GLuint FX::Loader::GetID_TexId(Collada08::const_image image)
+	{
+		//This only has to pass a viable element pointer.
+		return GetID_TexId(COLLADA_RT_cast(image,image));
+	}
 	RT::Image *RT::DBase::FindImage(Collada05::const_image &e)const
+	{
+		assert(RT::Main.Loading); //Delayed loading?
+		return const_cast<RT::DBase*>(this)->LoadImage(e);
+	}
+	RT::Image *RT::DBase::FindImage(Collada08::const_image &e)const
 	{
 		assert(RT::Main.Loading); //Delayed loading?
 		return const_cast<RT::DBase*>(this)->LoadImage(e);
@@ -150,52 +161,6 @@ RT::Asset_Index::Asset_Index()
 	_i = 0xFF&CrtRender_Up_Meter.size();
 	CrtRender_Up_Meter.push_back(cmp); 
 }
-void RT::Frame_Asset::operator=(const daeElement *e)
-{
-	if(e==nullptr)
-	{
-		Up = RT::Up::Y_UP; Meter = 1;
-	}
-	else switch(e->getElementType())
-	{
-	#define _(x) \
-	case DAEP::Schematic<Collada05::x>::genus:\
-		_OverrideWith<Collada05::const_##x>(e); break;
-	//This list is concerned with up_axis/unit.
-	//(It may be incomplete.)
-	_(COLLADA)
-	_(library_nodes)_(node)	
-	_(library_visual_scenes)_(visual_scene)
-	_(library_physics_scenes)_(physics_scene)
-	_(library_physics_models)_(physics_model)
-	//Assuming <source><asset> doesn't specify up/meter.
-	_(library_geometries)_(geometry)
-	#undef _
-	default: operator=(e->getParent()); 
-	}
-}
-template<class T>
-void RT::Frame_Asset::_OverrideWith(const daeElement *e)
-{
-	T &t = *(T*)&e; if(!t->asset.empty()) 
-	{	
-		//Can't stop unless both are supplied.
-		Collada05::const_asset asset = t->asset;
-		if(!asset->up_axis.empty())
-		{
-			if(!asset->unit.empty())
-			Meter = asset->unit->meter;
-			else operator=(e->getParent()); 
-			Up = asset->up_axis->value; return;
-		}
-		else if(!asset->unit.empty())
-		{
-			operator=(e->getParent()); 
-			Meter = asset->unit->meter; return;
-		}		
-	}
-	operator=(e->getParent()); 
-} 
 
 void RT::Frame::Unload()
 {
@@ -226,8 +191,6 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 	//in case of multithreaded loading 
 	const_cast<bool&>(Loading) = true;
 
-	//daeEH::Verbose<<"Loading file "<<fileName;
-
 	//Setup the type of renderer and initialize Cg if necessary (we may need the context for loading)
 	//!!!GAC this code used to come after the load, but now the load needs a Cg context.
 	if(UseRender)
@@ -241,16 +204,15 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 
 	daeEH::Verbose<<"COLLADA_DOM Load Started.";	
 
-	daeDocRoot<Collada05::COLLADA> res = 
-	const_cast<daeDOM&>(DOM).openDoc<Collada05::COLLADA>(URI);
+	daeDocRoot<> res = 
+	const_cast<daeDOM&>(DOM).openDoc<void>(URI);
 	if(res!=DAE_OK)
 	{
 		daeEH::Error<<
 		"Failed to load document:\n"<<URI.getURI();
 		Unload();
 		daeEH::Error<<"Error loading the COLLADA file:"
-		"\n"<<URI.getURI()<<"\n"
-		"Make sure it is COLLADA 1.4.1 or greater.";			
+		"\n"<<URI.getURI();			
 		return const_cast<bool&>(Loading) = false;
 	}
 	else const_cast<daeName&>(URL) = res->getDocURI().getURI(); 
@@ -259,7 +221,13 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 	"\n"<<URL;
 	
 	//SCHEDULED FOR REMOVAL
-	const_cast<RT::DBase*>(Data)->LoadCOLLADA(res);
+	daeElement *any = nullptr;
+	daeDocument *doc = res->getDocument();
+	if(doc!=nullptr) any = doc->getRoot();
+	if(any==nullptr
+	||!const_cast<RT::DBase*>(Data)->LoadCOLLADA_1_4_1(any->a<Collada05::COLLADA>())
+	&&!const_cast<RT::DBase*>(Data)->LoadCOLLADA_1_5_0(any->a<Collada08::COLLADA>()))
+	daeEH::Warning<<"Loaded document is not a COLLADA resource.";	
 	
 	CrtTexture_buffer.swap(std::vector<char>());
 	
@@ -482,7 +450,10 @@ RT::Stack_Data &RT::Stack::FindAnyLight()
 	//very large scene graphs until it's fixed.
 	if(_FoundAnyLight!=nullptr)
 	return *_FoundAnyLight;
-				   
+	
+	//Empty default lights in case reloading??
+	Data[0].Node->Lights.clear();
+
 	size_t ambient = 0; //ambient
 	for(size_t i=0;i<Data.size();i++)
 	{
@@ -502,12 +473,19 @@ RT::Stack_Data &RT::Stack::FindAnyLight()
 	//Assuming ambient is as good as any positioned at 0,0,0.
 	if(0==ambient)
 	{
-		static RT::Light default_light;
-		default_light.Id = "COLLADA_RT_default_light";
-		default_light.Type = RT::Light_Type::AMBIENT;
-		Data[0].Node->Lights.push_back(&default_light);
+		static RT::Stack_Data position;
+		static RT::Light default_light[6];		
+		for(int i=0;i<6;i++)
+		{
+			default_light[i].Id = "COLLADA_RT_default_light";		
+			Data[0].Node->Lights.push_back(default_light+i);
+		}		
+		position = Data[0];
+		position.Matrix[M30] = position.Matrix[M31] = 
+		position.Matrix[M32] = RT::Main.SetRange.Zoom;
+		_FoundAnyLight = &position; 
 	}
-	_FoundAnyLight = &Data[ambient]; return *_FoundAnyLight;
+	else _FoundAnyLight = &Data[ambient]; return *_FoundAnyLight;
 }
 		  
 bool RT::Stack::Select_AddData(RT::Node *p, RT::Stack_Data *pp, size_t depth)
@@ -588,8 +566,8 @@ void RT::Stack::Select_AddData_Controllers_and_finish_up()
 	//THESE ARE THE "_and_finish_up" BITS.
 	{	
 		//SCHEDULED FOR REMOVAL
-		_FoundAnyLight = nullptr; 	
-	
+		_FoundAnyLight = nullptr; FindAnyLight(); 
+
 		//Reset/Default camera set up.	
 		Reset_Update(); 
 
@@ -656,6 +634,11 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 	for(size_t i=0;i<Node->Animators.size();i++)
 	Node->Animators[i].Animate(td);
 
+	//NOTE: It's thought best to translate into a universal
+	//coordinate system as soon as possible. Doing relative
+	//transforms between them is complicated by controllers
+	//and geometry level <up_axis> and <unit> prerequisites.
+
 	size_t up_i = Node->Asset;
 	RT::Up_Meter up_m = CrtRender_Up_Meter[up_i];
 	RT::Up &up = up_m.first; RT::Float &m = up_m.second;
@@ -693,6 +676,9 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 
 			if(up!=RT::Up::Y_UP)
 			{
+				#ifdef NDEBUG
+				#error Try to detect/respect negative scale?
+				#endif
 				//Don't know if this is technically correct
 				//but negative scaling makes everything off.
 				x = fabs(x); z = fabs(z);
@@ -740,12 +726,30 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 				//But should factor it into their translation component.
 				if(up!=RT::Up::Y_UP)
 				{	
+					#ifdef NDEBUG
+					#error Try to understand/document this.
+					#error It's not swapping/flipping basis vectors.
+					#endif
 					RT::Matrix xz;
 					RT::MatrixLoadAsset(xz,up);
+				//EXPERIMENTAL
+				//This is poorly understood, but the -1 values required
+				//by X_UP and Z_UP cause scaling issues in matrices and
+				//so must be cancelled out somehow. This was determined
+				//to work experimentally. Like using abs() with <scale> 
+				//it may or may not be correct.					
+				std::swap(xz[M10],xz[M01]); std::swap(xz[M21],xz[M12]);
+				{
 					//Two multiplies translates into a coordinate system
 					//producing a mutant identity matrix with two -1s if
 					//necessary that cancel each other out.
 					RT::MatrixMult(xz,*(RT::Matrix*)pd,lm);
+				}
+				//It might be possible to swap once, here, by swapping
+				//the multiplication, but the compiler can sort it out.
+				std::swap(xz[M10],xz[M01]); std::swap(xz[M21],xz[M12]);
+
+					//THIS IS THE SECOND OF THE "Two multiplies" COMMENT.
 					RT::MatrixMult(lm,xz,lm);
 					pd = lm;
 				}
@@ -825,7 +829,7 @@ void RT::Camera_State::Fly(RT::Float xx, RT::Float yy, RT::Float zz)
 	//default camera can adapt to different scales.
 	//Placed cameras don't have a distance parameter so this is just
 	//to fine tune zooming.
-	if(0==Zoom) return;
+	if(abs(Zoom)<0.00001) return;
 	if(Zoom<0){ xx = -xx; yy = -yy; zz = -zz; }
 
 	#ifdef NDEBUG
@@ -842,7 +846,7 @@ void RT::Camera_State::Fly(RT::Float xx, RT::Float yy, RT::Float zz)
 void RT::Camera_State::Walk(RT::Float zz, RT::Float xx, RT::Float yy)
 {
 	//See body of Fly for thoughts on this.
-	if(0==Zoom) return;
+	if(abs(Zoom)<0.00001) return;
 	if(Zoom<0){ xx = -xx; yy = -yy; zz = -zz; }
 
 	RT::Float c = cos(Pan*RT::DEGREES_TO_RADIANS);

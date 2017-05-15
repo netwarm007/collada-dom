@@ -15,8 +15,20 @@
 COLLADA_(namespace)
 {
 	namespace FX
-	{//-.
-//<-----'
+	{		
+	#ifndef YY
+	#define YY 5 //MSVC2015 wants FX::??
+	namespace ColladaYY = FX::Collada05;
+	namespace ColladaYY_XSD = Collada05_XSD;
+	#define _if_YY(x,y) x
+	#endif //-.
+//<-----------'
+
+template<class S, class T>
+inline void MakeData(S* &o, const T &e, FX::NewParamable *p, xs::ID a1, typename S::arg2 a2=nullptr)
+{
+	FX::DataMaker<S> dm = {p,a1,a2,o,e->content}; FX::_if_YY(MakeData05,MakeData08)(dm);
+}
 
 struct FX::Loader::Load
 {
@@ -24,6 +36,7 @@ struct FX::Loader::Load
 	struct Loading_script;
 	struct Loading_gl_pipeline_setting;
 
+	xs::const_any _profile_;
 	FX::Loader &loading; const daeDocument *doc;
 	Load(FX::Loader &l, const daeDocument *doc):loading(l),doc(doc){}
 
@@ -33,9 +46,9 @@ struct FX::Loader::Load
 	FX::Surface *new_Surface(const void *ID, FX::Surface *parent)
 	{
 		//Don't want to trigger a missing texture error if setting
-		//via a <setparam>.
-		GLuint texId = ID==nullptr?0:
-		FX::Loader::GetID_TexId(doc->idLookup<Collada05::image>(ID));		
+		//via a <setparam>.		
+		ColladaYY::const_image yy; doc->idLookup(ID,yy);
+		GLuint texId = ID==nullptr?0:FX::Loader::GetID_TexId(yy);		
 		return new FX::Surface(texId,parent);
 	}
 
@@ -46,12 +59,14 @@ struct FX::Loader::Load
 		{
 			const T::XSD::type &newparam_i = *newparam[i];
 
+			#if YY==5
 			if(!newparam_i.surface.empty())
-			{		  
+			{
 				c->Surfaces.push_back(std::make_pair(newparam_i.sid.data(),
 				new_Surface(newparam_i.surface->init_from->value->*xs::ID(),nullptr)));
 			}
-			else
+			else //15.0.1 samplers will push their <instance_image> onto c->Params.
+			#endif
 			{
 				FX::NewParam *p;
 				FX::MakeData(p,&newparam_i,c,newparam_i.sid,newparam_i.semantic->value->*"");
@@ -63,12 +78,28 @@ struct FX::Loader::Load
 	}
 	template<class T> 
 	FX::Param *_try_connect_param(T&,FX::NewParamable*){ return nullptr; }
+	#if YY==5 //1.5.0 appears to limit <connect_param> to IK (kinematics.)
 	template<> 
 	FX::Param *_try_connect_param(const Collada05_XSD::cg_setparam &e, FX::NewParamable *c)
 	{
 		return e.connect_param.empty()?nullptr
 		:new FX::ConnectParam(e.ref,c,e.connect_param->ref,c->FindEffect());
 	}
+	#else //8
+	template<class T> 
+	bool _try_sampler_image(T&,FX::NewParamable*){ return false; }
+	template<> 
+	bool _try_sampler_image(const Collada08_XSD::instance_effect_type::local__setparam &e, FX::NewParamable *c)
+	{
+		if(e.sampler_image.empty()) return false;
+
+		FX::Surface *parent = c->Parent_NewParamable->FindSurface(e.ref);
+		assert(parent!=nullptr);
+		Collada08::const_image yy = xs::anyURI(e.sampler_image->url).get<Collada08::image>();		
+		c->Surfaces.push_back(std::make_pair(e.ref.data(),
+		new FX::Surface(FX::Loader::GetID_TexId(yy),parent))); return true;
+	}
+	#endif
 	template<class T> 
 	void setparam(const T &setparam, FX::NewParamable *c)
 	{		  
@@ -79,7 +110,8 @@ struct FX::Loader::Load
 			#ifdef NDEBUG
 			#error And setparam_i.program? (Not in <instance_effect>.)
 			#endif		
-			if(!setparam_i.surface.empty())
+			#if YY==5
+			if(!setparam_i.surface.empty())			
 			{
 				//What is the parent for? Mipmaps??	
 				FX::Surface *parent = 
@@ -90,6 +122,9 @@ struct FX::Loader::Load
 				new_Surface(setparam_i.surface->init_from->value->*xs::ID(""),parent)));
 			}
 			else
+			#else
+			if(!_try_sampler_image(setparam_i,c))
+			#endif			
 			{
 				FX::Param *p = _try_connect_param(setparam_i,c);
 				if(p==nullptr)
@@ -111,24 +146,23 @@ struct FX::Loader::Load
 	template<class T> 
 	void _profile_shaders(typename T::technique::pass,FX::Pass*,FX::Effect*,xs::string);	
 };
-typedef DAEP::Schematic<Collada05::annotate>::content annotate;
+typedef DAEP::Schematic<ColladaYY::annotate>::content annotate;
 static void Load_annotate(const annotate &annotate, FX::Annotatable *c)
 {
 	for(size_t i=0;i<annotate.size();i++)
 	{
-		Collada05::const_annotate annotate_i = annotate[i];
+		ColladaYY::const_annotate annotate_i = annotate[i];
 		FX::Annotate *p;
 		FX::MakeData(p,annotate_i,nullptr,annotate_i->name);
 		c->Annotations.push_back(p);
 	}
 }
-FX::Effect *FX::Loader::Load(Collada05::const_effect effect)
+FX::Effect *FX::Loader::Load(ColladaYY::const_effect effect)
 {
 	if(effect==nullptr) return nullptr;
 
 	struct Load Load(*this,dae(effect)->getDocument());
 	//TODO: Implement GLSL etc.
-	//2017: Trying to avoid allocating if omitted.
 	//Is Apply() deferring set up?
 	FX::Effect *out = nullptr;
 	if(Cg!=nullptr)
@@ -136,8 +170,7 @@ FX::Effect *FX::Loader::Load(Collada05::const_effect effect)
 	{
 		daeName platform = effect->profile_CG[i]->platform;
 		if(!platform_Filter.empty())
-		{
-			
+		{			
 			if(nullptr==platform_Filter.find(platform))
 			{
 				daeEH::Warning<<"Omitting Cg effect profile for platform "<<platform;
@@ -152,7 +185,7 @@ FX::Effect *FX::Loader::Load(Collada05::const_effect effect)
 		}
 		if(out==nullptr)
 		out = new FX::Effect(effect->id,Cg);
-		Load.profile_<Collada05::const_profile_CG>(effect->profile_CG[i],out);
+		Load.profile_<ColladaYY::const_profile_CG>(effect->profile_CG[i],out);
 	}
 	#ifdef NDEBUG
 	#error This compiles, but won't link without FX::Shader.
@@ -161,7 +194,7 @@ FX::Effect *FX::Loader::Load(Collada05::const_effect effect)
 	{
 		if(out==nullptr)
 		out = new FX::Effect(effect->id);
-		Load.profile_<Collada05::const_profile_GLSL>(effect->profile_GLSL[i],out);
+		Load.profile_<ColladaYY::const_profile_GLSL>(effect->profile_GLSL[i],out);
 	}
 	#endif
 	if(out!=nullptr)
@@ -173,12 +206,12 @@ FX::Effect *FX::Loader::Load(Collada05::const_effect effect)
 	}
 	return out;
 }
-FX::Material *FX::Loader::Load(Collada05::const_material material, FX::Effect *e, const daeDocument *e_doc)
+FX::Material *FX::Loader::Load(ColladaYY::const_material material, FX::Effect *e, const daeDocument *e_doc)
 {
 	if(e==nullptr||material==nullptr||e->Techniques.empty())
 	return nullptr;
 	
-	Collada05::const_instance_effect instance_effect = material->instance_effect;
+	ColladaYY::const_instance_effect instance_effect = material->instance_effect;
 
 	#ifdef NDEBUG
 	#error The caller needs to be able to override these
@@ -186,7 +219,7 @@ FX::Material *FX::Loader::Load(Collada05::const_material material, FX::Effect *e
 	size_t i = 0;
 	if(!instance_effect->technique_hint.empty())
 	{
-		Collada05::const_technique_hint hint = instance_effect->technique_hint;
+		ColladaYY::const_technique_hint hint = instance_effect->technique_hint;
 		if(!hint->platform->empty()&&!platform_Filter.empty())
 		if(nullptr==platform_Filter.find(hint->platform))
 		{
@@ -267,7 +300,7 @@ struct FX::Loader::Load::Loading
 	{
 		*o = &((FX::DataFloat1*)_param)->Value.f0;
 	}
-	void Get_value(int,const Collada05_XSD::float4x4 &m, float **o)
+	void Get_value(int,const ColladaYY_XSD::_if_YY(float4x4,float4x4_type) &m, float **o)
 	{
 		#if 1==COLLADA_DOM_PRECISION
 		*o = const_cast<float*>(m.data()); }//#if
@@ -373,14 +406,16 @@ struct FX::Loader::Load::Loading_gl_pipeline_setting : public Load::Loading
 	}
 
 	//This is for use with daeContents::for_each_child().
-	void operator()(const const_daeChildRef &maybe__gl_pipeline_setting)
-	{	
+	template<class yy> void operator()(const yy &c)
+	{
+		const const_daeChildRef &maybe__gl_pipeline_setting = c;
+		
 		//This ensures genus cannot be mistaken.		
 		if(1==maybe__gl_pipeline_setting.name())
 		return;
 
 		element = *maybe__gl_pipeline_setting;
-		typedef Collada05::const_profile_CG::technique::pass 
+		typedef ColladaYY::const_profile_CG::technique::pass _if_YY(,::states) 
 		Lpass;
 		//Note: There's a cgGetConnectedStateAssignmentParameter 
 		//but no way to set it (CgFX can.)
@@ -396,18 +431,25 @@ struct FX::Loader::Load::Loading_gl_pipeline_setting : public Load::Loading
 		Loading::Setting<t>(__CreateStateAssignmentIndex\
 		(Cg_Pass,cgGetNamedState(Cg,#x),y),__VA_ARGS__);\
 		}break;	
+		#ifdef NDEBUG
+		#error Add states that are new in 1.5.0 if any.
+		#endif
 		_(AlphaFunc,0,float,alpha_func,e->func,e->value__ELEMENT)
 		_(AlphaTestEnable,0,unsigned,alpha_test_enable,e)
+		#if YY==5
 		_(AutoNormalEnable,0,unsigned,auto_normal_enable,e)
+		#endif
 		_(BlendEnable,0,unsigned,blend_enable,e)
 		_(BlendFunc,0,int,blend_func,e->src,e->dest)
 		_(BlendFuncSeparate,0,int,blend_func_separate,e->src_rgb,e->dest_rgb,e->src_alpha,e->dest_alpha)
 		_(BlendEquation,0,int,blend_equation,e)
 		_(BlendEquationSeparate,0,int,blend_equation_separate,e->rgb,e->alpha)
 		_(BlendColor,0,float,blend_color,e,e,e,e)
-		_(ClearColor,0,float,clear_color,e,e,e,e)
+		#if YY==5
+		_(ClearColor,0,float,clear_color,e,e,e,e)		
 		_(ClearStencil,0,int,clear_stencil,e)
 		_(ClearDepth,0,float,clear_depth,e)
+		#endif
 		_(ClipPlane,i,float,clip_plane,e,e,e,e)
 		_(ClipPlaneEnable,i,unsigned,clip_plane_enable,e)
 		_(ColorLogicOpEnable,0,unsigned,color_logic_op_enable,e)
@@ -513,6 +555,8 @@ struct FX::Loader::Load::Loading_gl_pipeline_setting : public Load::Loading
 template<class T>
 void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 {	
+	_profile_ = profile_; //Save for '08 shaders?
+
 	Load &Load = *this;
 	FX::NewParamable *c = e;
 	if(!profile_->newparam.empty())
@@ -523,7 +567,11 @@ void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 	}
 
 	//code in the profile elements may be used by one or more techniques
+	#if YY==5
 	Loading_script script(profile_->content);
+	#else
+	xs::string script = nullptr; //Ignore it?
+	#endif
 
 	//create and populate a FX::Technique for every technique in the cg profile	
 	for(size_t i=0;i<profile_->technique.size();i++)
@@ -535,20 +583,31 @@ void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 		if(technique->pass.empty()) continue;
 
 		//create a FX::Technique for every technique inside the cg profile
-		FX::Technique *tech = new FX::Technique(c,technique->sid);			
-		Load.newparam(technique->newparam,tech);
+		FX::Technique *tech = new FX::Technique(c,technique->sid);	
+		#if YY==5
+		Load.newparam(technique->newparam,tech);		
 		Load.setparam(technique->setparam,tech);
-		Load_annotate(technique->annotate,tech);
+		#endif
+		Load_annotate(technique->annotate,tech);		
 
 		//This truncates to the <profile_*> and appends <technique>.
+		#if YY==5
 		script = technique->content;
+		#endif
 						
 		//at least one pass is needed for the technique to do anything 
 		for(size_t i=0;i<technique->pass.size();i++)
 		{
 			T::technique::pass pass = technique->pass[i];
 			//now for drawing...  that isn't cgfx...  does it fit here???
-			if(!pass->draw.empty()&&"GEOMETRY"!=pass->draw->value)
+
+			T::technique::pass _if_YY(,::evaluate) eval;
+			#if YY==5
+			eval = pass;
+			#else
+			if(!pass->evaluate.empty()) eval = pass->evaluate;
+			#endif			
+			if(!eval->draw.empty()&&"GEOMETRY"!=eval->draw->value)
 			{
 				#ifdef NDEBUG
 				#error Is this for <scene> only? Or???
@@ -561,7 +620,7 @@ void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 				//pass->color_clear
 				//pass->depth_clear
 				//pass->stencil_clear
-				daeEH::Error<<"Not expecting <draw> mode "<<pass->draw->value;
+				daeEH::Error<<"Not expecting <draw> mode "<<eval->draw->value;
 				continue;
 			}
 
@@ -576,7 +635,6 @@ void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 			
 			//TEMPLATE-META-PROGRAMMING
 			//GLES doesn't have shaders.
-			if(!script.empty())
 			Load._profile_shaders<T>(pass,p,e,script); 
 			
 			tech->Passes.push_back(p);
@@ -585,29 +643,55 @@ void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 	}	
 }
 template<> 
-void FX::Loader::Load::_profile_shaders<Collada05::const_profile_GLES>
-(Collada05::const_profile_GLES::technique::pass,FX::Pass*,FX::Effect*,xs::string)
+void FX::Loader::Load::_profile_shaders<ColladaYY::const_profile_GLES>
+(ColladaYY::const_profile_GLES::technique::pass,FX::Pass*,FX::Effect*,xs::string)
 { /*NOP*/ }
 template<class T> 
 void FX::Loader::Load::_profile_shaders
 (typename T::technique::pass pass, FX::Pass *p, FX::Effect *e, xs::string script)
 {
-	for(size_t i=0;i<pass->shader.size();i++)
+	#if YY==5
+	typedef typename T::technique::pass Lprogram;
+	Lprogram &program = pass;
+	#else
+	typedef typename T::technique::pass::program Lprogram;
+	Lprogram program = pass->program;
+	if(program==nullptr) return;
+	Loading_script script_08(_profile_);
+	#endif
+	for(size_t i=0;i<program->shader.size();i++)
 	{
-		T::technique::pass::shader shader = pass->shader[i];
-		if(shader->name.empty()) 
-		continue;
+		Lprogram::shader shader = program->shader[i];
+		#if YY==8
+		if(!shader->sources.empty()) 
+		script_08 = shader->sources->content; 
+		else if(nullptr!=shader->compiler->binary)
+		{
+			daeEH::Warning<<"Skipping <binary> in COLLADA 1.5.0 shader.\n"
+			"(This will be implemented on demand.)";
+			continue;
+		}
+		else continue;
+		#endif
 
 		FX::Shader *sh = new FX::Shader
-		(p,*shader->stage.operator->(), //C++98/03 support		
+		(p,*shader->stage.operator->(),
+		#if YY==8		
+		shader->compiler->target->*"",		
+		shader->compiler->options->*"",shader->sources->entry->*"",script_08);		
+		#else
 		shader->compiler_target->value->*"",		
-		shader->compiler_options->value->*"",shader->name->value,script);
+		shader->compiler_options->value->*"",shader->name->value->*"",script);
 		Load_annotate(shader->annotate,sh);
+		#endif
 
 		//load the shader's parameters
+		#if YY==8
+		#define bind bind_uniform
+		#endif		
 		for(size_t i=0;i<shader->bind.size();i++)
 		{
-			T::technique::pass::shader::bind bind = shader->bind[i];
+			Lprogram::shader::bind bind = shader->bind[i];
 
 			union{ FX::BindParam *b; FX::BindParam_To *b2; };
 
@@ -617,7 +701,8 @@ void FX::Loader::Load::_profile_shaders
 
 			sh->Params.push_back(b);
 		}
-		p->Shaders.push_back(sh);
+		#undef bind
+		p->Shaders.push_back(sh);		
 	}
 }
 
@@ -632,65 +717,89 @@ COLLADA_(public) //Previously FX::Technique
 
 	size_t sizeof_profile_script;
 
+	daeSIDREF SIDREF; daeName profile;
+	Loading_script(xs::const_any &_08)
+	:SIDREF("",_08),profile(_08->getNCName())
+	,sizeof_profile_script()
+	{}
 	template<class T> Loading_script(T &profile_content)
 	{
 		profile_content->for_each_child(*this);
 		sizeof_profile_script = size();
 	}
-	template<class T> void operator=(T &technique_content)
+	template<class T> xs::string operator=(T &technique_content)
 	{
 		script.resize(sizeof_profile_script);
 		script.back() = '\0';
-		technique_content->for_each_child(*this);
-	}
+		technique_content->for_each_child(*this); return string;
+	}	
 
 	/**C++98/03 SUPPORT
 	 * This is used to fill out @c code in strict order.
 	 */ 
-	void operator()(const daeElement &include__or__code)
+	void operator()(const daeElement *e)
 	{
 		if(!script.empty()) script.pop_back();
 
+	  //// POINT OF NO RETURN //////////////////
+
 		//Care should be taken to extract these in order.
 		//Not extracting the typeID because of frequency.
-		if("code"==include__or__code.getNCName())
+		#if YY==8		
+		if("inline"==e->getNCName())
 		{
-			Collada05::const_code code = 
-			include__or__code->a<Collada05::const_code>();
+			//IDENTICAL TO <code> BELOW.
+			Collada08::const_inline code = e->a<Collada08::inline__alias>();
 			if(code!=nullptr)
-			script.insert(script.end(),
-			code->value->begin(),code->value->end());
+			script.insert(script.end(),code->value->begin(),code->value->end());
+			goto done;
 		}
-		else if("include"==include__or__code.getNCName())
+		else if("import"==e->getNCName())
 		{
-			Collada05::const_include include = 
-			include__or__code->a<Collada05::const_include>();
-			if(include==nullptr) 
-			return;
-
-			xs::anyURI URI = include->url; URI.resolve();
-
-			const daeDOM &DOM = *URI.getDOM();
-			daeIORequest req(&DOM,nullptr,&URI,&URI);
-
-			#ifdef NDEBUG
-			#error Would rather use req.fulfillRequestI.
-			#endif
-			//This is the system for mapping URIs to memory files.
-			daeIOSecond<> I(req);
-			daeIOEmpty O; 		
-			daePlatform &sys = DOM.getPlatform();
-			daeRAII::CloseIO _RAII(sys);
-			daeIO *IO = _RAII = sys.openIO(I,O);
-			if(IO==nullptr) 
-			return;  
-
-			size_t size = IO->getLock();
-			script.resize(script.size()+size);
-			if(!IO->readIn(&script.back()+1-size,size))
-			assert(0);
+			Collada08::const_import import = e->a<Collada08::import>();
+			if(import==nullptr) goto done;
+			SIDREF.setSIDREF(import->ref);
+			e = SIDREF.getTargetedFragment(profile); //FALLING-THRU
+			if(e==nullptr) goto done;
 		}
+		else goto done;
+		#endif
+		
+		if("code"==e->getNCName())
+		{
+			//IDENTICAL TO <inline> ABOVE.
+			ColladaYY::const_code code = e->a<ColladaYY::code>();
+			if(code!=nullptr)
+			script.insert(script.end(),code->value->begin(),code->value->end());
+		}
+		else if("include"==e->getNCName())
+		{
+			ColladaYY::const_include include = e->a<ColladaYY::include>();
+			if(include!=nullptr) 
+			{
+				xs::anyURI URI = include->url; URI.resolve();
 
+				const daeDOM &DOM = *URI.getDOM();
+				daeIORequest req(&DOM,nullptr,&URI,&URI);
+
+				#ifdef NDEBUG
+				#error Would rather use req.fulfillRequestI.
+				#endif
+				//This is the system for mapping URIs to memory files.
+				daeIOSecond<> I(req);
+				daeIOEmpty O; 		
+				daePlatform &sys = DOM.getPlatform();
+				daeRAII::CloseIO _RAII(sys);
+				daeIO *IO = _RAII = sys.openIO(I,O);
+				if(IO==nullptr) 
+				return;  
+
+				size_t size = IO->getLock();
+				script.resize(script.size()+size);
+				if(!IO->readIn(&script.back()+1-size,size))
+				assert(0);
+			}goto done; //C4102
+		}done:  
 		extent = script.size();
 		script.push_back('\0'); string = &script[0]; 
 	}

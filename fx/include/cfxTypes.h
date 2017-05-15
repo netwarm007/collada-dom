@@ -12,6 +12,23 @@
 
 COLLADA_(namespace)
 {
+	namespace DAEP
+	{
+		#define _ \
+		struct const_effect;\
+		struct const_image;\
+		struct const_material;
+		COLLADA_(http_www_collada_org_2005_11_COLLADASchema,namespace)
+		{
+			_
+		}
+		COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace)
+		{
+			_
+		}
+		#undef _
+	}
+
 	namespace FX
 	{
 	class Annotate;
@@ -184,31 +201,6 @@ struct Float4 : Float3
 	Float4(const FX::Float3 &c, float aa=1)
 	{
 		r = c.r; g = c.g; b = c.b; a = aa;
-	}
-
-	//There is disabled code that uses this.
-	inline void Set(int i, float f)
-	{
-		switch(i)
-		{
-		case 0: x = f; break;
-		case 1: y = f; break;
-		case 2: z = f; break;
-		case 3: w = f; break;
-		};
-	}
-
-	//THIS IS UNUSED.
-	inline float Get(int i)
-	{
-		switch(i)
-		{
-		case 0: return x;
-		case 1: return y;
-		case 2: return z;
-		case 3: return w;
-		};
-		return 0;
 	}
 
 	//THIS IS UNUSED.

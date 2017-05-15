@@ -154,11 +154,13 @@ static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
 
 bool RT::Image::Refresh()
 {
-	daeURI absURI; absURI.setURI(DocURI,URL); 
+	//Assuming <hex> or embedded image if so.
+	if(URL==nullptr) return true;
+
+	daeURI absURI; absURI.setURI_and_resolve(DocURI,URL); 
 
 	daeIORequest req(&RT::Main.DOM,nullptr,&absURI,&absURI);	
 
-	req.resolve();
 	daeEH::Verbose<<"Refreshing Texture...\n"
 	"Resource is "<<absURI.getURI();
 
@@ -179,15 +181,12 @@ bool RT::Image::Refresh()
 		//Create Nearest Filtered Texture
 		glBindTexture(GL_TEXTURE_2D,TexId);
 		
-		//There was no power-2 code in the legacy code.
-		//This scenario needs to be checked/dealt with.
-		assert(Width/2==Width>>1&&Height/2==Height>>1);
-
+		glGetError();
 		//2017: Remove GLU dependency.
 		//This API calls glTexImage2D.
 		//gluBuild2DMipmaps(GL_TEXTURE_2D,Format,Width,Height,Format,GL_UNSIGNED_BYTE,Data);
 		glTexImage2D(GL_TEXTURE_2D,0,Format,Width,Height,0,Format,GL_UNSIGNED_BYTE,Data);
-		
+		assert(!glGetError());		
 		//Note: cfxSampler.cpp does this according to the min-filter.
 		//(So this--while harmless--may not be right place for this.)
 		if(mipmap==GL_LINEAR_MIPMAP_LINEAR)
@@ -199,6 +198,7 @@ bool RT::Image::Refresh()
 			GL.GenerateMipmap(GL_TEXTURE_2D); //glGenerateMipmap
 			#endif
 		}
+		assert(!glGetError());
 
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,mipmap);

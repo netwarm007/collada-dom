@@ -7,8 +7,20 @@
  */
 #include <RT.pch.h> //PCH
 
-#include "CrtNode.h"
-#include "CrtScene.h"
+#include "CrtTypes.h" 
+#ifndef YY
+COLLADA_(namespace)
+{	
+	namespace RT
+	{	
+		#define YY 5 //MSVC2015 wants RT::??
+		namespace ColladaYY = RT::Collada05;
+		namespace ColladaYY_XSD = Collada05_XSD;	
+		#define _if_YY(x,y) x
+	}
+}
+#endif 
+#include "CrtScene.h" //Checks YY
 #include "CrtRender.h"
 #include "CrtTexture.h"
 #include "CrtLight.h"
@@ -23,6 +35,71 @@ COLLADA_(namespace)
 	namespace RT
 	{//-.
 //<-----'
+
+template<class T=xs::const_any> 
+struct AccessorYY : RT::Accessor<T,ColladaYY::const_mesh::source>
+{ 
+	template<class T> 
+	AccessorYY(const T &c):Accessor(c)
+	{} 
+};
+template<> //This is short hand.
+struct AccessorYY<float> : RT::AccessorYY<ColladaYY::const_float_array>
+{
+	template<class T>
+	AccessorYY(const T &c):RT::AccessorYY<ColladaYY::const_float_array>(c)
+	{}
+};
+	
+template<class T>
+inline void RT::Frame_Asset::_OverrideWith(const daeElement *e)
+{
+	DAEP::Schematic<T>::schema yy;
+
+	T &t = *(T*)&e; if(!t->asset.empty()) 
+	{	
+		//Can't stop unless both are supplied.
+		typename T::asset asset = t->asset;
+		if(!asset->up_axis.empty())
+		{
+			if(!asset->unit.empty())
+			Meter = asset->unit->meter;
+			else _operator_YY(e->getParent(),yy);
+			Up = asset->up_axis->value; return;
+		}
+		else if(!asset->unit.empty())
+		{
+			_operator_YY(e->getParent(),yy);
+			Meter = asset->unit->meter; return;
+		}		
+	}
+	_operator_YY(e->getParent(),yy);
+} 
+void RT::Frame_Asset::_operator_YY
+(const daeElement *e, _if_YY(Collada05_XSD,Collada08_XSD)::__NB__ yy)
+{
+	if(e==nullptr)
+	{
+		Up = RT::Up::Y_UP; Meter = 1;
+	}
+	else switch(e->getElementType())
+	{
+	#define _(x) \
+	case DAEP::Schematic<ColladaYY::x>::genus:\
+	return _OverrideWith<ColladaYY::const_##x>(e);
+	//This list is concerned with up_axis/unit.
+	//(It may be incomplete.)		
+	_(COLLADA)
+	_(library_nodes)_(node)	
+	_(library_visual_scenes)_(visual_scene)
+	_(library_physics_scenes) _(physics_scene)
+	_(library_physics_models) _(physics_model)		
+	//Assuming <source><asset> doesn't specify up/meter.
+	_(library_geometries)_(geometry)
+	#undef _
+	default: _operator_YY(e->getParent(),yy);
+	}
+}
 
 //Adding this so these values can
 //be hooked up if needed later on.
@@ -68,7 +145,7 @@ struct RT::DBase::LoadLight_technique_common
 {
 	RT::Light *light;
 	LoadLight_technique_common(RT::Light *l, 
-	Collada05::const_light::technique_common in):light(l)
+	ColladaYY::const_light::technique_common in):light(l)
 	{		
 		if(in==nullptr) return;
 
@@ -91,7 +168,7 @@ struct RT::DBase::LoadLight_technique_common
 		else if(!in->spot.empty())
 		{
 			light->Type = RT::Light_Type::POINT;
-			Collada05::const_spot spot = in->spot;			
+			ColladaYY::const_spot spot = in->spot;			
 			LoadTargetable_of(spot->color,light->Color);
 			Load_attenuation(*spot);
 			LoadTargetable_of(spot->falloff_angle,light->FalloffAngle);
@@ -105,7 +182,7 @@ struct RT::DBase::LoadLight_technique_common
 		LoadTargetable_of(in.quadratic_attenuation,light->QuadraticAttenuation);
 	}
 };
-RT::Light *RT::DBase::LoadLight(Collada05::const_light in)
+RT::Light *RT::DBase::LoadLight(ColladaYY::const_light &in)
 {
 	if(in==nullptr) return nullptr;
 	RT::Light *out = GetLight(in);
@@ -125,7 +202,7 @@ struct RT::DBase::LoadCamera_technique_common
 {
 	RT::Camera *out;
 	LoadCamera_technique_common(RT::Camera *cm,
-	Collada05::const_optics::technique_common in):out(cm)
+	ColladaYY::const_optics::technique_common in):out(cm)
 	{
 		if(in!=nullptr)
 		if(!in->orthographic.empty()) Load_shape(*in->orthographic);
@@ -141,7 +218,7 @@ struct RT::DBase::LoadCamera_technique_common
 		if(LoadTargetable_of(in.zfar,out->ZFar)) 
 		out->ZFar*=RT::Asset.Meter;
 	}
-	void Load_shape_2(const DAEP::Schematic<Collada05::orthographic>::type &in)
+	void Load_shape_2(const DAEP::Schematic<ColladaYY::orthographic>::type &in)
 	{
 		#ifdef NDEBUG
 		#error It should be easy to fix this since X/Ymag shouldn't be 0.
@@ -150,13 +227,13 @@ struct RT::DBase::LoadCamera_technique_common
 		LoadTargetable_of(in.xmag,out->Xmag); out->Xfov = 0;
 		LoadTargetable_of(in.ymag,out->Ymag); out->Yfov = 0;
 	}
-	void Load_shape_2(const DAEP::Schematic<Collada05::perspective>::type &in)
+	void Load_shape_2(const DAEP::Schematic<ColladaYY::perspective>::type &in)
 	{
 		LoadTargetable_of(in.xfov,out->Xfov); out->Xmag = 0;
 		LoadTargetable_of(in.yfov,out->Yfov); out->Ymag = 0;
 	}
 };
-RT::Camera *RT::DBase::LoadCamera(Collada05::const_camera in)
+RT::Camera *RT::DBase::LoadCamera(ColladaYY::const_camera &in)
 {
 	if(in==nullptr) return nullptr;	
 	RT::Camera *out = GetCamera(in);
@@ -176,9 +253,9 @@ struct RT::DBase::LoadEffect_profile_COMMON
 {
 	RT::Effect *out;
 	RT::DBase *dbase; 	
-	Collada05::const_profile_COMMON profile_COMMON; 
+	ColladaYY::const_profile_COMMON profile_COMMON; 
 	const daeDocument *doc;
-	LoadEffect_profile_COMMON(RT::DBase *db, RT::Effect *ef, Collada05::const_effect &ef2)
+	LoadEffect_profile_COMMON(RT::DBase *db, RT::Effect *ef, ColladaYY::const_effect &ef2)
 	:dbase(db),out(ef),doc(dae(ef2)->getDocument())
 	{
 		#ifdef NDEBUG
@@ -188,15 +265,25 @@ struct RT::DBase::LoadEffect_profile_COMMON
 		if(profile_COMMON==nullptr)
 		return;
 
-		for(size_t i=0;i<profile_COMMON->image.size();i++)				
-		dbase->LoadImage(profile_COMMON->image[i]);
+		#if YY==5
+		for(size_t i=0;i<profile_COMMON->image.size();i++)	
+		{
+			Collada05::const_image yy = profile_COMMON->image[i];
+			dbase->LoadImage(yy);
+		}
+		#endif
 
-		Collada05::const_profile_COMMON::technique technique;
+		ColladaYY::const_profile_COMMON::technique technique;
 		technique = profile_COMMON->technique;
 		if(technique!=nullptr)
 		{
+			#if YY==5
 			for(size_t i=0;i<technique->image.size();i++)
-			dbase->LoadImage(technique->image[i]);
+			{
+				Collada05::const_image yy = technique->image[i];
+				dbase->LoadImage(yy);
+			}
+			#endif
 
 			//This support is really basic, since the shader models don't descend from a common type
 			//we have to handle each one individually.  There can only be one in the technique.
@@ -236,11 +323,12 @@ struct RT::DBase::LoadEffect_profile_COMMON
 		Load_float_or_param(constant.transparency,out->Transparency);			
 		Load_float_or_param(constant.index_of_refraction,out->RefractiveIndex);
 	}
-	void Load_float_or_param(const Collada05_XSD::common_float_or_param_type *in, float &o)
+	void Load_float_or_param(const ColladaYY_XSD::
+	_if_YY(common_float_or_param_type,fx_common_float_or_param_type) *in, float &o)
 	{
 		if(in!=nullptr&&!LoadTargetable_of(in->float__alias,o)&&!in->param.empty())
 		{
-			Collada05::const_profile_COMMON::newparam newparam;
+			ColladaYY::const_profile_COMMON::newparam newparam;
 			dae(profile_COMMON)->sidLookup(in->param->ref,newparam,doc);
 			if(newparam!=nullptr) LoadTargetable_of(newparam->float__alias,o);
 		}
@@ -252,10 +340,12 @@ struct RT::DBase::LoadEffect_profile_COMMON
 		const typename T::XSD::type &in = *child;				
 		if(LoadTargetable_of(in.color,o)) return;
 	
-		typedef Collada05::const_profile_COMMON::newparam Lnewparam;
+		typedef ColladaYY::const_profile_COMMON::newparam Lnewparam;
 		Lnewparam newparam;
 		if(!in.texture.empty())
 		{
+			ColladaYY::const_image yy;
+			#if YY==5
 			//1.4.1 IS RIDICULOUS?!?!
 			//The texture image is three levels of indirection away!						
 			Lnewparam::sampler2D::source source = //1
@@ -268,12 +358,16 @@ struct RT::DBase::LoadEffect_profile_COMMON
 				{
 					//REMINDER: init_from IS AN ARRAY.
 					assert(1==surface->init_from.size());
-					RT::Image *texture = dbase->LoadImage //3
-					(doc->idLookup<Collada05::image>(surface->init_from->value));
-					if(texture!=nullptr) 
-					out->Textures.push_back(texture); //OK!
+					doc->idLookup(surface->init_from->value,yy); //3
 				}
 			}
+			#else //8
+			xs::anyURI URI(dae(profile_COMMON)->sidLookup
+			(in.texture->texture,newparam,doc)->sampler2D->instance_image->url->*"",doc);
+			yy = URI.get<Collada08::image>();			
+			#endif
+			RT::Image *texture = dbase->LoadImage(yy);
+			if(texture!=nullptr) out->Textures.push_back(texture);
 			//The COMMON profile doesn't modulate textures.
 			o = FX::Float4(1);
 		}
@@ -293,7 +387,7 @@ struct RT::DBase::LoadEffect_profile_COMMON
 		}
 	}
 };
-RT::Effect *RT::DBase::LoadEffect(Collada05::const_effect in)
+RT::Effect *RT::DBase::LoadEffect(ColladaYY::const_effect &in)
 {
 	if(in==nullptr) return nullptr;
 	RT::Effect *out = GetEffect(in);
@@ -301,8 +395,13 @@ RT::Effect *RT::DBase::LoadEffect(Collada05::const_effect in)
 	
 	daeEH::Verbose<<"Adding new Effect "<<in->id;
 
-	for(size_t i=0;i<in->image.size();i++)		
-	LoadImage(in->image[i]);
+	#if YY==5
+	for(size_t i=0;i<in->image.size();i++)	
+	{
+		Collada05::const_image yy = in->image[i];
+		LoadImage(yy);
+	}
+	#endif
 	
 	out = COLLADA_RT_new(RT::Effect);
 	out->Id = in->id; out->DocURI = RT::DocURI(in);
@@ -314,7 +413,7 @@ RT::Effect *RT::DBase::LoadEffect(Collada05::const_effect in)
 	Effects.push_back(out); return out;
 }
 
-RT::Material *RT::DBase::LoadMaterial(Collada05::const_material in)
+RT::Material *RT::DBase::LoadMaterial(ColladaYY::const_material &in)
 {
 	if(in==nullptr) return nullptr;	
 	RT::Material *out = GetMaterial(in);
@@ -322,8 +421,8 @@ RT::Material *RT::DBase::LoadMaterial(Collada05::const_material in)
 
 	const daeDocument *doc = dae(in)->getDocument();
 	
-	Collada05::const_effect effect = 
-	xs::anyURI(in->instance_effect->url->*"",doc).get<Collada05::effect>();
+	ColladaYY::const_effect effect = 
+	xs::anyURI(in->instance_effect->url->*"",doc).get<ColladaYY::effect>();
 	if(effect==nullptr) return nullptr;
 
 	daeEH::Verbose<<"Adding new Material "<<in->id<<"...\n"
@@ -356,7 +455,7 @@ struct RT::DBase::LoadGeometry_technique_common
 	template<class mesh_or_convex_mesh>
 	void Load_mesh(mesh_or_convex_mesh &in)
 	{
-		Collada05::const_vertices vertices = in.vertices;
+		ColladaYY::const_vertices vertices = in.vertices;
 		if(vertices!=nullptr)
 		{
 			inputs = Inputs(vertices->input,doc);			
@@ -377,7 +476,7 @@ struct RT::DBase::LoadGeometry_technique_common
 		Load_p<-2>(in.lines); Load_p<-1>(in.linestrips);	
 	}
 	RT::Geometry *out; const daeDocument *doc;		
-	LoadGeometry_technique_common(RT::Geometry *out, Collada05::const_geometry &in)
+	LoadGeometry_technique_common(RT::Geometry *out, ColladaYY::const_geometry &in)
 	:out(out),doc(dae(in)->getDocument())
 	{		
 		if(!in->mesh.empty())
@@ -417,14 +516,14 @@ struct RT::DBase::LoadGeometry_technique_common
 		template<class input>
 		Inputs(input &in, const daeDocument *doc):max_offset()
 		{
-			RT::Accessor05 array(doc);
+			RT::AccessorYY<float> array(doc);
 			for(size_t i=0;i<in.size();i++)
 			{
 				Input *set = _SetOffset(*in[i]);
 				if(set==nullptr) continue;
 				
 				array.bind(in[i]);
-				set->source = array;
+				set->source = COLLADA_RT_cast(float_array,array);
 				if(array==nullptr) continue;
 
 				set->count = array.accessor->count;
@@ -432,13 +531,15 @@ struct RT::DBase::LoadGeometry_technique_common
 				set->source.Stride = array.accessor->stride;
 			}
 		}
-		Input *_SetOffset(const Collada05_XSD::InputLocal &in_i)
+		Input *_SetOffset(const ColladaYY_XSD::
+		_if_YY(InputLocal,input_local_type) &in_i)
 		{
 			if("POSITION"==in_i.semantic) return &position;			
 			if("NORMAL"==in_i.semantic) return &normal;			
 			return "TEXCOORD"==in_i.semantic?&texture0:nullptr;
 		}
-		Input *_SetOffset(const Collada05_XSD::InputLocalOffset &in_i)
+		Input *_SetOffset(const ColladaYY_XSD::
+		_if_YY(InputLocalOffset,input_local_offset_type) &in_i)
 		{
 			int os = (int)in_i.offset;
 			if(max_offset<=os) max_offset = os+1; 		
@@ -538,22 +639,22 @@ struct RT::DBase::LoadGeometry_technique_common
 	}
 	template<int M, class T> void Load_p_1(T &in_i)
 	{									   
-		Collada05::const_p p = in_i.p;
+		ColladaYY::const_p p = in_i.p;
 		Triangulate<M>(p,p->value->size()/inputs.max_offset);
 	}	
 	template<int M, class T> void Load_p_N(T &in_i)
 	{
 		for(size_t i=0;i<in_i.p.size();i++)
 		{
-			Collada05::const_p p = in_i.p[i];			
+			ColladaYY::const_p p = in_i.p[i];			
 			Triangulate<M>(p,p->value->size()/inputs.max_offset);
 		}
 	}	
-	template<> void Load_p_N<0>(const Collada05_XSD::polylist &in_i)
+	template<> void Load_p_N<0>(const ColladaYY_XSD::_if_YY(polylist,polylist_type) &in_i)
 	{	
 		GLuint restart = 0;
-		Collada05::const_p p = in_i.p;		
-		Collada05::const_vcount vcount = in_i.vcount;
+		ColladaYY::const_p p = in_i.p;		
+		ColladaYY::const_vcount vcount = in_i.vcount;
 		//<vcount> is not required, but the manual doesn't say what to do without it.
 		if(vcount==nullptr) 
 		{	
@@ -572,7 +673,7 @@ struct RT::DBase::LoadGeometry_technique_common
 			Triangulate<0>(p,vcount->value[i],restart); restart+=vcount->value[i];
 		}
 	}
-	template<int M> void Triangulate(Collada05::const_p &p, size_t count, GLuint restart=0)
+	template<int M> void Triangulate(ColladaYY::const_p &p, size_t count, GLuint restart=0)
 	{
 		if(0==count) return;	
 
@@ -617,7 +718,7 @@ struct RT::DBase::LoadGeometry_technique_common
 		}
 	}		
 };
-RT::Geometry *RT::DBase::LoadGeometry(Collada05::const_geometry in)
+RT::Geometry *RT::DBase::LoadGeometry(ColladaYY::const_geometry &in)
 {
 	if(in==nullptr||!RT::Main.LoadGeometry)
 	return nullptr;
@@ -658,7 +759,7 @@ RT::Geometry *RT::DBase::LoadGeometry(Collada05::const_geometry in)
 	Geometries.push_back(out); return out;
 }
 
-RT::Image *RT::DBase::LoadImage(Collada05::const_image in)
+RT::Image *RT::DBase::LoadImage(ColladaYY::const_image &in)
 {
 	if(in==nullptr||!RT::Main.LoadImages)
 	return nullptr;
@@ -670,8 +771,23 @@ RT::Image *RT::DBase::LoadImage(Collada05::const_image in)
 	out = COLLADA_RT_new(RT::Image);
 	out->Id = in->id; out->DocURI = RT::DocURI(in);
 
+	#if YY==5
 	//FYI: This is a relative URI (relative to DocURI.)
 	out->URL = in->init_from->value;
+	#else
+	if(!in->init_from->hex.empty())
+	{
+		Collada08::const_image::init_from::hex 
+		hex = in->init_from->hex;
+		if(!hex->value->empty())
+		{
+			if(hex->value->size()>1)
+			daeEH::Warning<<"Using only the first data-block in multi-block <hex> image "<<out->Id;
+			out->Init(hex->format,hex->value[0]);
+		}
+	}
+	else out->URL = in->init_from->ref->value->*"";
+	#endif
 
 	//load the actual image passing in the current file name 
 	//to first look relative to the current <file>_Textures
@@ -686,7 +802,7 @@ RT::Image *RT::DBase::LoadImage(Collada05::const_image in)
 struct RT::DBase::LoadAnimation_channel
 {	
 	RT::Animation *out; const daeDocument *doc;
-	LoadAnimation_channel(RT::Animation *out, Collada05::const_animation &in)
+	LoadAnimation_channel(RT::Animation *out, ColladaYY::const_animation &in)
 	:out(out),doc(dae(in)->getDocument()) //...
 	,INPUT(doc),OUTPUT(doc),IN_TANGENT(doc),OUT_TANGENT(doc),INTERPOLATION(doc)		
 	{
@@ -696,9 +812,9 @@ struct RT::DBase::LoadAnimation_channel
 		if(out->Channels.empty()) daeEH::Warning<<"No <channel> remains/exists.";
 	}		
 	daeSIDREF SIDREF;
-	RT::Accessor05 INPUT,OUTPUT,IN_TANGENT,OUT_TANGENT;		
-	RT::Accessor<Collada05::const_Name_array> INTERPOLATION;
-	void SetSamplerInput(Collada05::const_sampler::input in)
+	RT::AccessorYY<float> INPUT,OUTPUT,IN_TANGENT,OUT_TANGENT;		
+	RT::AccessorYY<ColladaYY::const_Name_array> INTERPOLATION;
+	void SetSamplerInput(ColladaYY::const_sampler::input in)
 	{						  
 		if(in->semantic=="INPUT") INPUT.bind(in);
 		else if(in->semantic=="OUTPUT") OUTPUT.bind(in);
@@ -707,7 +823,7 @@ struct RT::DBase::LoadAnimation_channel
 		else if(in->semantic=="INTERPOLATION") INTERPOLATION.bind(in);
 		else daeEH::Warning<<"Unrecognized <sampler> semantic: "<<in->semantic;
 	}			
-	void Load(Collada05::const_channel in)
+	void Load(ColladaYY::const_channel in)
 	{	
 		daeRefRequest req;
 		SIDREF = in->target;
@@ -736,7 +852,7 @@ struct RT::DBase::LoadAnimation_channel
 		INPUT.bind(); IN_TANGENT.bind();
 		OUTPUT.bind(); OUT_TANGENT.bind(); INTERPOLATION.bind();
 		{
-			Collada05::const_sampler sampler;			
+			ColladaYY::const_sampler sampler;			
 			if(doc->idLookup(in->source,sampler)!=nullptr)
 			for(size_t i=0;i<sampler->input.size();i++)
 			SetSamplerInput(sampler->input[i]);
@@ -759,7 +875,7 @@ struct RT::DBase::LoadAnimation_channel
 		//so much information for no purpose. But there
 		//is still this problem of transposing <matrix>.
 		if(!RT::Matrix_is_COLLADA_order
-		&&nullptr!=req->a<Collada05::matrix>()) if(jN==1) 
+		&&nullptr!=req->a<ColladaYY::matrix>()) if(jN==1) 
 		{
 			ch.Target.Min =
 			ch.Target.Max = ch.Target.Min%4*4+ch.Target.Min/4;
@@ -816,7 +932,7 @@ struct RT::DBase::LoadAnimation_channel
 		out->TimeMax = std::max(out->TimeMax,p[-ch.PointSize].GetParameters()[0]);
 	}
 };
-void RT::DBase::LoadAnimation(Collada05::const_animation in)
+void RT::DBase::LoadAnimation(ColladaYY::const_animation &in)
 {						
 	assert(RT::Main.LoadAnimations);
 
@@ -833,7 +949,11 @@ void RT::DBase::LoadAnimation(Collada05::const_animation in)
 
 	//RECURSIVE
 	Animations.push_back(out);
-	for(size_t i=0;i<in->animation.size();i++) LoadAnimation(in->animation[i]);	
+	for(size_t i=0;i<in->animation.size();i++) 
+	{
+		ColladaYY::const_animation yy = in->animation[i];
+		LoadAnimation(yy);	
+	}
 }
 
 struct RT::DBase::LoadController_skin
@@ -843,7 +963,7 @@ struct RT::DBase::LoadController_skin
 	
 	RT::Skin *out; 
 	LoadController_skin(daeName &src,
-	RT::Controller *con, Collada05::const_skin in)
+	RT::Controller *con, ColladaYY::const_skin in)
 	:out(dynamic_cast<RT::Skin*>(con))
 	,JOINT_offset(-1)
 	,WEIGHT_offset(-1),WEIGHT_array(in),inputs_max_offset()
@@ -852,10 +972,10 @@ struct RT::DBase::LoadController_skin
 
 		LoadTargetable_of(in->bind_shape_matrix,out->BindShapeMatrix);		
 	
-		RT::Accessor<> array(in);
-		Collada05::const_Name_array SIDs;
-		Collada05::const_IDREF_array IDREFs;		
-		Collada05::const_joints joints = in->joints;						
+		RT::AccessorYY<> array(in);
+		ColladaYY::const_Name_array SIDs;
+		ColladaYY::const_IDREF_array IDREFs;		
+		ColladaYY::const_joints joints = in->joints;						
 		if(joints!=nullptr)
 		for(size_t i=0;i<joints->input.size();i++)
 		{
@@ -869,8 +989,8 @@ struct RT::DBase::LoadController_skin
 			}
 			else if("JOINT"==semantic)
 			{
-				SIDs = array->a<Collada05::Name_array>();
-				IDREFs = array->a<Collada05::IDREF_array>();
+				SIDs = array->a<ColladaYY::Name_array>();
+				IDREFs = array->a<ColladaYY::IDREF_array>();
 				out->Using_IDs_to_FindJointNode = IDREFs!=nullptr;
 				if(out->Using_IDs_to_FindJointNode||SIDs!=nullptr)	
 				array.get(out->Joints,SIDs->value->*IDREFs->value);
@@ -880,6 +1000,11 @@ struct RT::DBase::LoadController_skin
 		{
 			if(RT::Asset.Up!=RT::Up::Y_UP)
 			{
+				#ifdef NDEBUG
+				#error Try to understand/document this.
+				#error It's not swapping/flipping basis vectors.
+				#error Is it necessary to swap/cancel signs as with <matrix>?
+				#endif
 				RT::Matrix up;
 				RT::MatrixLoadAsset(up,RT::Asset.Up);				
 				//Two multiplies translates into a coordinate system
@@ -907,11 +1032,11 @@ struct RT::DBase::LoadController_skin
 			}
 		}
 
-		Collada05::const_vertex_weights
+		ColladaYY::const_vertex_weights
 		vertex_weights = in->vertex_weights;				
 		if(vertex_weights!=nullptr)
 		{
-			Collada05::const_vertex_weights::input input;
+			ColladaYY::const_vertex_weights::input input;
 			for(size_t i=0;i<vertex_weights->input.size();i++)
 			{
 				input = vertex_weights->input[i];
@@ -952,11 +1077,11 @@ struct RT::DBase::LoadController_skin
 		if(0==inputs_max_offset||JOINT_offset<0||WEIGHT_offset<0||WEIGHT_array==nullptr)
 		return;
 		inputs_max_offset+=1; 
-	  //template<> void Load_p_N<0>(const Collada05_XSD::polylist &in_i)
+	  //template<> void Load_p_N<0>(const ColladaYY_XSD::polylist &in_i)
 	  //{	
 			GLuint restart = 0;
-			Collada05::const_v v = vertex_weights->v;	
-			Collada05::const_vcount vcount = vertex_weights->vcount;
+			ColladaYY::const_v v = vertex_weights->v;	
+			ColladaYY::const_vcount vcount = vertex_weights->vcount;
 			if(v==nullptr||0!=v->value->size()%inputs_max_offset)
 			{
 				daeEH::Error<<"<v> size is not a multiple of <input> offsets.";
@@ -981,8 +1106,8 @@ struct RT::DBase::LoadController_skin
 			}
 	  //}
 	}
-	RT::Accessor05 WEIGHT_array;
-	void Weight(Collada05::const_v &v, GLuint count, GLuint restart=0)
+	RT::AccessorYY<float> WEIGHT_array;
+	void Weight(ColladaYY::const_v &v, GLuint count, GLuint restart=0)
 	{
 		std::vector<RT::Skin_Weight> &buf = out->Weights; 
 		
@@ -1035,24 +1160,24 @@ struct RT::DBase::LoadController_morph
 {
 	RT::Morph *out;
 	LoadController_morph(daeName &src, 
-	RT::Controller *con, RT::DBase *db, Collada05::const_morph in)	
+	RT::Controller *con, RT::DBase *db, ColladaYY::const_morph in)	
 	:out(dynamic_cast<RT::Morph*>(con))
 	{
 		src = in->source__ATTRIBUTE;
 															
 		//Will this shorthand work?
-		//if(Collada05::morph::method_MorphMethodType::RELATIVE==in->method)
+		//if(ColladaYY::morph::method_MorphMethodType::RELATIVE==in->method)
 		if(in->method==in->method->RELATIVE)
 		out->Using_RELATIVE_method = true;
 
 		//COLLADA never actually supported morph animation???
 		//https://www.khronos.org/collada/wiki/Morph_weights_KHR_extension		
-		Collada05::const_float_array array_target;
-		Collada05::const_morph::source source_target;
+		ColladaYY::const_float_array array_target;
+		ColladaYY::const_morph::source source_target;
 		
-		RT::Accessor<> array(in); 
+		RT::AccessorYY<> array(in); 
 		size_t weightsN = 0, targetsN = 0;
-		Collada05::const_targets targets = in->targets;		
+		ColladaYY::const_targets targets = in->targets;		
 		if(targets!=nullptr)
 		for(size_t i=0;i<targets->input.size();i++)
 		{
@@ -1083,9 +1208,9 @@ struct RT::DBase::LoadController_morph
 				//NOTE: hack_morph_weight_id makes more sense. But,
 				//-its support is poor, because it relies on SID-less SIDREFs,
 				//-and the ID must be in the same document as the <animation><channel>.				
-				array_target = array->a<Collada05::float_array>();
-				source_target = //Removing RT::Accessor::source.
-				dae(array)->getAncestor<Collada05::morph::source>();
+				array_target = array->a<ColladaYY::float_array>();
+				source_target = //Removing RT::AccessorYY::source.
+				dae(array)->getAncestor<ColladaYY::morph::source>();
 				if(array_target!=nullptr) 
 				for(j=0;j<jN;j++) 
 				if(1!=array.get1at(j,j0[j].Weight,array_target->value))
@@ -1093,8 +1218,8 @@ struct RT::DBase::LoadController_morph
 			}
 			else if(&targetsN==counter)
 			{
-				Collada05::const_IDREF_array 
-				IDREF_array = array->a<Collada05::IDREF_array>();
+				ColladaYY::const_IDREF_array 
+				IDREF_array = array->a<ColladaYY::IDREF_array>();
 				if(IDREF_array!=nullptr)
 				{
 					const void *id; //Avoiding daeStringRef construction.
@@ -1103,8 +1228,9 @@ struct RT::DBase::LoadController_morph
 					const daeDocument *doc2 = dae(IDREF_array)->getDocument();
 					for(j=0;j<jN&&1==array.get1at(j,id,IDREF_array->value);j++)
 					{
-						j0[j].Vertices = 
-						db->LoadGeometry(doc2->idLookup<Collada05::geometry>(id));
+						ColladaYY::const_geometry yy = 
+						doc2->idLookup<ColladaYY::geometry>(id);
+						j0[j].Vertices = db->LoadGeometry(yy);
 						if(nullptr==j0[j].Vertices)
 						daeEH::Error<<"Missed <morph> target. Are <controller> valid targets?";						
 					}
@@ -1126,7 +1252,7 @@ struct RT::DBase::LoadController_morph
 		}
 	}
 };
-RT::Controller *RT::DBase::LoadController(Collada05::const_controller in)
+RT::Controller *RT::DBase::LoadController(ColladaYY::const_controller &in)
 {
 	if(in==nullptr) return nullptr;
 	RT::Controller *out = GetController(in);
@@ -1146,8 +1272,13 @@ RT::Controller *RT::DBase::LoadController(Collada05::const_controller in)
 	out->Id = in->id; out->DocURI = RT::DocURI(in);
 	
 	xs::const_any source = xs::anyURI(src,in)->get<xs::any>();
-	out->Geometry = LoadGeometry(source->a<Collada05::geometry>());
-	out->Source = LoadController(source->a<Collada05::controller>());	
+	ColladaYY::const_geometry yy = source->a<ColladaYY::geometry>();
+	if(yy==nullptr)
+	{
+		ColladaYY::const_controller yy = source->a<ColladaYY::controller>();
+		out->Source = LoadController(yy);	
+	}
+	else out->Geometry = LoadGeometry(yy);
 	if(out->Geometry==nullptr) 
 	if(out->Source==nullptr)
 	{
@@ -1181,34 +1312,34 @@ struct RT::DBase::LoadScene_Physics
 
 	xs::anyURI URI; daeSIDREF SIDREF;
 	RT::DBase *dbase;	
-	Collada05::const_visual_scene visual_scene;
-	Collada05::const_physics_model physics_model;
+	ColladaYY::const_visual_scene visual_scene;
+	ColladaYY::const_physics_model physics_model;
 	std::vector<std::pair<int,RT::PhysicsModel*>> bodies;
-	LoadScene_Physics(RT::DBase *db, Collada05::const_scene &in)
+	LoadScene_Physics(RT::DBase *db, ColladaYY::const_scene &in)
 	:dbase(db),SIDREF("",in),have_bodies()
 	,URI(in->instance_visual_scene->url->*"",in)		
 	{		
-		visual_scene = URI.get<Collada05::visual_scene>();
+		visual_scene = URI.get<ColladaYY::visual_scene>();
 	}
-	void Load(Collada05::const_scene &in)
+	void Load(ColladaYY::const_scene &in)
 	{
 		if(!RT::Physics::OK||in->instance_physics_scene.empty()) 
 		return;
 
 		RT::Main.Physics.Init(); 
 
-		Collada05::const_physics_scene physics_scene;
+		ColladaYY::const_physics_scene physics_scene;
 		for(size_t i=0;i<in->instance_physics_scene.size();i++)
 		{	
 			URI = in->instance_physics_scene[i]->url;
-			physics_scene = URI.get<Collada05::physics_scene>();			 
+			physics_scene = URI.get<ColladaYY::physics_scene>();			 
 			if(physics_scene==nullptr) continue;
 
 			RT::Main_Asset _RAII(physics_scene/*->asset*/);
 			#ifdef NDEBUG
 			#error This is per scene gravity
 			#endif
-			Collada05::const_gravity gravity = physics_scene->technique_common->gravity;
+			ColladaYY::const_gravity gravity = physics_scene->technique_common->gravity;
 			if(gravity!=nullptr)
 			{
 				RT::Float x,y,z; if(3==gravity->value->get3at(0,x,y,z))
@@ -1227,7 +1358,7 @@ struct RT::DBase::LoadScene_Physics
 			if(!lg) RT::Main.LoadGeometry = false;
 		}
 	}
-	RT::PhysicsModel *LoadPhysicsModel(Collada05::const_physics_model in)
+	RT::PhysicsModel *LoadPhysicsModel(ColladaYY::const_physics_model in)
 	{
 		if(in==nullptr) return nullptr;
 		RT::PhysicsModel *out = dbase->GetPhysicsModel(in);
@@ -1251,7 +1382,8 @@ struct RT::DBase::LoadScene_Physics
 		{
 			for(size_t i=0;i<in->rigid_constraint.size();i++)	
 			{
-				RT::RigidConstraint c(in->rigid_constraint[i]);
+				ColladaYY::const_rigid_constraint yy = in->rigid_constraint[i];
+				RT::RigidConstraint c(COLLADA_RT_cast(rigid_constraint,yy));
 				if(nullptr!=c.rigid_constraint)
 				out->RigidConstraints.push_back(c);
 			}
@@ -1259,17 +1391,17 @@ struct RT::DBase::LoadScene_Physics
 
 		dbase->PhysicsModels.push_back(out); return out;
 	}
-	void LoadInstancePhysicsModel(Collada05::const_instance_physics_model in)
+	void LoadInstancePhysicsModel(ColladaYY::const_instance_physics_model in)
 	{
-		URI = in->url;  //Collada05::const_physics_model
-		physics_model = URI.get<Collada05::physics_model>();
+		URI = in->url;  //ColladaYY::const_physics_model
+		physics_model = URI.get<ColladaYY::physics_model>();
 		RT::PhysicsModel *model =
 		LoadPhysicsModel(physics_model);
 		if(model==nullptr) return;
 
 		RT::Main_Asset _RAII(model->Asset);
 		RT::RigidBody *lv1; 
-		Collada05::const_instance_rigid_body lv2;		
+		ColladaYY::const_instance_rigid_body lv2;		
 		bodies_constraint = -1;
 		for(size_t i=0;i<in->instance_rigid_body.size();i++)
 		{
@@ -1329,7 +1461,8 @@ struct RT::DBase::LoadScene_Physics
 				int body1 = body();
 				if(nullptr!=FindBody(p->rigid_constraint->attachment->rigid_body->getID_id(),model))
 				{
-					RT::Main.Physics.Bind_instance_rigid_constraint(body1,body(),p->rigid_constraint);	
+					RT::Main.Physics.Bind_instance_rigid_constraint
+					(body1,body(),COLLADA_RT_cast(rigid_constraint,p->rigid_constraint));	
 				}
 			}
 		}
@@ -1347,12 +1480,12 @@ struct RT::DBase::LoadScene_Physics
 		//Note, that the scenarios in which it is used are not necessarily SIDREF-like.
 		CacheBodies_recursive(physics_model,1); std::sort(bodies.begin(),bodies.end());
 	}
-	RT::PhysicsModel *CacheBodies_recursive(Collada05::const_physics_model in, int depth, int parent=0)
+	RT::PhysicsModel *CacheBodies_recursive(ColladaYY::const_physics_model in, int depth, int parent=0)
 	{
 		if(in!=nullptr) for(size_t i=0;i<in->instance_physics_model.size();i++)
 		{
 			RT::PhysicsModel *p; URI = in->instance_physics_model[i]->url; 
-			p = CacheBodies_recursive(URI.get<Collada05::physics_model>(),depth+1,i);
+			p = CacheBodies_recursive(URI.get<ColladaYY::physics_model>(),depth+1,i);
 			if(p!=nullptr) bodies.push_back(std::make_pair(depth<<16|parent,p));
 		}
 		return LoadPhysicsModel(in);
@@ -1396,7 +1529,11 @@ struct RT::DBase::LoadScene_Physics
 		{
 		case DAEP::Schematic<Collada05::instance_physics_model>::genus:
 		req.SID_by_SID[i] = req.SID_by_SID[i+1]->getAncestor<Collada05::physics_model>();		
+		break;
+		case DAEP::Schematic<Collada08::instance_physics_model>::genus:
+		req.SID_by_SID[i] = req.SID_by_SID[i+1]->getAncestor<Collada08::physics_model>();		
 		case DAEP::Schematic<Collada05::physics_model>::genus: break;
+		case DAEP::Schematic<Collada08::physics_model>::genus: break;
 		default: req.SID_by_SID[i] = nullptr;
 		}
 		req.SID_by_SID.pop_back();
@@ -1418,7 +1555,7 @@ struct RT::DBase::LoadScene_Physics
 			//SCHEDULED FOR REMOVAL
 			//This merely converts a DOM element into an RT handle.
 			RT::PhysicsModel *q =
-			LoadPhysicsModel(req.SID_by_SID[sid++]->a<Collada05::physics_model>());
+			LoadPhysicsModel(req.SID_by_SID[sid++]->a<ColladaYY::physics_model>());
 			if(q==p||q==nullptr) continue;
 
 			//0xFFFF tells the compiler to use two-byte addressing.
@@ -1434,7 +1571,7 @@ struct RT::DBase::LoadScene_Physics
 
 	//COLLADA 1.4.1/1.5 make this ridiculous.
 	bool BindNode(const daeStringRef &target,
-	RT::RigidBody &ib, Collada05::const_instance_rigid_body &iv)
+	RT::RigidBody &ib, ColladaYY::const_instance_rigid_body &iv)
 	{
 		const daeStringRef &id = target.getID_id();
 		daeName fragment = id;
@@ -1450,7 +1587,7 @@ struct RT::DBase::LoadScene_Physics
 		else doc = doc2;
 		if(doc==nullptr) return false;
 		daeSIDREFRequest req;
-		Collada05::const_node node;				
+		ColladaYY::const_node node;				
 		if('#'!=target[0]||target.getID_slashed())
 		{
 			SIDREF.setSIDREF(fragment);
@@ -1460,12 +1597,12 @@ struct RT::DBase::LoadScene_Physics
 			for(size_t i=0;i<req.SID_by_SID.size();i++)		
 			switch(req.SID_by_SID[i]->getElementType())
 			{
-			case DAEP::Schematic<Collada05::instance_node>::genus:
+			case DAEP::Schematic<ColladaYY::instance_node>::genus:
 			req.SID_by_SID[i] = req.SID_by_SID[i]->getParentElement();			
-			case DAEP::Schematic<Collada05::node>::genus: break;
+			case DAEP::Schematic<ColladaYY::node>::genus: break;
 			default: req.SID_by_SID[i] = nullptr;
 			}
-			node = req->a<Collada05::node>();
+			node = req->a<ColladaYY::node>();
 			req.SID_by_SID.pop_back();
 		}
 		else if(doc->idLookup(id,node)==nullptr) //optimizing
@@ -1507,18 +1644,18 @@ struct RT::DBase::LoadScene_Physics
 			daeEH::Warning<<"Binding physics body to many instanced nodes "<<target;
 			RT::Main.Physics.Bind_instance_rigid_body(body(),ib,d);
 			if(initial_velocity)
-			RT::Main.Physics.Init_velocity(d,iv);
+			RT::Main.Physics.Init_velocity(d,COLLADA_RT_cast(instance_rigid_body,iv));
 		}
 		return o!=0;
 	}
 };
-void RT::DBase::LoadScene(Collada05::const_scene scene)
+void RT::DBase::LoadScene(ColladaYY::const_scene &scene)
 {	
 	//Worried about initializing daeRef with a nullptr.
 	if(scene==nullptr) return;
 	//Just using the URI and Physics needs the visual_scene.
 	LoadScene_Physics Physics(this,scene); 	
-	Collada05::const_visual_scene &Visuals = Physics.visual_scene;
+	ColladaYY::const_visual_scene &Visuals = Physics.visual_scene;
 	if(nullptr==Visuals) return;
 
 	//get the scene name 
@@ -1531,7 +1668,10 @@ void RT::DBase::LoadScene(Collada05::const_scene scene)
 	RT::Main_Asset _RAII(Visuals->asset);
 	//recurse through the scene, read and add nodes 
 	for(size_t i=0;i<Visuals->node.size();i++)
-	LoadNode(Visuals->node[i],-1,&RT::Main.Scene);		
+	{
+		ColladaYY::const_node yy = Visuals->node[i];
+		LoadNode(yy,-1,&RT::Main.Scene);		
+	}
 	
 	//Physics depends on this step.
 	//The "stack" holds the scene-graph nodes-
@@ -1546,7 +1686,7 @@ struct RT::DBase::LoadInstances_of
 {
 	RT::Node *out; RT::DBase *dbase;
 	RT::Geometry *geom;
-	LoadInstances_of(RT::DBase *db, RT::Node *out, Collada05::const_node in)	
+	LoadInstances_of(RT::DBase *db, RT::Node *out, ColladaYY::const_node in)	
 	:dbase(db),out(out),geom()
 	{
 		//Process <instance_*> children.
@@ -1562,25 +1702,33 @@ struct RT::DBase::LoadInstances_of
 			S *ii = Load_i(*in[i]); if(ii!=nullptr) iv.push_back(ii);
 		}
 	}
-	RT::Light *Load_i(const Collada05_XSD::instance_light &in)
+	RT::Light *Load_i(const ColladaYY_XSD::
+	_if_YY(instance_light,instance_light_type) &in)
 	{
-		return dbase->LoadLight(xs::anyURI(in.url)->get<Collada05::light>());
+		ColladaYY::const_light yy = 
+		xs::anyURI(in.url)->get<ColladaYY::light>();
+		return dbase->LoadLight(yy);
 	}
-	RT::Camera *Load_i(const Collada05_XSD::instance_camera &in)
+	RT::Camera *Load_i(const ColladaYY_XSD::
+	_if_YY(instance_camera,instance_camera_type) &in)
 	{
-		return dbase->LoadCamera(xs::anyURI(in.url)->get<Collada05::camera>());
+		ColladaYY::const_camera yy = 
+		xs::anyURI(in.url)->get<ColladaYY::camera>();
+		return dbase->LoadCamera(yy);
 	}	
-	RT::Geometry_Instance *Load_i(const Collada05_XSD::instance_geometry &in)
+	RT::Geometry_Instance *Load_i(const ColladaYY_XSD::
+	_if_YY(instance_geometry,instance_geometry_type) &in)
 	{
-		geom = dbase->
-		LoadGeometry(xs::anyURI(in.url).get<Collada05::geometry>());
+		ColladaYY::const_geometry yy = 
+		xs::anyURI(in.url).get<ColladaYY::geometry>();
+		geom = dbase->LoadGeometry(yy);
 		if(geom==nullptr) 
 		return nullptr;
 
 		RT::Geometry_Instance *out = COLLADA_RT_new(RT::Geometry_Instance);
 		out->Geometry = geom;
 
-		Collada05::const_bind_material::technique_common
+		ColladaYY::const_bind_material::technique_common
 		technique_common = in.bind_material->technique_common;
 		if(technique_common!=nullptr)
 		for(size_t i=0;i<technique_common->instance_material.size();i++)
@@ -1588,11 +1736,12 @@ struct RT::DBase::LoadInstances_of
 
 		return out;
 	}
-	RT::Controller_Instance *Load_i(const Collada05_XSD::instance_controller &in)
+	RT::Controller_Instance *Load_i(const ColladaYY_XSD::
+	_if_YY(instance_controller,instance_controller_type) &in)
 	{
 		xs::anyURI URI = in.url;
-		RT::Controller *con = dbase->
-		LoadController(URI.get<Collada05::controller>());
+		ColladaYY::const_controller yy = URI.get<ColladaYY::controller>();
+		RT::Controller *con = dbase->LoadController(yy);
 		if(con==nullptr) //controller not found
 		return nullptr;
 
@@ -1601,7 +1750,7 @@ struct RT::DBase::LoadInstances_of
 		RT::Controller_Instance *out = COLLADA_RT_new(RT::Controller_Instance);
 		out->Controller = con; geom = con->Geometry;
 	
-		Collada05::const_bind_material::technique_common 
+		ColladaYY::const_bind_material::technique_common 
 		technique_common = in.bind_material->technique_common;
 		if(technique_common!=nullptr)
 		for(size_t j=0;j<technique_common->instance_material.size();j++)
@@ -1615,13 +1764,13 @@ struct RT::DBase::LoadInstances_of
 		for(size_t i=0;i<out->Skeletons;i++)
 		{
 			URI = in.skeleton[i]->value;
-			Collada05::const_node skel = URI.get<Collada05::node>();
+			ColladaYY::const_node skel = URI.get<ColladaYY::node>();
 			//This is cleaned up after.
 			if(skel==nullptr) continue;
 
 			out->Joints[i] = dbase->LoadNode(skel);
 
-			Collada05::const_node joint;
+			ColladaYY::const_node joint;
 			const daeDocument *doc = dae(skel)->getDocument();
 
 		//TODO? Warn if joints are bound more than once.
@@ -1643,9 +1792,10 @@ struct RT::DBase::LoadInstances_of
 					//sidLookup does not follow <instance_node> joints.
 					//These SIDs are xs:Name, so they cannot be SIDREFs.
 					const void *ref = skin->Joints[i];
-					RT::Node *found = dbase->
-					LoadNode(skin->Using_IDs_to_FindJointNode?
-					doc->idLookup(ref,joint):dae(skel)->sidLookup(ref,joint,doc));
+					if(skin->Using_IDs_to_FindJointNode)
+					doc->idLookup(ref,joint);
+					else dae(skel)->sidLookup(ref,joint,doc);
+					RT::Node *found = dbase->LoadNode(joint);
 					if(found==nullptr) continue;
 					out->Joints[j+i] = found;				
 					daeEH::Verbose<<"Skin Controller "<<skin->Id<<" joint binding made to node "<<skin->Joints[i];
@@ -1662,10 +1812,14 @@ struct RT::DBase::LoadInstances_of
 		}
 		return out;
 	}
-	void Load_i_material(std::vector<RT::Material_Instance> &out, Collada05::const_instance_material in)
+	void Load_i_material(std::vector<RT::Material_Instance> &out,
+	//Reminder: <evaluate_scene> adds its own <instance_material>
+	ColladaYY::const_bind_material::technique_common::instance_material in) 
 	{
 		RT::Material_Instance im;
-		im.Material = dbase->LoadMaterial(xs::anyURI(in->target).get<Collada05::material>());				
+		ColladaYY::const_material yy = 
+		xs::anyURI(in->target).get<ColladaYY::material>();
+		im.Material = dbase->LoadMaterial(yy);
 		if(im.Material==nullptr) return;
 		
 		im.Symbol = in->symbol; out.push_back(im);
@@ -1680,7 +1834,7 @@ struct RT::DBase::LoadInstances_of
 struct RT::DBase::LoadTransforms_of
 {
 	RT::DBase *dbase; RT::Node *out;
-	LoadTransforms_of(RT::DBase *db, RT::Node *out, Collada05::const_node in)
+	LoadTransforms_of(RT::DBase *db, RT::Node *out, ColladaYY::const_node in)
 	:dbase(db),out(out)
 	{
 		//This preserves the transforms' order of appearance and application.
@@ -1718,13 +1872,17 @@ struct RT::DBase::LoadTransforms_of
 		case DAEP::Schematic<Collada05::x>::genus:\
 			out->Transforms.push_back\
 			(RT::Transform_##x(e->a<Collada05::const_##x>()));\
+			break;\
+		case DAEP::Schematic<Collada08::x>::genus:\
+			out->Transforms.push_back\
+			(RT::Transform_##x(e->a<Collada08::const_##x>()));\
 			break;
 		_(rotate)_(translate)_(scale)_(lookat)_(skew)_(matrix)
 		#undef _
 		}			
 	}
 };
-RT::Node *RT::DBase::LoadNode(Collada05::const_node in, int i, RT::Node *node)
+RT::Node *RT::DBase::LoadNode(ColladaYY::const_node &in, int i, RT::Node *node)
 {
 	if(in==nullptr) return nullptr;
 
@@ -1765,18 +1923,55 @@ RT::Node *RT::DBase::LoadNode(Collada05::const_node in, int i, RT::Node *node)
 	node->Nodes.push_back(out);
 
 	//read children 
+	ColladaYY::const_node yy;
 	for(size_t i=0;i<in->node.size();i++)
 	{
-		LoadNode(in->node[i],-1,out);	
+		yy = in->node[i]; LoadNode(yy,-1,out);	
 	}
 	xs::anyURI URI; 
 	for(size_t i=0;i<in->instance_node.size();i++)
 	{
 		URI = in->instance_node[i]->url;			
-		LoadNode(URI.get<Collada05::node>(),(int)i,node);	
+		yy = URI.get<ColladaYY::node>();
+		LoadNode(yy,(int)i,out);	
 	}
 
 	Nodes.push_back(out); return out;
+}
+
+void RT::DBase::LoadCOLLADA(ColladaYY::const_COLLADA &COLLADA)
+{	
+	RT::Asset.Meter = COLLADA->asset->unit->meter->*RT::Float(1);
+	RT::Asset.Up = COLLADA->asset->up_axis->value->*RT::Up::Y_UP;
+	switch(RT::Asset.Up)
+	{
+	case RT::Up::X_UP: 				
+	daeEH::Verbose<<"X"<<"-axis is Up axis!"; break;
+	case RT::Up::Y_UP:
+	daeEH::Verbose<<"Y"<<"-axis is Up axis!"; break;
+	case RT::Up::Z_UP:
+	daeEH::Verbose<<"Z"<<"-axis is Up axis!"; break;
+	}			
+
+	RT::Main.COLLADA_FX.Cg = RT::Main.Cg.Context;
+	{
+		//SCHEDULED FOR REMOVAL?
+		if(RT::Main.LoadAnimations)
+		for(size_t i=0;i<COLLADA->library_animations.size();i++)
+		{
+			ColladaYY::const_library_animations l = COLLADA->library_animations[i];
+			for(size_t i=0;i<l->animation.size();i++) 
+			{
+				ColladaYY::const_animation yy = l->animation[i]; LoadAnimation(yy);
+			}
+		}
+
+		//This had loaded the <instance_visual_scene> but COLLADA only 
+		//allows for one such scene that is also associated with physics
+		//and so on, so this just loads the main scene. The end-user would
+		ColladaYY::const_scene yy = COLLADA->scene; LoadScene(yy);
+	}
+	RT::Main.COLLADA_FX.Cg = nullptr;
 }
 
 //-------.

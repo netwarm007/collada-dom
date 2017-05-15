@@ -7,7 +7,10 @@
  */
 
 #include <time.h>  
+#include <fstream> 
 
+//These are not really used.
+#include "CrtScene.h"
 #include "CrtEffect.h"
 
 using namespace COLLADA;
@@ -42,7 +45,7 @@ static CGparameter amplitudeGlobalParameter = 0;
 static bool fullscreen = false;
 static bool togglewireframe = false;
 static bool togglelighting = true;
-static int togglecullingface = 2; //Both
+static int togglecullingface = 0;
 				
 //Main Render
 static void DrawGLScene()
@@ -62,38 +65,20 @@ static void InitGL(float r=0.9f, float g=0.9f, float b=0.9f, float a=1)
 	glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL,GL_SEPARATE_SPECULAR_COLOR);
 
 	glShadeModel(GL_SMOOTH);
-	glClearColor(r,g,b,a);
-	glClearDepth(1);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
+	glClearColor(r,g,b,a); glClearDepth(1);	
+	glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); //LEQUAL?
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT,GL_NICEST);
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_NORMALIZE); //"inverse transpose" needs post-normalization.
 
-	//Sometimes back-faces can poke through, but if the data is sent then it
-	//might as well be displayed by default, and it can help with visibility.
-	assert(2==togglecullingface);
-	glDisable(GL_CULL_FACE); //glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //0
+	//Sometimes models present incorrectly because back-faces obscure them.
+	assert(0==togglecullingface);
+	glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //0
 }
 //Resize And Initialize The GL Window
 static void ResizeGLScreen(int width, int height)
 {
-	//Prevent division by 0
-	if(0==height) height = 1;
-
-	glViewport(0,0,width,height);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	{
-		//Calculate The Aspect Ratio Of The Window
-		gluPerspective(45,(double)width/height,0.1,100);
-	}
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity(); //And Initialize The GL Window?
-
-	//Reset the renderer's screen size to the new size
 	RT::Main.Width = width; RT::Main.Height = height;
 }
 
@@ -115,6 +100,8 @@ static void AdjustUISpeed(float x)
 	MouseRotateSpeed*=rx; MouseTranslateSpeed*=rx; MouseWheelSpeed*=x;
 }
 
+static int Xpos = 0, Ypos = 0;
+static int Xsize = 640, Ysize = 480;
 static void ProcessInput(unsigned char ASCII)
 {			   
 	switch(ASCII)
@@ -171,17 +158,17 @@ static void ProcessInput(unsigned char ASCII)
 		glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);		
 		break;
 
-	case 's': case 'S': //zoom in
+	case 's': case 'S': //backward
 	
 		RT::Main.Walk(RT::Main.Delta*KeyboardTranslateSpeed,0,0);
 		break;
 
-	case 'w': case 'W': //zoom out
+	case 'w': case 'W': //forward
 	
 		RT::Main.Walk(-RT::Main.Delta*KeyboardTranslateSpeed,0,0);
 		break;
 
-	case ' ': //UP
+	case ' ': //up
 
 		RT::Main.Walk(0,0,RT::Main.Delta*KeyboardTranslateSpeed);
 		break;
@@ -267,49 +254,6 @@ static void ProcessInput(unsigned char ASCII)
 	default: daeEH::Warning<<"unused key : "<<ASCII;
 	}
 }
-static int lastx = 0;
-static int lasty = 0;
-static int mouseWheel = 0;
-static bool mouseDown[3] = {};
-static void toggleMouse(unsigned int button, bool state)
-{
-	if(button<3) mouseDown[button] = state; else assert(0); //FreeGLUT?
-}
-static void moveMouseTo(int x, int y)
-{	
-	int dx = lastx-x, dy = lasty-y; lastx = x; lasty = y;
-
-	if(mouseDown[0]) //Left button?
-	{
-		if(mouseDown[2]) goto middle; //Left+Right?
-		
-		RT::Main.Rotate(dx*MouseRotateSpeed,dy*MouseRotateSpeed);
-	}
-	else if(mouseDown[1]) middle: //Middle button?
-	{
-		RT::Main.ZoomIn(dy*MouseWheelSpeed);
-	}
-	else if(mouseDown[2]) //Right button?
-	{
-		RT::Main.Fly(dx*MouseTranslateSpeed,-dy*MouseTranslateSpeed);
-	}
-}
-
-static int Xpos = 0, Ypos = 0;
-static int Xsize = 640, Ysize = 480;
-#ifdef GLUT_API_VERSION
-static void glutDisplayFunc_callback()
-{
-	DrawGLScene(); glutSwapBuffers();
-}
-static void glutReshapeFunc_callback(int width, int height)
-{
-	ResizeGLScreen(width,height);
-}
-static void glutKeyboardFunc_callback(unsigned char ASCII, int, int)
-{			   
-	ProcessInput(ASCII);
-}
 static void glutSpecialFunc_callback(int key, int, int)
 {
 	switch(key)
@@ -341,6 +285,48 @@ static void glutSpecialFunc_callback(int key, int, int)
 
 	default: daeEH::Warning<<"unused (special) key : "<<key;
 	}
+}
+
+static int lastx = 0;
+static int lasty = 0;
+static int mouseWheel = 0;
+static bool mouseDown[3] = {};
+static void toggleMouse(unsigned int button, bool state)
+{
+	if(button<3) mouseDown[button] = state; else assert(0); //FreeGLUT?
+}
+static void moveMouseTo(int x, int y)
+{	
+	int dx = lastx-x, dy = lasty-y; lastx = x; lasty = y;
+
+	if(mouseDown[0]) //Left button?
+	{
+		if(mouseDown[2]) goto middle; //Left+Right?
+		
+		RT::Main.Rotate(dx*MouseRotateSpeed,dy*MouseRotateSpeed);
+	}
+	else if(mouseDown[1]) middle: //Middle button?
+	{
+		RT::Main.ZoomIn(dy*MouseWheelSpeed);
+	}
+	else if(mouseDown[2]) //Right button?
+	{
+		RT::Main.Fly(dx*MouseTranslateSpeed,-dy*MouseTranslateSpeed);
+	}
+}
+
+#ifdef GLUT_API_VERSION
+static void glutDisplayFunc_callback()
+{
+	DrawGLScene(); glutSwapBuffers();
+}
+static void glutReshapeFunc_callback(int width, int height)
+{
+	ResizeGLScreen(width,height);
+}
+static void glutKeyboardFunc_callback(unsigned char ASCII, int, int)
+{			   
+	ProcessInput(ASCII);
 }
 static void glutMouseFunc_callback(int button, int state, int x, int y)
 {
@@ -505,7 +491,7 @@ static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 		daeEH::Verbose<<
 		(dae==default_dae?"Loading default document \"":"Loading \"")		   
 		<<dae<<"\"...";			
-		if(!RT::Main.Load(argv[1]))
+		if(!RT::Main.Load(dae))
 		{
 			//Let console print any errors.
 			//exit(0); //!!!!!!!!!!
@@ -523,7 +509,8 @@ static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 	//This is so RT::Main::DOM is cleared before
 	//Windows can destroy the schema metadata globals.
 	//Force all schemas to initialize.
-	daeGetModel<Collada05::COLLADA>();
+	extern daeMeta *InitSchemas(int=0);
+	InitSchemas(); //daeGetModel<Collada05::COLLADA>();
 	atexit(COLLADA_viewer_GLUT_atexit); 
 
 	COLLADA_viewer_main_loop(); //glutMainLoop();
@@ -553,7 +540,7 @@ struct TestIO : daeIO //QUICK & DIRTY
 			if(!I.getRequest().isEmptyRequest())
 			{
 				int i = 0; 
-				if(_file_protocol(maxpath,I))
+				if(_file_protocol(maxpath,I.getRequest().remoteURI))
 				{
 					#ifdef _WIN32
 					r = CRT.r->fopen(maxpath,L"rb",_SH_DENYWR);
@@ -569,7 +556,7 @@ struct TestIO : daeIO //QUICK & DIRTY
 			}
 			if(!O.getRequest().isEmptyRequest())
 			{
-				if(_file_protocol(maxpath,O))
+				if(_file_protocol(maxpath,O.getRequest().remoteURI))
 				{
 					#ifdef _WIN32
 					w = CRT.w->fopen(maxpath,L"wb",_SH_DENYRW);
@@ -615,9 +602,8 @@ struct TestIO : daeIO //QUICK & DIRTY
 		if(w!=nullptr) CRT.w->fclose(w); 
 	}
 	 		
-	static bool _file_protocol(Maxpath &maxpath, daeIOPlugin &source)
-	{
-		const daeURI *URI = source.getRequest().remoteURI; 
+	static bool _file_protocol(Maxpath &maxpath, const daeURI *URI)
+	{							   
 		if(URI!=nullptr&&"file"==URI->getURI_protocol())
 		{
 			#ifdef _WIN32
@@ -629,7 +615,7 @@ struct TestIO : daeIO //QUICK & DIRTY
 			else return false;
 			#endif
 			return true;
-		}assert(0); return false; 
+		}assert(URI->empty()); return false; 
 	}
 };
 static struct TestPlatform : daePlatform //SINGLETON
@@ -658,6 +644,9 @@ static struct TestPlatform : daePlatform //SINGLETON
 	}
 	virtual daeOK resolveURI(daeURI &URI, const daeDOM &DOM)
 	{
+		//Getting this when running outside of Visual Studio?
+		if(URI.empty()) return DAE_ERROR;
+
 		//Try to handle non-URI paths.
 		//NOTE: This might be different if the default-base
 		//URI is "file:\\" instead of the current directory.
@@ -703,15 +692,26 @@ static struct TestPlatform : daePlatform //SINGLETON
 				URI.setURI(cat);
 			}
 		}
+		//daeEH::Verbose<<"Resolving URI: "<<URI.getURI();
 		daeOK OK = URI.resolve_RFC3986(DOM);
-		assert(URI.getURI_protocol().size()>=4); return OK;
+		//daeEH::Verbose<<"Resolved URI: "<<URI.getURI();
+		assert(URI.getURI_protocol().size()>=4||URI.empty()); return OK;
 	}
-	typedef COLLADA::Collada05::COLLADA COLLADA;
 	virtual daeOK openURI(const daeIORequest &req, daeIOPlugin *I, daeURIRef &URI)
 	{
 		daeDocRoot<> doc; req.resolve();
-		if(req.localURI->getURI_extensionIs("dae"))			
-		req.fulfillRequestI<COLLADA>(I,doc); else req.unfulfillRequest(doc); 		
+		if(!req.localURI->getURI_extensionIs("dae"))
+		{
+			daeEH::Error<<"Unsupported file extension "<<req.localURI->getURI_extension();
+			req.unfulfillRequest(doc); return doc;
+		}
+		#ifdef NDEBUG
+		#error WORK IN PROGRESS
+		#endif
+		//TODO: Must scan for version="1.5.0" and switch to 8.
+		extern daeMeta *InitSchemas(int);
+		daeMeta *meta = InitSchemas(Peek_xmlns(req.localURI)=="http://www.collada.org/2005/11/COLLADASchema"?5:8);
+		req.fulfillRequestI(meta,I,doc);
 		if(doc==DAE_OK) URI = &doc->getDocURI(); else assert(0); return doc; 
 	}
 	virtual daeIO *openIO(daeIOPlugin &I, daeIOPlugin &O)
@@ -728,6 +728,21 @@ static struct TestPlatform : daePlatform //SINGLETON
 		LEGACY_SIDREF_RESOLVER|LEGACY_IDREF_RESOLVER|LEGACY_URI_RESOLVER;
 	}
 
+	daeName Peek_xmlns(const daeURI *URI)
+	{
+		static std::string out; out.clear();
+
+		TestIO::Maxpath path; 
+		if(!TestIO::_file_protocol(path,URI)) return out;
+
+		std::ifstream s(path);
+		char buf[4096]; s.read(buf,4096);
+		out.assign(buf,4096);
+		out.erase(0,out.find("xmlns=\"")+7); 
+		out.erase(out.find('"'),-1); 		
+		return out; //NO need to normalize. Not a URI per se.
+	}
+
 	TestPlatform(){ daeDOM::setGlobalPlatform(this); }
 
 }TestPlatform; //SINGLETON
@@ -738,6 +753,8 @@ static struct Silencer : public daeStandardErrorHandler
 {
 	bool Verbose; //True if receiving a Verbose message.
 
+	std::string Silenced;
+
 	Silencer():Verbose(){ daeErrorHandler::setErrorHandler(this); }
 	
 	virtual void handleWarning(const daeHashString &msg, enum dae_clear clear)
@@ -747,13 +764,28 @@ static struct Silencer : public daeStandardErrorHandler
 		//without the "Warning: " announcement.
 		if(!clear&&msg.empty())
 		{
-			Verbose = true;
+			Verbose = true; Silenced.clear();
 		}		
 		if(Verbose)
 		{
-			if(clear) Verbose = false;
+			if(clear)
+			{
+				Verbose = false; 
+			}
+			else Silenced.append(msg.string,msg.extent);
 		}
-		else daeStandardErrorHandler::handleWarning(msg,clear);
+		else 
+		{
+			if(!Silenced.empty())
+			{
+				//This is provided for context.
+				daeStandardErrorHandler::handleWarning("",dae_append);
+				daeStandardErrorHandler::handleWarning("Silenced: ",dae_append);
+				daeStandardErrorHandler::handleWarning(Silenced.c_str(),dae_clear);
+				Silenced.clear();
+			}
+			daeStandardErrorHandler::handleWarning(msg,clear);
+		}
 	}
 
 }*Silenced = Silence_console_if_DEBUG?new Silencer:nullptr;

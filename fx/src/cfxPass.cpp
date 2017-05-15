@@ -20,9 +20,34 @@ FX::Shader::Shader(FX::Pass *pass, FX::Cg_Stage stageIn
 ,xs::ID prof, xs::string args, xs::ID f, xs::string src)
 :Pass(pass),Generate()
 {	
-	CGGLenum stage = //OPENGL-SPECIFIC
+	CGGLenum stage = 
 	stageIn==stageIn.VERTEX?CG_GL_VERTEX:CG_GL_FRAGMENT;	
+	_InitCg(stage,prof,args,f,src);
+}
+FX::Shader::Shader(FX::Pass *pass, FX::FX_Stage08 stageIn
+,xs::ID prof, xs::string args, xs::ID f, xs::string src)
+:Pass(pass),Generate()
+{	
+	//ASSIUMING CG!
+	assert(0!=pass->Technique->FindEffect()->Cg);
+	CGGLenum stage; switch(stageIn)
+	{
+	case stageIn.VERTEX: stage = CG_GL_VERTEX;
+	case stageIn.FRAGMENT: stage = CG_GL_FRAGMENT;
+	case stageIn.GEOMETRY: stage = CG_GL_GEOMETRY;
+	case stageIn.TESSELLATION: 
+		
+		stage = CG_GL_TESSELLATION_CONTROL;
+		stage = CG_GL_TESSELLATION_EVALUATION;
+		daeEH::Error<<"Encountered TESSELLATION shader.\n"
+		"(It's unclear what COLLADA wants. Do you have some idea?)";
 
+	default: new(this) FX::Shader(pass); return;
+	}
+	_InitCg(stage,prof,args,f,src);
+}
+void FX::Shader::_InitCg(CGGLenum stage, xs::ID prof, xs::string args, xs::ID f, xs::string src)
+{
 	if(0&&prof!=nullptr&&prof[0]!='\0')
 	{
 		Cg_Profile = cgGetProfile(prof);

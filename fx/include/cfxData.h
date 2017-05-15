@@ -36,17 +36,18 @@ struct DataMaker
 
 	xs::ID sid; typename T::arg2 aux; 
 
-	T *&o; const daeContents &c; void MakeData();
+	T *&o; const daeContents &c; 
+	
+	template<int yy> void MakeData();
 };	  
-template<class S, class T>
-inline void MakeData(S* &o, const T &e, FX::NewParamable *p, xs::ID a1, typename S::arg2 a2=nullptr)
-{
-	FX::DataMaker<S> dm = {p,a1,a2,o,e->content}; FX::MakeData2(dm);
-}
-extern void MakeData2(DataMaker<FX::Annotate>&);
-extern void MakeData2(DataMaker<FX::NewParam>&);
-extern void MakeData2(DataMaker<FX::SetParam>&);
-extern void MakeData2(DataMaker<FX::BindParam>&);
+extern void MakeData05(DataMaker<FX::Annotate>&);
+extern void MakeData05(DataMaker<FX::NewParam>&);
+extern void MakeData05(DataMaker<FX::SetParam>&);
+extern void MakeData05(DataMaker<FX::BindParam>&);
+extern void MakeData08(DataMaker<FX::Annotate>&);
+extern void MakeData08(DataMaker<FX::NewParam>&);
+extern void MakeData08(DataMaker<FX::SetParam>&);
+extern void MakeData08(DataMaker<FX::BindParam>&);
 
 #ifdef NDEBUG
 #error These may not be needed/exposed.

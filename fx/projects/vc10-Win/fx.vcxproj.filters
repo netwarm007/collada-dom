@@ -30,6 +30,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\CfxPCH.cpp" />
+    <ClCompile Include="..\..\src\cfxLoader08.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\cfxAnnotate.h">
@@ -53,8 +56,6 @@
     <ClInclude Include="..\..\include\cfxTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\FX.pch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ClInclude Include="..\..\include\FX.pch.h" />
   </ItemGroup>
 </Project>

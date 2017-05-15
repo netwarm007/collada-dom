@@ -8,27 +8,7 @@
 #ifndef __COLLADA_RT__PCH_H__
 #define __COLLADA_RT__PCH_H__
 
-#include <assert.h>
-#include <math.h>
-#include <float.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string>
-#include <string.h>
-#include <vector>
-#include <set>
-#include <map>
-#include <vector>
-
-#ifdef SN_TARGET_PS3
-#include <sys/raw_spu.h>
-#include <sys/sys_time.h>
-#elif !defined(_WIN32)
-#include <sys/time.h>
-#endif
-
+#ifdef PRECOMPILING_COLLADA_RT
 //NOTE: devIL is an awful library
 //without meaningful documentation.
 //That said, it lines up with OpenGL,
@@ -36,6 +16,13 @@
 #ifndef NO_DEVIL
 #include <IL/il.h>
 #endif
+#ifdef SN_TARGET_PS3
+#include <sys/raw_spu.h>
+#include <sys/sys_time.h>
+#elif !defined(_WIN32)
+#include <sys/time.h>
+#endif
+#endif //PRECOMPILING_COLLADA_RT
 
 //Not including in this revision.
 #if 0
@@ -46,13 +33,30 @@
 #include <ColladaLAB.inl>
 #endif
 
+//HACK: cfxLoader.h defines stuff this file would
+//have to otherwise.
 #include "cfxLoader.h"
 #if COLLADA_DOM!=3
 #error This is relying cfxLoader.h to set things up.
 #endif
+#ifdef PRECOMPILING_COLLADA_RT
+#if COLLADA_DOM_GENERATION!=1
+#error The below inclusion guards expect COLLADA_DOM_GENERATION to be equal to 1.
+#endif
+//These lines suppress the inclusion of these rather large chunks of this schema.
+//If including code uses them it must include them before this header is included.
+#define __profile_CG_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
+#define __profile_GLSL_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
+#define __profile_GLES_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
+#define __profile_CG_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+#define __profile_GLSL_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+#define __profile_GLES_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+#define __profile_GLES2_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
 #define COLLADA_DOM_LITE
 #include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(COLLADA))
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(COLLADA))
 #undef COLLADA_DOM_LITE
+#endif //PRECOMPILING_COLLADA_RT
 
 COLLADA_(namespace)
 {
@@ -64,6 +68,8 @@ COLLADA_(namespace)
 		namespace xs = ::COLLADA::DAEP::xs;
 		namespace Collada05_XSD = ::COLLADA::http_www_collada_org_2005_11_COLLADASchema;
 		namespace Collada05 = ::COLLADA::DAEP::http_www_collada_org_2005_11_COLLADASchema;
+		namespace Collada08_XSD = ::COLLADA::http_www_collada_org_2008_03_COLLADASchema;
+		namespace Collada08 = ::COLLADA::DAEP::http_www_collada_org_2008_03_COLLADASchema;
 	}
 }
 

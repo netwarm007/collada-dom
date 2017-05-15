@@ -21,7 +21,8 @@ subject to the following restrictions:
 */
 
 #include <RT.pch.h> //PCH
-  
+
+#include "CrtScene.h"
 #include "CrtPhysics.h"
 #include "CrtRender.h"
 #include "CrtGeometry.h"
@@ -200,29 +201,31 @@ namespace CrtPhysics //EXPERIMENTAL
 				else if(RT::Asset.Up==RT::Up::Z_UP)
 				RT::MatrixRotateAngleAxis(m,1,0,0,90);
 			}
-			else RT::MatrixLoadAsset(thisMatrix(),RT::Asset.Up);
+			else RT::MatrixLoadAsset(m,RT::Asset.Up);
 
 			content.for_each_child(*this);			
 
 			RT::MatrixToBulletPhysicsOrViceVersa((RT::Float*)this);
 		}
-		void operator()(const xs::const_any &e)
+		void operator()(const const_daeChildRef &e)
 		{
 			RT::Matrix &m = thisMatrix(); RT::Float x,y,z,a;
 			
-			switch(e->getElementType()) //ORDER-IS-IMPORTANT
+			switch(e->getElementType())
 			{
-			case DAEP::Schematic<Collada05::rotate>::genus:		
+			case DAEP::Schematic<Collada05::rotate>::genus:
+			case DAEP::Schematic<Collada08::rotate>::genus:		
 			{
-				Collada05::const_rotate t = e->a<Collada05::rotate>();
-				if(t!=nullptr&&4==t->value->get4at(0,x,y,z,a))
+				if(1!=e.name())
+				if(4==COLLADA_RT_cast(rotate,e)->value->get4at(0,x,y,z,a))
 				MatrixRotateAngleAxis(m,x,y,z,a);
 				break;		
 			}
-			case DAEP::Schematic<Collada05::translate>::genus:		
+			case DAEP::Schematic<Collada05::translate>::genus:
+			case DAEP::Schematic<Collada08::translate>::genus:
 			{
-				Collada05::const_translate t = e->a<Collada05::translate>();
-				if(t!=nullptr&&3==t->value->get3at(0,x,y,z))
+				if(1!=e.name())
+				if(3==COLLADA_RT_cast(translate,e)->value->get3at(0,x,y,z))
 				RT::MatrixTranslate(m,x,y,z);
 				break;	
 			}}
@@ -418,7 +421,7 @@ void RT::Physics::InitialVelocity::SetVelocities()
 #else
 #define CrtPhysics_setMargin(x)
 #endif
-void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common in)
+void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common &in)
 {
 	using_namespace_NO_BULLET //EXPERIMENTAL
 

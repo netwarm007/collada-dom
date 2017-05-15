@@ -8,6 +8,7 @@
 #include <FX.pch.h> //PCH
 
 #include "cfxEffect.h"
+#include "cfxLoader.h"
 
 COLLADA_(namespace)
 {
@@ -22,7 +23,7 @@ void FX::Sampler::Apply(FX::Param *param)
 	//if(Surface!=nullptr)
 	//return;	
 
-	if(Surface==nullptr)
+	if(Surface==nullptr) //Using 1.4.1 pathway?
 	{
 		//look up source for the matching Surface
 		Surface = Params->FindSurface(Source);
@@ -76,7 +77,7 @@ void FX::Sampler::Apply(FX::Param *param)
 	}
 }
 
-template<class S, CGtype, class>
+template<class S, int YY, CGtype, class>
 struct cfxData_copier
 {
 	S &Data;
@@ -100,7 +101,7 @@ struct cfxData_copier
 	}
 };
 template<CGtype E, class T> 
-struct cfxData_copier<FX::Sampler,E,T>
+struct cfxData_copier<FX::Sampler,5,E,T>
 {	 
 	//COLLADA's schemas do not define these.				
 	GLenum _wrap_GLenum(Collada05_XSD::fx_sampler_wrap_common e)
@@ -109,10 +110,24 @@ struct cfxData_copier<FX::Sampler,E,T>
 		{
 		case e.NONE: 
 		case e.BORDER: 
-		default: return GL_CLAMP_TO_BORDER;
+		return GL_CLAMP_TO_BORDER;
+		default:
 		case e.WRAP: return GL_REPEAT;
 		case e.CLAMP: return GL_CLAMP_TO_EDGE;
 		case e.MIRROR: return GL_MIRRORED_REPEAT; 
+		}
+	}
+	GLenum _wrap_GLenum(Collada08_XSD::fx_sampler_wrap_enum e)
+	{
+		switch(e)
+		{
+		case e.BORDER: 
+		return GL_CLAMP_TO_BORDER;
+		default:
+		case e.WRAP: return GL_REPEAT;
+		case e.CLAMP: return GL_CLAMP_TO_EDGE;
+		case e.MIRROR: return GL_MIRRORED_REPEAT; 
+		case e.MIRROR_ONCE: return GL_MIRROR_CLAMP_TO_EDGE; 
 		}
 	}
 	GLenum _filter_GLenum(Collada05_XSD::fx_sampler_filter_common e)
@@ -148,12 +163,14 @@ struct cfxData_copier<FX::Sampler,E,T>
 	}
 	template<class T> void _wrap(const char *cc, const T &ee)
 	{
-		if(!ee.empty()) _set(cc,_wrap_GLenum(ee->value));
+		if(!ee.empty()) _set(cc,_wrap_GLenum(*ee->value.operator->()));
 	}
 	template<int> void _wrap_N(){ _wrap("WrapS",e->wrap_s); }
 	template<> void _wrap_N<2>(){ _wrap("WrapT",e->wrap_t); _wrap_N<1>(); }
 	template<> void _wrap_N<3>(){ _wrap("WrapR",e->wrap_p); _wrap_N<2>(); }			
 	FX::Sampler &Data; CGcontext Cg; T &e; 
+	cfxData_copier(FX::Sampler &s, T &e)
+	:Data(s),e(e){}
 	COLLADA_NOINLINE
 	cfxData_copier(FX::Sampler &s, T &e, FX::NewParamable *p, xs::ID sid)
 	:Data(s),e(e)
@@ -226,10 +243,120 @@ struct cfxData_copier<FX::Sampler,E,T>
 		//THIS IS A <surface> ELEMENT??
 		//if(!e->mipmap_generate.empty()) //bool
 		//_set("GenerateMipMap",e->mipmap_generate->value);		
+	}
+};
+template<CGtype E, class T> 
+struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
+{	
+	GLenum _minfilter_GLenum(Collada08_XSD::fx_sampler_min_filter_enum e)
+	{
+		switch(e) //Do the 1.5.0 enumerants make sense?
+		{	
+		case e.LINEAR: case e.ANISOTROPIC: //???
+		return GL_LINEAR;
+		case e.NEAREST:
+		default: return GL_NEAREST;
+		}		
+	}
+	GLenum _mipfilter_GLenum(Collada08_XSD::fx_sampler_mip_filter_enum e)
+	{
+		switch(e) //Do the 1.5.0 enumerants make sense?
+		{	
+		case e.LINEAR: 
+		return GL_LINEAR;
+		case e.NEAREST:
+		case e.NONE: //GL_NONE?		
+		default: return GL_NEAREST;
+		}		
+	}
+	GLenum _magfilter_GLenum(Collada08_XSD::fx_sampler_mag_filter_enum e)
+	{
+		switch(e) //Do the 1.5.0 enumerants make sense?
+		{	
+		case e.LINEAR: 
+		return GL_LINEAR;
+		case e.NEAREST:
+		default: return GL_NEAREST;
+		}		
+	}
+
+	COLLADA_NOINLINE
+	cfxData_copier(FX::Sampler &s, T &e, FX::NewParamable *p, xs::ID sid)
+	:cfxData_copier<FX::Sampler,5,E,T>(s,e)
+	{ 	
+		FX::Effect *pe = p->FindEffect();
+		Cg = pe->Cg_Context; 
+
+		//HACK: This is done here for samplers so to not
+		//have to generate a lot of hot air data objects.
+		if("setparam"==dae(e)->getParent()->getNCName())
+		{
+			Data.Cg = cgGetNamedEffectParameter(pe->Cg,sid);
+			if(Data.Cg==nullptr)
+			{
+				assert(pe->Cg!=nullptr);
+				return;
+			}
+		}
+		else if(E==CG_UNKNOWN_TYPE) //CG_SAMPLERDEPTH
+		{
+			Data.Cg = cgCreateEffectParameter(pe->Cg,sid,CG_SAMPLERRECT);
+		}
+		else Data.Cg = cgCreateEffectParameter(pe->Cg,sid,E);
+
+		s.Params = p; 
+		
+	////These values are accessed in <xs:sequence> order.
+
+		//wrap_* goes by the sampler's dimensionality.
+		_wrap_N<E==CG_SAMPLER1D?1:E!=CG_SAMPLER3D?2:3>();
+											
+		GLenum mf = GL_NEAREST;
+		if(!e->minfilter.empty())
+		{
+			mf = _minfilter_GLenum(e->minfilter->value);
+			_set("MinFilter",mf);
+		}
+		//SCHEDULED FOR REMOVAL?
+		//The default for mipmap generation is true.
+		if(mf==GL_LINEAR||mf==GL_NEAREST)
+		Data.GenerateMipmaps = false;
+					
+		if(!e->magfilter.empty())
+		_set("MagFilter",_magfilter_GLenum(e->magfilter->value));
+
+		//Only the depth texture (sampler) is unmipmapped.
+		_mipmap_etc_if<E!=CG_UNKNOWN_TYPE>(); //CG_SAMPLERDEPTH
 	}	
+	template<bool> void _mipmap_etc_if(){}
+	template<> void _mipmap_etc_if<true>()
+	{	
+		if(!e->mipfilter.empty()) 
+		_set("MipFilter",_mipfilter_GLenum(e->mipfilter->value));
+	
+		if(!e->border_color.empty()) //Mipmap related?
+		{
+			FX::Float4 bc(0,1);
+			e->border_color->value->get4at(0,bc.r,bc.g,bc.b,bc.a);
+			_set("BorderColor",&bc.x);
+		}	
+		
+		if(!e->mip_max_level.empty())
+		_set("MaxMipLevel",(unsigned)e->mip_max_level->value);
+
+		if(!e->mip_bias.empty()) 
+		_set("MipMapLodBias",(float)e->mip_bias->value);	
+
+		if(!e->instance_image.empty())
+		{
+			xs::anyURI URI = e->instance_image->url;
+			Collada08::const_image yy = URI.get<Collada08::image>();		
+			Data.Surface = new FX::Surface(FX::Loader::GetID_TexId(yy));
+		}
+	}
 };
 
-struct cfxData_MakeData
+template<int YY> struct cfxData_MakeData
 {
 	//h is the header size.
 	char* &o; int h; 
@@ -239,7 +366,7 @@ struct cfxData_MakeData
 	template<CGtype E, class S_Value, class T> 
 	inline void _copy(S_Value &d, const T &e)
 	{
-		cfxData_copier<S_Value,E,const T>(d,e,p,sid);
+		cfxData_copier<S_Value,YY,E,const T>(d,e,p,sid);
 	}
 	template<class S, class T> 
 	inline void _new(const T &e)
@@ -247,8 +374,21 @@ struct cfxData_MakeData
 		o = (char*)operator new(h+sizeof(S));
 		_copy<S::Cg>((new(o+h)S)->Value,e);
 	}
+	void FailData()
+	{				   
+		xs::ID e = "nullptr"; _new<FX::DataString>(e);
+	}template<>
+	inline void _copy<CG_STRING>(xs::string &d, const xs::ID &e)
+	{
+		d = e; //"nullptr"
+	}
+
 	COLLADA_NOINLINE
 	void operator()(const const_daeChildRef &e)
+	{
+		_foreach<YY>(e);
+	}	
+	template<int> void _foreach(const const_daeChildRef &e)
 	{	
 		//This ensures genus cannot be mistaken.		
 		if(1!=e.name()) switch(e->getElementType())
@@ -296,19 +436,63 @@ struct cfxData_MakeData
 		default: assert(0);
 		}
 	}
-	void FailData()
-	{				   
-		xs::ID e = "nullptr"; _new<FX::DataString>(e);
-	}template<>
-	inline void _copy<CG_STRING>(xs::string &d, const xs::ID &e)
-	{
-		d = e; //"nullptr"
+	template<> void _foreach<8>(const const_daeChildRef &e)
+	{	
+		//This ensures genus cannot be mistaken.		
+		if(1!=e.name()) switch(e->getElementType())
+		{
+		#define _1(x,y) \
+		case DAEP::Schematic<Collada08::y>::genus:\
+		return _new<FX::Data##x>(*(Collada08::const_##y*)&e);
+		#define _3(x,y) \
+		/*_1(x,annotate::y)_1(x,profile_CG::newparam::y)*/\
+		_1(x,instance_effect::setparam::y)
+		#define _5(x,y) _3(x,y##__alias)\
+		/*_3(x##1,y##1)*/_3(x##2,y##2)_3(x##3,y##3)_3(x##4,y##4)	
+		#define _S(x) /*falling thru*/\
+		/*case DAEP::Schematic<Collada08::profile_CG::newparam::sampler##x>::genus:*/\
+		_1(Sampler##x,texture##x::value)
+		//_1(Sampler##x,instance_effect::setparam::sampler##x)
+		//END MACRO DEFS
+	
+		#ifdef NDEBUG
+		#error profile_Cg has a lot more basic data types than this.
+		#endif				
+		//_1(Bool1,profile_CG::newparam::bool1)
+		//_1(Int1,profile_CG::newparam::int1)
+		//_1(Float1,profile_CG::newparam::float1)
+		_1(String,profile_CG::newparam::string)
+		_5(Bool,bool)_5(Int,int)_5(Float,float)
+		_3(Float2x2,float2x2)_3(Float3x3,float3x3)_3(Float4x4,float4x4)
+		//The 1.4.1 schema defines aliases for these types just for the "fun" of it.
+		//case DAEP::Schematic<Collada08::profile_COMMON::newparam::sampler2D>::genus:	
+		_S(2D)/*falling thru*/_S(1D)_S(3D)_S(CUBE)_S(RECT)_S(DEPTH)
+
+		//END MACRO USES
+		#undef _S
+		#undef _5
+		#undef _3
+		#undef _1
+
+		case DAEP::Schematic<Collada08::annotate>::genus:
+		case DAEP::Schematic<Collada08::modifier>::genus:
+		//case DAEP::Schematic<Collada08::semantic>::genus:
+
+			//Known exceptions.
+			break;
+			if("semantic"==e->getNCName())
+			break;
+
+		default: assert(0);
+		}
 	}
 };
+
 template<class T>
+template<int YY> 
 void FX::DataMaker<T>::MakeData()
 {
-	cfxData_MakeData md = {(char*&)o,sizeof(T),p,sid}; 
+	cfxData_MakeData<YY> md = {(char*&)o,sizeof(T),p,sid}; 
 	o = nullptr;
 	c.for_each_child(md);
 	if(o==nullptr)
@@ -320,20 +504,29 @@ void FX::DataMaker<T>::MakeData()
 	case CG_SAMPLER1D: case CG_SAMPLERCUBE:
 	case CG_SAMPLER2D: case CG_SAMPLERRECT:
 	case CG_SAMPLER3D: case CG_UNKNOWN_TYPE: //CG_SAMPLERDEPTH
-	
+	{
+		FX::Sampler &v = ((FX::DataSampler2D*)o->Data)->Value;				
+		if(v.Surface!=nullptr) //Follow-up on <instance_image>?
+		{
+			p->Surfaces.push_back(std::make_pair(sid,v.Surface));
+			v.Surface->Referencing_Samplers.push_back((FX::Param*)o);
+		}
 		//Casting because FX::Annotate::Cg is different type.
 		//Sampler annotations don't exist.
-		(CGparameter&)o->Cg = ((FX::DataSampler2D*)o->Data)->Value.Cg; 
-		break;
-
+		(CGparameter&)o->Cg = v.Cg; break;
+	}
 	default: o->Cg = nullptr;
 	}
 	o->Name = sid; new(o) T(this);
 }
-extern void FX::MakeData2(DataMaker<FX::Annotate> &dm){ dm.MakeData(); }
-extern void FX::MakeData2(DataMaker<FX::NewParam> &dm){ dm.MakeData(); }
-extern void FX::MakeData2(DataMaker<FX::SetParam> &dm){ dm.MakeData(); }
-extern void FX::MakeData2(DataMaker<FX::BindParam> &dm){ dm.MakeData(); }
+extern void FX::MakeData05(DataMaker<FX::Annotate> &dm){ dm.MakeData<5>(); }
+extern void FX::MakeData05(DataMaker<FX::NewParam> &dm){ dm.MakeData<5>(); }
+extern void FX::MakeData05(DataMaker<FX::SetParam> &dm){ dm.MakeData<5>(); }
+extern void FX::MakeData05(DataMaker<FX::BindParam> &dm){ dm.MakeData<5>(); }
+extern void FX::MakeData08(DataMaker<FX::Annotate> &dm){ dm.MakeData<8>(); }
+extern void FX::MakeData08(DataMaker<FX::NewParam> &dm){ dm.MakeData<8>(); }
+extern void FX::MakeData08(DataMaker<FX::SetParam> &dm){ dm.MakeData<8>(); }
+extern void FX::MakeData08(DataMaker<FX::BindParam> &dm){ dm.MakeData<8>(); }
 
 void FX::Data::Apply(FX::Param*)
 {

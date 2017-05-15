@@ -41,8 +41,6 @@ class btDiscreteDynamicsWorld;
 class btRigidBody;
 class btThreadSupportInterface;
 
-#include "CrtScene.h"
-
 COLLADA_(namespace)
 {
 	namespace RT
@@ -57,6 +55,10 @@ struct RigidBody
 
 	RT::Float Mass; bool Dynamic; 
 
+	#ifdef NDEBUG
+	#error sizeof(Material) is unknown.
+	#endif
+	//DEPENDENCY ON "physics_material.h"
 	Collada05::const_physics_material Material;
 
 	typedef Collada05::const_rigid_body type;
@@ -64,6 +66,7 @@ struct RigidBody
 	RigidBody():Sid(),Shape(),Mass(),Dynamic(){}
 
 	//This belongs in CrtSceneRead by this point.
+	#ifdef PRECOMPILING_COLLADA_RT
 	template<class T>
 	/**HACK
 	 * Assuming <rigid_body><technique_common> and
@@ -81,18 +84,22 @@ struct RigidBody
 			Mass = tc->mass->value;
 			if(!tc->dynamic.empty()) 
 			Dynamic = tc->dynamic->value;
+			ColladaYY::const_physics_material yy;
 			if(!tc->physics_material.empty())
-			Material = tc->physics_material;			
+			yy = tc->physics_material;			
 			else if(!tc->instance_physics_material.empty())
 			{
 				URI = tc->instance_physics_material->url;
-				Material = URI.get<Collada05::physics_material>();
+				yy = URI.get<ColladaYY::physics_material>();
 			}
-			_LoadShape(*(Collada05::rigid_body::technique_common*)&tc);
+			if(yy!=nullptr)
+			Material = COLLADA_RT_cast(physics_material,yy);
+			_LoadShape(COLLADA_RT_cast(rigid_body::technique_common,tc));
 		}
 		return Shape!=nullptr;
 	}
-	void _LoadShape(Collada05::const_rigid_body::technique_common);
+	void _LoadShape(Collada05::const_rigid_body::technique_common&);
+	#endif
 };
 
 //SCHEDULED FOR REMOVAL?
@@ -104,6 +111,10 @@ struct RigidConstraint
 {		
 	xs::string Sid;
 
+	#ifdef NDEBUG
+	#error sizeof(rigid_constraint) is unknown.
+	#endif
+	//DEPENDENCY ON "rigid_constraint.h"
 	Collada05::const_rigid_constraint rigid_constraint;
     
 	typedef Collada05::const_rigid_constraint type;	 
@@ -181,11 +192,13 @@ COLLADA_(private)
 		this->~Physics(); new(this) RT::Physics; Initialized = false; //Init();
 	}
 
+	#ifdef __COLLADA_RT__SCENE_H__ //friend
 	friend struct RT::RigidBody;
 	friend struct RT::DBase::LoadScene_Physics;
 	void Bind_instance_rigid_body(int,RT::RigidBody&,RT::Stack_Data&);
 	void Init_velocity(RT::Stack_Data&,Collada05::const_instance_rigid_body&);
 	void Bind_instance_rigid_constraint(int,int,Collada05::const_rigid_constraint);	
+	#endif
 
 	//http://bullet.sf.net Erwin Coumans
 	struct bt : RT::Memory 

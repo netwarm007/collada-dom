@@ -52,7 +52,19 @@ COLLADA_(public)
 	Image(xs::string URI=nullptr):URL(URI),TexId()
 	{}
 	~Image(){ DeleteTexture(); }
-		
+	
+	/**
+	 * This loads an embedded image. E.g. <hex> images.
+	 */
+	void Init(daeName format, const daeBinary<> &image)
+	{
+		//Just trying to build right now.
+		#ifdef NDEBUG
+		#error Implement this via DevIL.
+		#endif
+		daeEH::Error<<"Failed to initialize <hex> image because feature is not implemented. Sorry.";
+	}
+
 	/**
 	 * This will load the image from DocURI+URL.
 	 */

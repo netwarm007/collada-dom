@@ -63,10 +63,10 @@
       <AdditionalOptions>/wd4819 %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>../../..;../../include;..\..\..\dom\include;..\..\..\fx\include;$(CG_INC_PATH);..\..\external-libs\bullet\include;..\..\external-libs\devil\win32\include;..\..\..\dom\external-libs\boost;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;PRECOMPILING_COLLADA_RT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -82,7 +82,7 @@
     <ClCompile>
       <AdditionalOptions>/wd4819 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalIncludeDirectories>../../../dom/include;../../include;..\..\..\fx\include;$(CG_INC_PATH);..\..\external-libs\bullet\include;..\..\external-libs\devil\win32\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;;PRECOMPILING_COLLADA_RT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -110,6 +110,7 @@
     <ClCompile Include="..\..\src\CrtRender.cpp" />
     <ClCompile Include="..\..\src\CrtScene.cpp" />
     <ClCompile Include="..\..\src\CrtSceneRead.cpp" />
+    <ClCompile Include="..\..\src\CrtSceneRead08.cpp" />
     <ClCompile Include="..\..\src\CrtTargaLoader.cpp" />
     <ClCompile Include="..\..\src\CrtTexture.cpp" />
   </ItemGroup>
@@ -127,6 +128,7 @@
     <ClInclude Include="..\..\include\CrtPhysics.h" />
     <ClInclude Include="..\..\include\CrtRender.h" />
     <ClInclude Include="..\..\include\CrtScene.h" />
+    <ClInclude Include="..\..\include\CrtSceneYY.hpp" />
     <ClInclude Include="..\..\include\CrtTexture.h" />
     <ClInclude Include="..\..\include\CrtTypes.h" />
     <ClInclude Include="..\..\include\RT.pch.h" />
