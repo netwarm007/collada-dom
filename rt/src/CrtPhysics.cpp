@@ -484,24 +484,32 @@ void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common &in
 		{
 			xs::anyURI URI = shape->instance_geometry->url;
 			linked_geometry:
-			Collada05::const_geometry geom = URI.get<Collada05::geometry>();			
-			URI = geom->convex_mesh->convex_hull_of->*"";
+			//HACK: This fix is temporary until something better is in reach.
+			//Collada05::const_geometry geom = URI->get<Collada05::geometry>();
+			xs::const_any yy = URI.getTargetedFragment();
+			Collada05::const_geometry g05 = yy->a<Collada05::geometry>();
+			Collada08::const_geometry g08 = yy->a<Collada08::geometry>();
+			if(g05!=nullptr) URI = g05->convex_mesh->convex_hull_of->*"";
+			if(g08!=nullptr) URI = g08->convex_mesh->convex_hull_of->*"";
 			if(!URI.empty())
 			{
-				URI.setParentObject(geom);
+				URI.setParentObject(yy);
 				daeEH::Verbose<<"Linked geometry: "<<URI.getURI();
 				//In theory convex_hull_of can go on indefinitely.
 				goto linked_geometry; 
 			}
-			RT::Geometry *g = 
-			const_cast<RT::DBase*>(RT::Main.Data)->LoadGeometry(geom);
-			if(g==nullptr) continue;
+			RT::Geometry *g = nullptr;
+			RT::DBase *dbase = const_cast<RT::DBase*>(RT::Main.Data);
+			if(g05!=nullptr) g = dbase->LoadGeometry(g05);
+			if(g08!=nullptr) g = dbase->LoadGeometry(g08); //OVERLOAD
+			if(nullptr==g) continue;
 
 			#ifdef NDEBUG
 			#error Use a table to not duplicate mesh-based shapes.
 			#endif
 
-			if(Dynamic&&geom->convex_mesh.empty())
+			if(Dynamic&&g05!=nullptr&&g05->convex_mesh.empty()
+			 ||Dynamic&&g08!=nullptr&&g08->convex_mesh.empty())
 			{
 				#ifdef NDEBUG
 				#error Take a look at ConvexDecompositionDemo.cpp?
@@ -510,6 +518,7 @@ void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common &in
 				"(Decomposition support may be added later on if it is practical.)";
 			}
 			
+			//THIS IS PRETTY SLOW.
 			const size_t s = g->Positions.Stride;
 			const size_t o = g->Positions.Offset;
 			const RT::Float *v0 = &g->Positions->value[o];
@@ -563,6 +572,8 @@ void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common &in
 				current = convexHullShape;
 			}
 			
+			#if 0
+			#error This works but the shape is trash.
 			//2017: The BT wiki says advises to not use large meshes.
 			//http://www.bulletphysics.org/mediawiki-1.5.8/index.php/Collision_Shapes
 			if(Dynamic&&g->Vertices>100)
@@ -587,6 +598,7 @@ void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common &in
 				assert(hull.numVertices()<=100&&hull.numVertices()<(int)g->Vertices);
 				daeEH::Warning<<"Reduced large convexHullShape to "<<hull.numVertices()<<" points.";
 			}
+			#endif
 		}
 
 		//compound if more then 1 shape, or a non-identity local shapetransform

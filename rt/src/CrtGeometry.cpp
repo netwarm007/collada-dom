@@ -16,15 +16,9 @@ COLLADA_(namespace)
 	namespace RT
 	{//-.
 //<-----'
-		
-//SCHEDULED FOR REMOVAL 
-//RT::Stack::Draw_Triangles() is managing this.
-void RT::RangeFinder::SetZoom()
-{
-	RT::Main.Zoom = Zoom;	
-	daeEH::Verbose<<"Zoom is "<<Zoom;
-}
-void RT::RangeFinder::operator()(RT::Geometry_Semantic &positions, size_t vertices)
+	
+void RT::RangeFinder::operator()
+(RT::Geometry_Semantic &positions, size_t vertices)
 {
 	size_t s = positions.Stride;
 	const RT::Float *it = &positions->value[positions.Offset];
@@ -33,6 +27,59 @@ void RT::RangeFinder::operator()(RT::Geometry_Semantic &positions, size_t vertic
 		
 	FitZoom(); Zoom*=RT::Asset.Meter;
 	for(int i=0;i<2;i++) RT::Asset.Mult(Box[i][0],Box[i][1],Box[i][2]);
+}
+
+void RT::Geometry::Generate_Normals()
+{
+	if(!Missing_Normals) return; 
+
+	Missing_Normals = false; assert(Normals==nullptr); 
+
+	size_t ps = Positions.Stride;	
+	if(ps==0||Positions==nullptr) return; //CRASH TEST
+
+	daeEH::Error<<Id<<" IS NEEDING SURFACE-NORMAL INFORMATION!!";
+	daeEH::Warning<<"Generating blanket smooth normals for "<<Id;
+		
+	const RT::Float *p = &Positions->value[Positions.Offset];		
+
+	Collada05::float_array fa(const_cast<daeDOM&>(RT::Main.DOM));		
+	fa->value->resize(Positions->value->size()/ps*3);	
+	RT::Float *n = fa->value->data();
+	Normals = fa; Normals.Stride = 3;	
+
+	for(size_t i=0;i<Elements.size();i++)
+	{
+		RT::Geometry_Elements &e = Elements[i];		
+		assert(e.Normals==nullptr);
+		
+		GLuint *ep = &ElementBuffer[e.Region];		
+		if(GL_TRIANGLES==e.Mode) 
+		for(size_t i=0;i<e.Width;i+=3)
+		{			
+			const RT::Float *a = p+ep[i+0]*ps;
+			const RT::Float *b = p+ep[i+1]*ps;
+			const RT::Float *c = p+ep[i+2]*ps;
+			FX::Float3 sm(c[0],c[1],c[2]);
+			FX::Float3 sn(b[0],b[1],b[2]);
+			sm-=sn; 
+			sn-=FX::Float3(a[0],a[1],a[2]);
+			sn.Cross(sm);			
+			{
+				RT::Float *a = n+ep[i+0]*3;
+				RT::Float *b = n+ep[i+1]*3;
+				RT::Float *c = n+ep[i+2]*3;
+				//Normalize is not needed if += is
+				//not used. It's too much trouble to
+				//decompose shared facets to produce a
+				//correct lighting scheme for some files.
+				sn.Normalize();
+				a[0]+=sn.x; a[1]+=sn.y; a[2]+=sn.z;
+				b[0]+=sn.x; b[1]+=sn.y; b[2]+=sn.z;
+				c[0]+=sn.x; c[1]+=sn.y; c[2]+=sn.z;
+			}				
+		}
+	}
 }
 
 //SCHEDULED FOR REMOVAL

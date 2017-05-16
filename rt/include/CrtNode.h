@@ -186,7 +186,7 @@ COLLADA_(public)
 		n+=Nodes[i]->CountDescendants(depth+1);
 		for(size_t i=0;i<Controllers.size();i++)
 		for(size_t j=0;j<Controllers[i]->Skeletons;j++)
-		n+=Controllers[i]->Joints[j]->CountDescendants(depth+1); return n;
+		n+=1+Controllers[i]->Joints[j]->CountDescendants(depth+1); return n;
 	}	
 };
 

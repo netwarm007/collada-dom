@@ -1382,7 +1382,7 @@ COLLADA_(public) //INTERFACE
 	{
 		assert(string[length]!='\0');
 		daeArray<daeStringCP,260> tmp; tmp.grow(length+1);
-		((char*)memcpy(tmp.data(),string,length))[length] = '\0';
+		((daeString)memcpy(tmp.data(),string,length*sizeof(daeStringCP)))[length] = '\0';
 		return allocString(tmp.data(),length);
 	}
 	#endif

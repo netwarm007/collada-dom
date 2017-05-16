@@ -382,7 +382,7 @@ static size_t daeMetaElementAttribute__prepare_migrate
 	 &&proclaimCM[cmp].find(buf[i])==proclaimCM->npos)
 	{
 		//buf SHOULD HAVE +1 ROOM TO OVERLOW.
-		memmove(buf+i+1,buf+i,io-i); buf[i] = cmp;
+		memmove(buf+i+1,buf+i,sizeof(*buf)*(io-i)); buf[i] = cmp;
 		return io;
 	}
 	return io-1;

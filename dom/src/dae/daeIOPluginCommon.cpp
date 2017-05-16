@@ -89,6 +89,9 @@ daeOK daeIOPluginCommon::readContent(daeIO &IO, daeContents &content)
 
 daeElement &daeIOPluginCommon::_beginReadElement(daePseudoElement &parent, const daeName &elementName)
 {
+	#ifdef NDEBUG
+	#error <math> hits this if not <math:math> and qualified xmlns isn't supported!
+	#endif
 	const daeChildRef<> &child = parent.getMeta().pushBackWRT(&parent,elementName);
 	//This is sub-optimal.
 	if(0==child.ordinal())
@@ -119,13 +122,16 @@ daeElement &daeIOPluginCommon::_beginReadElement(daePseudoElement &parent, const
 		}
 		if(!attr->stringToMemoryWRT(child,value)) unattributed:
 		{
-			_readFlags|=_readFlag_unattributed;
-			daeCTC<daeElement::xs_anyAttribute_is_still_not_implemented>();
-			daeEH::Error<<"DATA LOSS\n"
-			"Could not create an attribute "<<name<<"=\""<<value<<"\""
-			" at line "<<_errorRow()<<".\n"
-			"(Could be a schema violation.)\n"
-			"UNFORTUNATELY THERE ISN'T A SYSTEM IN PLACE TO PRESERVE THE ATTRIBUTE.";
+			if(!value.empty()) //Some files had bad attributes.
+			{
+				_readFlags|=_readFlag_unattributed;
+				daeCTC<daeElement::xs_anyAttribute_is_still_not_implemented>();
+				daeEH::Error<<"DATA LOSS\n"
+				"Could not create an attribute "<<name<<"=\""<<value<<"\""
+				" at line "<<_errorRow()<<".\n"
+				"(Could be a schema violation.)\n"
+				"UNFORTUNATELY THERE ISN'T A SYSTEM IN PLACE TO PRESERVE THE ATTRIBUTE.";
+			}
 		}
 	}
 	_attribs.clear(); return *child;

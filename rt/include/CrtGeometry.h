@@ -110,6 +110,13 @@ COLLADA_(public)
 
 	std::vector<RT::Geometry_Elements> Elements;	
 
+	/**EXPERIMENTAL 
+	 * It's trendy for COLLADA resources to try to be
+	 * small by not having surface normal information. 
+	 */
+	bool Missing_Normals; Geometry():Missing_Normals(true){}
+	void Generate_Normals();
+
 COLLADA_(public) //These are for RT::Stack to use. Not clients.
 	/**
 	 * @c RT::Stack passes VBuffer2's memory pointer when there

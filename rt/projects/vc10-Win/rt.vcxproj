@@ -128,7 +128,7 @@
     <ClInclude Include="..\..\include\CrtPhysics.h" />
     <ClInclude Include="..\..\include\CrtRender.h" />
     <ClInclude Include="..\..\include\CrtScene.h" />
-    <ClInclude Include="..\..\include\CrtSceneYY.hpp" />
+    <ClInclude Include="..\..\include\CrtScene08.hpp" />
     <ClInclude Include="..\..\include\CrtTexture.h" />
     <ClInclude Include="..\..\include\CrtTypes.h" />
     <ClInclude Include="..\..\include\RT.pch.h" />

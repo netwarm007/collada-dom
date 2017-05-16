@@ -240,11 +240,12 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 }
 RT::Stack::Stack():CurrentMaterial()
 {
-	Data.reserve(20); Data.resize(1); 
+	Data.resize(1); 
 	Data[0].Parent = nullptr;
 	Data[0].Node = &RT::Main.Scene;
 	RT::MatrixLoadIdentity(Data[0].Matrix);
 	RT::Main.SetDefaultCamera();
+	Select(); //C++98/03 empty document fix.
 }
 
 bool RT::Frame::Refresh()
@@ -546,29 +547,37 @@ void RT::Stack::Select_AddData_Controllers_and_finish_up()
 		}
 		if(ic==nullptr) continue;
 
-		for(size_t j,i=ic->Skeletons;i<ic->Joints.size();i++)
+		for(size_t j=ic->Skeletons;j<ic->Joints.size();)
 		{
-			RT::Node *p = ic->Joints[i];
-			for(j=0;j<Data.size();j++) if(p==Data[j].Node)
+			RT::Stack_Data *p = FindData(ic->Joints[j]);
+			if(p!=nullptr) 
 			{
-				ControllerData.push_back(&Data[j]);
-				break;
+				j++; ControllerData.push_back(p); 
 			}
-			if(j==Data.size())
+			else if(nullptr!=ic->Joints[j])
 			{
-				if(!Select_AddData(p,&Data[0],0))
-				return; //Error?
-				ControllerData.push_back(&Data.back());					
+				//Must add from a library_nodes.
+				bool finished = true;				
+				for(size_t k=0;k<ic->Skeletons;k++)				
+				if(nullptr==FindData(ic->Joints[k]))
+				finished = !Select_AddData(ic->Joints[k],&Data[0],0);
+				if(finished) goto finish_up;
 			}
+			else do //Should be identity matrix.
+			{
+				j++; ControllerData.push_back(&Data[0]);
+
+			}while(j<ic->Joints.size()&&nullptr==ic->Joints[j]);			
 		}		
 	}
 
-	//THESE ARE THE "_and_finish_up" BITS.
+	finish_up: //THE "_and_finish_up" BITS.
 	{	
 		//SCHEDULED FOR REMOVAL
 		_FoundAnyLight = nullptr; FindAnyLight(); 
-
-		//Reset/Default camera set up.	
+				
+		//A reset is expected and is needed to approximate
+		//the circumference of the visible world for below.
 		Reset_Update(); 
 
 		RT::Main.SetRange.Clear(); FX::Float3 x;
@@ -693,9 +702,9 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 			
 			RT::Normalize(td[6],td[7],td[8]); //Up
 
-			lm[M20] = td[3]-td[0]; //Interest
-			lm[M21] = td[4]-td[1];
-			lm[M22] = td[5]-td[2];
+			lm[M20] = td[0]-td[3]; //Interest
+			lm[M21] = td[1]-td[4];
+			lm[M22] = td[2]-td[5];
 			RT::Normalize(lm[M20],lm[M21],lm[M22]); 
 
 			//The orthonormal rotation bivectors.
@@ -704,14 +713,7 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 			
 			RT::Cross<M20,M21,M22, M00,M01,M02, M10,M11,M12>(lm,lm,lm);
 
-			lm[M30] = lm[M31] = lm[M32] = 0; 
-			 //COLLADA (probably) doesn't want an (inverted) view matrix.
-			//lm[M20] = -lm[M20]; //Invert interest after cross products?
-			//lm[M21] = -lm[M21];
-			//lm[M21] = -lm[M21];
-			//RT::MatrixTranslate(lm,-td[0],-td[1],-td[2]); //Invert Eye?
-			RT::MatrixTranslate(lm,+td[0],+td[1],+td[2]);			
-
+			lm[M30] = td[0]; lm[M31] = td[1]; lm[M32] = td[2];			 
 			lm[M03] = lm[M13] = lm[M23] = 0; lm[M33] = 1;
 
 			pd = lm; goto finish_lookat_or_skew;
@@ -864,10 +866,9 @@ void RT::Camera_State::Center()
 	//HACK: This is for models at ground level.
 	if(Camera->Id=="COLLADA_RT_default_camera")
 	{
-		Y = RT::Main.SetRange.Min(1);
-		Y+=(RT::Main.SetRange.Max(1)-Y)/2;
-
-		RT::Main.SetRange.SetZoom();
+		Y = RT::Main.SetRange.Y();
+		Zoom = RT::Main.SetRange.Zoom;	
+		daeEH::Verbose<<"Zoom is "<<Zoom;
 	}
 	else Zoom = 0; 
 }

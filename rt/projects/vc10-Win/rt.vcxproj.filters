@@ -99,7 +99,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\RT.pch.h" />
-    <ClInclude Include="..\..\include\CrtSceneYY.hpp">
+    <ClInclude Include="..\..\include\CrtScene08.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -67,7 +67,7 @@ void FX::Effect::Apply()
 }
 
 FX::Technique::Technique(FX::NewParamable *parent, xs::ID  sid)
-:NewParamable(parent),Sid(sid)
+:NewParamable(parent),Sid(sid),Generate()
 {
 	Cg = cgCreateTechnique(parent->FindEffect()->Cg,Sid);
 }

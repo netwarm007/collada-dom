@@ -233,7 +233,7 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 	{
 		if(doc!=nullptr&&_fragment+1!=_size) 
 		{
-			_size = _fragment+1; assert('#'==URI[_size-1]);
+			_size = _fragment+1; assert('#'==URI[_size-2]);
 			_this()._refString.setString(*this,URI,_size,'\0');
 		}
 		else _this()._refString.setString(*this,URI,_size);
@@ -260,28 +260,31 @@ void daeURI_base::_setURI_concat(const daeURI &base, size_t trim, daeString rel)
 	case '#': i = base.getURI_uptoCP<'#'>(); break; //local fragment 	
 	}
 	daeArray<daeStringCP,520> buf; 
-	buf.assign(base.data(),i+1);
-	//trim the ../ directives if trim!=0
-	while(i>too_far&&toslash(buf[i])!='/') 
-	i--;
-	for(;i>too_far&&trim>0;trim--)
+	buf.assign(base.data(),i+1);	
+	if(i<=base.getURI_filenameCP()) //Not ? nor #?
 	{
-		if(buf[i-1]=='.') switch(toslash(buf[i-2]))
-		{
-		case '/': trim++; break; //This is /./
-		case '.': if(toslash(buf[i-3])=='/') trim+=2; break; //This is /../
-		}
-		for(i--;i>too_far&&toslash(buf[i])!='/';) 
+		//Trim the ../ directives?
+		while(i>too_far&&'/'!=toslash(buf[i])) 
 		i--;
-	}
-	if(!protocol_relative) //Don't end up with :///.
-	{
-		//Ensure / separates base and relative part.	
-		if(toslash(buf[i])=='/')
+		for(;i>too_far&&trim>0;trim--)
 		{
-			i++; if(toslash(*rel)=='/') rel++; 
-		}	
-		else if(toslash(*rel)!='/'&&*rel!='\0') buf[i++] = '/';
+			if(buf[i-1]=='.') switch(toslash(buf[i-2]))
+			{
+			case '/': trim++; break; //This is /./
+			case '.': if(toslash(buf[i-3])=='/') trim+=2; break; //This is /../
+			}
+			for(i--;i>too_far&&toslash(buf[i])!='/';) 
+			i--;
+		}
+		if(!protocol_relative) //Don't end up with :///.
+		{
+			//Ensure / separates base and relative part.	
+			if(toslash(buf[i])=='/')
+			{
+				i++; if(toslash(*rel)=='/') rel++; 
+			}	
+			else buf[i++] = '/';
+		}
 	}
 	//Here 3 is strlen("../"), and 1 is sizeof('\0').
 	size_t size = i+3*trim+strlen(rel)+1; buf.grow(size);		
@@ -299,7 +302,7 @@ void daeURI_base::_setURI_concat(const daeURI &base, size_t trim, daeString rel)
 	}
 	//Note: _rel_backtracks is not set by this subroutine.
 	_rel_half = (short)i;
-	memcpy(buf.data()+i,rel,size-i);		
+	memcpy(buf.data()+i,rel,(size-i)*sizeof(buf[0]));
 	_this()._refString.setString(*this,buf.data(),size);
 }
 
@@ -471,11 +474,11 @@ static void daeURI_cpp_RFC3986_decode(daeStringCP *const pp)
 		if(*p=='%')
 		{
 			//toupper is canonicalizing.
-			int a = p[0] = toupper(p[0]);				
-			if((a-=(a>='A'?'A':'\0'))>=0&&a<=15)
+			int a = p[1] = toupper(p[1]);
+			if((a-=(a>='A'?'A':'0'))>=0&&a<=15)
 			{
-				int b = p[0] = toupper(p[1]);
-				if((b-=(b>='A'?'A':'\0'))>=0&&b<=15)
+				int b = p[2] = toupper(p[2]);
+				if((b-=(b>='A'?'A':'0'))>=0&&b<=15)
 				{
 					int code = (a<<4)+b; switch(code)
 					{
@@ -485,7 +488,7 @@ static void daeURI_cpp_RFC3986_decode(daeStringCP *const pp)
 						*q++ = *p++;
 						*q++ = *p++; continue; //reserved codes
 					default: assert(code<=255);						
-						*q = (daeStringCP&)code; p++; continue;
+						*q++ = (daeStringCP&)code; p+=3; continue;
 					}
 				}
 			}			
@@ -562,7 +565,7 @@ daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
 			*pathN = d; //repair *pathN = '\0';			
 			//Move query/fragment back into place.
 			//This invalidates parser from here on.
-			memmove(p,pathN,parser.size()-(pathN-pp));
+			memmove(p,pathN,(parser.size()+1-(pathN-pp))*sizeof(daeStringCP));
 		}typedef void parser;				
 		if(ops&RFC3986::decode) daeURI_cpp_RFC3986_decode(pp);		
 	}

@@ -122,6 +122,16 @@ struct Float3 : Float2
 		daeCTC<sizeof(Float3)==sizeof(FX::Float2)+sizeof(float)>();
 	}
 		
+	inline bool IsBlack()const
+	{
+		return r==0&&g==0&&b==0;
+	}
+
+	inline FX::Float3 &Cross(const FX::Float3 &b)
+	{
+		return *this = FX::Float3(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x); 
+	}
+
 	inline FX::Float3 &Normalize()
 	{
 		return *this/=sqrtf(x*x+y*y+z*z);
@@ -158,6 +168,11 @@ struct Float3 : Float2
 	{
 		x+=v.x; y+=v.y; z+=v.z; return *this;
 	}
+	
+	inline FX::Float3 &operator-=(const FX::Float3 &v)
+	{
+		x-=v.x; y-=v.y; z-=v.z; return *this;
+	}
 
 	inline FX::Float3 &operator*=(float t)
 	{
@@ -166,8 +181,7 @@ struct Float3 : Float2
 		
 	inline FX::Float3 &operator/=(float t)
 	{
-		float v = 1.0f/t;
-		x*=v; y*=v; z*=v; return *this;
+		float v = 1/t; x*=v; y*=v; z*=v; return *this;
 	}
 
 	inline bool operator==(const FX::Float3 &v)

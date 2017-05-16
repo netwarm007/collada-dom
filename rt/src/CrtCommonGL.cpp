@@ -403,6 +403,7 @@ int RT::Stack_Data::Light(int l)
 				case 4: vp.y = -RT::Main.SetRange.Zoom; break;
 				case 5: vp.z = -RT::Main.SetRange.Zoom; break;
 				}
+				vp.y+=RT::Main.SetRange.Y();
 			}
 
 			glLightfv(GL_LIGHT0+l,GL_POSITION,&vp.x);		

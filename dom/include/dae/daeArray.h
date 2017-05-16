@@ -996,6 +996,16 @@ COLLADA_(public) //Standard Library compatibility layer
 	 * Complements @c push_back(). (Removes last item.)
 	 */
 	inline void pop_back(){ setCountLess(size()-1); }
+	
+	template<class S>
+	/**
+	 * Standard Library like replacement for @c setCount(). 
+	 */
+	inline void resize(size_t size, const S &value){ setCount(size,value); }
+	/**
+	 * Standard Library like replacement for @c setCount(). 
+	 */
+	inline void resize(size_t size){ setCount(size); }
 
 COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
 	/**LEGACY

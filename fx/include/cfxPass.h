@@ -34,19 +34,11 @@ COLLADA_(public)
 	CGstate Cg_State; 
 	CGstateassignment Cg_Assignment;
 
-	struct Generate
-	{
-	unsigned NORMAL:1;
-	unsigned TANGENT:1;
-	unsigned BINORMAL:1;
-	operator unsigned&(){ return *(unsigned*)this; }
-	}Generate;
-
 COLLADA_(public)
 
 	using Paramable::Apply;
 
-	Shader(FX::Pass *p):Pass(p),Generate()
+	Shader(FX::Pass *p):Pass(p)
 	,Cg_Profile(),Cg_Program(),Cg_State(),Cg_Assignment()
 	{}
 	Shader(FX::Pass*,FX::Cg_Stage,xs::ID prof, xs::string args, xs::ID f, xs::string src);

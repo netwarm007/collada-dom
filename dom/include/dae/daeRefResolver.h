@@ -1269,7 +1269,7 @@ COLLADA_(public)
 		{	
 			//HACK: list_append() has additional parenting logic.
 			//This is swapping the smart-refs, as if plain pointers.
-			memmove(&_contained[i]+1,&_contained[i],_contained.size()-1-i);
+			memmove(&_contained[i]+1,&_contained[i],(_contained.size()-1-i)*sizeof(void*));
 			(daeRefResolver*&)_contained[i] = p;
 		}
 		return p;

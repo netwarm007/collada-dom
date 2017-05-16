@@ -100,6 +100,10 @@ static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
 	ILuint image;
 	ilGenImages(1,&image); ilBindImage(image);
 
+	//This makes images appear in their logical
+	//way (right side up) instead of stored way.
+	ilEnable(IL_ORIGIN_SET);
+	
 	#ifdef NDEBUG
 	#error What of this?
 	#endif

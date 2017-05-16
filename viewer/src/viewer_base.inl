@@ -293,7 +293,8 @@ static int mouseWheel = 0;
 static bool mouseDown[3] = {};
 static void toggleMouse(unsigned int button, bool state)
 {
-	if(button<3) mouseDown[button] = state; else assert(0); //FreeGLUT?
+	if(button<3) mouseDown[button] = state; 
+	else assert(0); //FreeGLUT?
 }
 static void moveMouseTo(int x, int y)
 {	
@@ -322,7 +323,7 @@ static void glutDisplayFunc_callback()
 }
 static void glutReshapeFunc_callback(int width, int height)
 {
-	ResizeGLScreen(width,height);
+	ResizeGLScreen(width,height); 
 }
 static void glutKeyboardFunc_callback(unsigned char ASCII, int, int)
 {			   
@@ -738,7 +739,7 @@ static struct TestPlatform : daePlatform //SINGLETON
 		std::ifstream s(path);
 		char buf[4096]; s.read(buf,4096);
 		out.assign(buf,4096);
-		out.erase(0,out.find("xmlns=\"")+7); 
+		out.erase(0,out.find("xmlns=\"")+7); //GOOD ENOUGH?
 		out.erase(out.find('"'),-1); 		
 		return out; //NO need to normalize. Not a URI per se.
 	}

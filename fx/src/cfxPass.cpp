@@ -18,7 +18,7 @@ COLLADA_(namespace)
 
 FX::Shader::Shader(FX::Pass *pass, FX::Cg_Stage stageIn
 ,xs::ID prof, xs::string args, xs::ID f, xs::string src)
-:Pass(pass),Generate()
+:Pass(pass)
 {	
 	CGGLenum stage = 
 	stageIn==stageIn.VERTEX?CG_GL_VERTEX:CG_GL_FRAGMENT;	
@@ -26,7 +26,7 @@ FX::Shader::Shader(FX::Pass *pass, FX::Cg_Stage stageIn
 }
 FX::Shader::Shader(FX::Pass *pass, FX::FX_Stage08 stageIn
 ,xs::ID prof, xs::string args, xs::ID f, xs::string src)
-:Pass(pass),Generate()
+:Pass(pass)
 {	
 	//ASSIUMING CG!
 	assert(0!=pass->Technique->FindEffect()->Cg);
@@ -141,19 +141,19 @@ void FX::Shader::_InitCg(CGGLenum stage, xs::ID prof, xs::string args, xs::ID f,
 			case 'n': case 'N': //Assuming NORMAL0.
 
 				if(sem[1]=='o'||sem[1]=='O')
-				Generate.NORMAL = true;
+				tech->Generate.NORMAL = true;
 				break;
 
 			case 't': case 'T': //Assuming TANGENT0.
 
 				if(sem[1]=='a'||sem[1]=='A')
-				Generate.TANGENT = true;
+				tech->Generate.TANGENT = true;
 				break;
 
 			case 'b': case 'B': //Assuming BINORMAL0.
 
 				if(sem[1]=='i'||sem[1]=='I')
-				Generate.BINORMAL = true;
+				tech->Generate.BINORMAL = true;
 				break;
 			}
 

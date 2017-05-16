@@ -65,6 +65,17 @@ COLLADA_(public)
 							  	
 	std::vector<FX::Pass*> Passes;
 
+	//EXPERIMENTAL
+	//This relates to FX::Shader but is here so the passes and
+	//their shaders do not have to be itereated over and so on.
+	struct Generate
+	{
+	unsigned NORMAL:1;
+	unsigned TANGENT:1;
+	unsigned BINORMAL:1;
+	operator unsigned&(){ return *(unsigned*)this; }
+	}Generate;
+
 COLLADA_(public)
 
 	Technique(FX::NewParamable *parent, xs::ID sid);

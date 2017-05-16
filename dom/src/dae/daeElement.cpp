@@ -223,14 +223,11 @@ daeElementRef daeElement::clone(daeDOM &DOM, clone_Suffix *suffix)const
 	daeCharData *CD = getCharDataObject();
 	if(CD!=nullptr) CD->copyWRT(ret,this);
 
-	#ifdef NDEBUG //NOT-THREADSAFE
-	#error what about the hidden-partition?
-	#endif
 	daeContents &dst = meta->getContentsWRT(ret);
 	const daeContents &src = meta->getContentsWRT(this);
 	dst.grow(src.getCapacity()); 
 	dst.getAU()->setInternalCounter(src.size());
-	memcpy(dst.data(),src.data(),src.getCapacity());
+	memcpy(dst.data(),src.data(),src.getCapacity()*sizeof(daeContent));
 	const daeElement *cp; //Copy the elements one-by-one. NOT-THREADSAFE
 	for(size_t i=0;i<dst.size();i++) if((cp=dst[i].getChild())!=nullptr)
 	new(&dst[i]._child.ref) daeSmartRef<>(cp->clone(DOM,suffix));

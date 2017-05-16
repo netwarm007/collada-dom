@@ -459,10 +459,12 @@ struct RT::DBase::LoadGeometry_technique_common
 		if(vertices!=nullptr)
 		{
 			inputs = Inputs(vertices->input,doc);			
+			if(0!=inputs.normal.count) 
+			out->Missing_Normals = false; //HACK
 			out->Vertices = inputs.position.count;
 			out->Positions = inputs.position.source;
 			out->Normals = inputs.normal.source;
-			out->TexCoords = inputs.texture0.source;
+			out->TexCoords = inputs.texture0.source;			
 		}	
 		//These parameters are humble triangulation codes.
 		//0 for fans that pivot around 0.
@@ -623,8 +625,10 @@ struct RT::DBase::LoadGeometry_technique_common
 			if(in_i.p.empty()) continue;
 
 			inputs = Inputs(in_i.input,doc);
+			if(0!=inputs.normal.count)  
+			out->Missing_Normals = false; //HACK
 			int indexes = //Unhandled vertex-attributes are discarded.
-			push_back_Elements(in_i.material,i<0?GL_LINES:GL_TRIANGLES);	
+			push_back_Elements(in_i.material,M<0?GL_LINES:GL_TRIANGLES);	
 			for(int i=0;i<indexes;i++)
 			{
 				triangulate_offset[0] = triangulate_offset[i];
@@ -1725,16 +1729,16 @@ struct RT::DBase::LoadInstances_of
 		if(geom==nullptr) 
 		return nullptr;
 
-		RT::Geometry_Instance *out = COLLADA_RT_new(RT::Geometry_Instance);
-		out->Geometry = geom;
+		RT::Geometry_Instance *ig = COLLADA_RT_new(RT::Geometry_Instance);
+		ig->Geometry = geom;
 
 		ColladaYY::const_bind_material::technique_common
 		technique_common = in.bind_material->technique_common;
 		if(technique_common!=nullptr)
 		for(size_t i=0;i<technique_common->instance_material.size();i++)
-		Load_i_material(out->Materials,technique_common->instance_material[i]);
+		Load_i_material(ig->Materials,technique_common->instance_material[i]);
 
-		return out;
+		return ig;
 	}
 	RT::Controller_Instance *Load_i(const ColladaYY_XSD::
 	_if_YY(instance_controller,instance_controller_type) &in)
@@ -1747,28 +1751,28 @@ struct RT::DBase::LoadInstances_of
 
 		daeEH::Verbose<<"Instancing Controller "<<in.name;
 
-		RT::Controller_Instance *out = COLLADA_RT_new(RT::Controller_Instance);
-		out->Controller = con; geom = con->Geometry;
+		RT::Controller_Instance *ic = COLLADA_RT_new(RT::Controller_Instance);
+		ic->Controller = con; geom = con->Geometry;
 	
 		ColladaYY::const_bind_material::technique_common 
 		technique_common = in.bind_material->technique_common;
 		if(technique_common!=nullptr)
 		for(size_t j=0;j<technique_common->instance_material.size();j++)
-		Load_i_material(out->Materials,technique_common->instance_material[j]);
+		Load_i_material(ic->Materials,technique_common->instance_material[j]);
 
 		#ifdef NDEBUG
 		#error Support #SIDREF skeletons. And track <instance_node>?
 		#endif	
-		out->Skeletons = in.skeleton.size();
-		out->Joints.resize(out->Skeletons);
-		for(size_t i=0;i<out->Skeletons;i++)
+		ic->Skeletons = in.skeleton.size();
+		ic->Joints.resize(ic->Skeletons);
+		for(size_t i=0;i<ic->Skeletons;i++)
 		{
 			URI = in.skeleton[i]->value;
 			ColladaYY::const_node skel = URI.get<ColladaYY::node>();
 			//This is cleaned up after.
 			if(skel==nullptr) continue;
 
-			out->Joints[i] = dbase->LoadNode(skel);
+			ic->Joints[i] = dbase->LoadNode(skel);
 
 			ColladaYY::const_node joint;
 			const daeDocument *doc = dae(skel)->getDocument();
@@ -1776,17 +1780,16 @@ struct RT::DBase::LoadInstances_of
 		//TODO? Warn if joints are bound more than once.
 		//TODO? Warn if a skeleton has no joints inside.
 
-			size_t jN = out->Skeletons;
+			size_t jN = ic->Skeletons;
 			for(RT::Controller *p=con;p!=nullptr;p=p->Source)
 			{	
 				RT::Skin *skin = dynamic_cast<RT::Skin*>(p);
-				if(skin==nullptr)
-				continue;
+				if(skin==nullptr) continue;
 
 				//+1 and 1+ account for a <skeleton> entry.
 				size_t j = jN; jN+=skin->Joints.size();
-				if(jN>out->Joints.size()) 
-				out->Joints.resize(jN);				
+				if(jN>ic->Joints.size()) 
+				ic->Joints.resize(jN);				
 				for(size_t i=0;i<skin->Joints.size();i++)
 				{
 					//sidLookup does not follow <instance_node> joints.
@@ -1797,22 +1800,34 @@ struct RT::DBase::LoadInstances_of
 					else dae(skel)->sidLookup(ref,joint,doc);
 					RT::Node *found = dbase->LoadNode(joint);
 					if(found==nullptr) continue;
-					out->Joints[j+i] = found;				
+					ic->Joints[j+i] = found;				
 					daeEH::Verbose<<"Skin Controller "<<skin->Id<<" joint binding made to node "<<skin->Joints[i];
 				}
 
 				for(size_t i=0;i<skin->Joints.size();i++)
-				if(nullptr==out->Joints[j+i])
+				if(nullptr==ic->Joints[j+i])
 				daeEH::Warning<<"Failed to make joint binding for Controller "<<skin->Id<<" for Joint "<<skin->Joints[i];	
 			}
 		}
-		for(size_t i=0;i<out->Skeletons;i++) if(nullptr==out->Joints[i])		
+		for(size_t i=0;i<ic->Skeletons;i++) if(nullptr==ic->Joints[i])		
 		{									
-			out->Joints.erase(out->Joints.begin()+i); out->Skeletons--; i--;
+			ic->Joints.erase(ic->Joints.begin()+i); ic->Skeletons--; i--;
 		}
-		return out;
+		//YUCK: Fill in joints with nullptr so the system will not crash?
+		if(ic->Joints.empty())	
+		for(RT::Controller *p=con;p!=nullptr;p=p->Source)
+		{	
+			RT::Skin *skin = dynamic_cast<RT::Skin*>(p);
+			if(skin!=nullptr&&!skin->Joints.empty()) 
+			{			
+				if(ic->Joints.empty())
+				daeEH::Error<<"Skin controller did not find joints "<<out->Id;
+				ic->Joints.resize(ic->Joints.size()+skin->Joints.size());
+			}
+		}
+		return ic;
 	}
-	void Load_i_material(std::vector<RT::Material_Instance> &out,
+	void Load_i_material(std::vector<RT::Material_Instance> &imv,
 	//Reminder: <evaluate_scene> adds its own <instance_material>
 	ColladaYY::const_bind_material::technique_common::instance_material in) 
 	{
@@ -1822,7 +1837,14 @@ struct RT::DBase::LoadInstances_of
 		im.Material = dbase->LoadMaterial(yy);
 		if(im.Material==nullptr) return;
 		
-		im.Symbol = in->symbol; out.push_back(im);
+		RT::Material &m = *im.Material;
+		if(geom->Missing_Normals) //HACK
+		if(!m.Diffuse.IsBlack()||!m.Specular.IsBlack()
+		||m.COLLADA_FX!=nullptr&&m.COLLADA_FX->FindTechnique()->Generate.NORMAL)
+		{
+			geom->Generate_Normals();
+		}
+		im.Symbol = in->symbol; imv.push_back(im);
 
 		//Adding this to help debug demo.dae.
 		for(size_t i=0;i<geom->Elements.size();i++)			

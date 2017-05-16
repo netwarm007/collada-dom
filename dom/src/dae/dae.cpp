@@ -489,8 +489,8 @@ void daeArchive::_uprootDoc(daeDoc *doc, daeDoc *uprooted_replacement)
 	size_t docsN = _docs.getCount();
 	if(hint>=docsN||doc!=_docs[hint])
 	{
-		hint = 0;  
-		while(hint<docsN&&doc!=_docs[hint++]);
+		for(hint=0;hint<docsN&&doc!=_docs[hint];)
+		hint++;
 		if(hint>=docsN) //docsN may be 0
 		{
 			//Special exception?
@@ -512,9 +512,10 @@ void daeArchive::_uprootDoc(daeDoc *doc, daeDoc *uprooted_replacement)
 	if(uprooted_replacement==nullptr) 
 	{			
 		//hack: Avoid shuffling ref counts
-		memmove(p+hint,p+hint+1,docsN-hint-1);
+		memmove(p+hint,p+hint+1,(docsN-hint-1)*sizeof(void*));
 		(void*&)p[docsN-1] = nullptr;
 		_docs.getAU()->setInternalCounter(docsN-1);
+		if(hint<_whatsupDoc) _whatsupDoc--;
 	}
 	else uprooted_replacement->_archive = this;
 }
@@ -576,22 +577,23 @@ void daeArchive::_compactDocs(size_t *before, size_t *after)
 	
 void daeArchive::_whatsupDocInsert(daeDoc *doc)
 {	
-	size_t hint = _whatsupDoc, docsN = _docs.getCount();
+	//This may adjust _whatsupDoc by -1.
+	doc->_archive->_uprootDoc(doc,nullptr);
+
+	size_t hint = _whatsupDoc;
+	size_t docsN = _docs.getCount();
 	if(hint>docsN) hint = docsN; 
 
 	//hack: Avoid shuffling ref counts.
 	_docs.grow(docsN+1);
 	daeDocRef *p = _docs.data();
-	memmove(p+hint+1,p+hint,docsN-hint);
-
-	doc->_archive->_uprootDoc(doc,nullptr);
+	memmove(p+hint+1,p+hint,(docsN-hint)*sizeof(void*));
 	new(p+hint) daeDocRef(doc); doc->_archive = this;
-
-	_docs.getAU()->setInternalCounter(docsN+1);		
+	_docs.getAU()->setInternalCounter(docsN+1);
 
 	//The caller is responsible for keeping this list sorted.
 	assert((hint==0||doc->_uri>p[hint-1]->_uri)
-	&&(hint==docsN||doc->_uri<p[hint+1]->_uri));
+	&&(hint+1>=docsN||doc->_uri<p[hint+1]->_uri));
 }
 
 void daeArchive::__daeDoc__v1__atomize()

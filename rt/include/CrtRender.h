@@ -184,9 +184,9 @@ COLLADA_(public) //new APIs
 		{
 			Data.reserve(1+node->CountDescendants());	
 			Select_AddData(node,nullptr,-1);
-			std::sort(DrawData.begin(),DrawData.end());
-			Select_AddData_Controllers_and_finish_up();
+			std::sort(DrawData.begin(),DrawData.end());			
 		}		
+		Select_AddData_Controllers_and_finish_up();
 	}private:
 	bool Select_AddData(RT::Node*,RT::Stack_Data*,size_t);
 	void Select_AddData_DrawData(void*,void*,RT::Stack_Data*);
@@ -256,6 +256,12 @@ COLLADA_(public)
 	 * Sets up the camera instance to be rendered from.
 	 */
 	void _ResetCamera(); RT::Matrix _View;
+
+	inline RT::Stack_Data *FindData(RT::Node *p)
+	{
+		for(size_t i=0;i<Data.size();i++)
+		if(p==Data[i].Node) return &Data[i]; return nullptr;
+	}
 };
 
 /**UNUSED?

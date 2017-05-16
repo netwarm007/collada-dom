@@ -177,9 +177,9 @@ COLLADA_(namespace)
 		float Box[2][3],Zoom;
 		float &Min(int i){ return Box[0][i]; }
 		float &Max(int i){ return Box[1][i]; }
+		float Y(){ return (Max(1)-Min(1))/2+Min(1); }
 		RangeFinder(){ Clear(); }	
-		void Clear(){ memset(this,0x00,sizeof(*this)); }	
-		void SetZoom();
+		void Clear(){ memset(this,0x00,sizeof(*this)); }			
 
 		//Previously "SetRange."
 		//oprerator() incorporates the RT::Asset state.
