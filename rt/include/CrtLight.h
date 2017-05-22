@@ -47,7 +47,7 @@ COLLADA_(public)
 COLLADA_(public)
 
 	Light()
-	:Color(0.5f,1)
+	:Color(0.5,1)
 	//!!!GAC are these good values for defaults?
 	,FalloffAngle(180)
 	,FalloffExponent()

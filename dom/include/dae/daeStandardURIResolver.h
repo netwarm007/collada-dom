@@ -119,18 +119,13 @@ COLLADA_(protected) //daeRefResolver::_resolve
 		}
 		else OK = DAE_ERR_INVALID_CALL; 
 		
-		if(OK!=DAE_OK) 
-		{
-			URI.resolve(); _printError(OK,URI.getURI()); 
-		}
-		return OK;
+		if(OK!=DAE_OK) URI.resolve();
+		if(OK!=DAE_OK) _printError(OK,URI.getURI()); return OK;
 	}
-	COLLADA_DOM_LINKAGE 
-	static void _printError(daeError err, const daeRefView &uri)
-	COLLADA_DOM_SNIPPET
-	(
-		daeEH::Error<<"daeDefaultURIResolver - Failed to resolve\n"<<uri;
-	)
+	static void _printError(daeError err, const daeRefView &uri)	
+	{
+		daeEH::Warning<<"daeDefaultURIResolver - Failed to resolve:\n"<<uri;
+	}
 };
 
 /**LEGACY, NOT RECOMMENDED

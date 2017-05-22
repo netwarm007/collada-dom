@@ -9,6 +9,7 @@
 #define __COLLADA_RT__GEOMETRY_H__  
 
 #include "CrtNode.h"
+#include "CrtAnimation.h"
 
 COLLADA_(namespace)
 {
@@ -38,12 +39,17 @@ struct Geometry_Semantic : Collada05::const_float_array
 		const_float_array::operator=(WTF);
 	}
 
-	Geometry_Semantic():Offset(),Stride(),Index(){}
+	Geometry_Semantic():Offset(),Stride(),Index(),Dimension(){}
 	/**
 	 * @c Index is derived from <input offset> although it's
 	 * not the same. @c Offset is <accessor offset> verbatim.
 	 */
-	Collada05::accessor::offset_uint Offset, Stride, Index;	
+	Collada05::accessor::stride_uint Stride, Offset:8, Index:8;
+	/**
+	 * @see @c RT::Geometry::Generate_Position(). This might
+	 * be handy for textures and arbitrary vertex attributes.
+	 */
+	Collada05::accessor::stride_uint Dimension:8;	
 };
 
 //SCHEDULED FOR REMOVAL (DOESN'T SCALE)
@@ -116,6 +122,13 @@ COLLADA_(public)
 	 */
 	bool Missing_Normals; Geometry():Missing_Normals(true){}
 	void Generate_Normals();
+	/**
+	 * This generates 3-D POSITION data from 1 or 2-D.
+	 * It must be called before the geometry is ready.
+	 * @see @c RT::Spline::Genetrate_Positions() that
+	 * is always called if @c this is a @c RT::Spline.
+	 */
+	void Generate_Positions(RT::Up);
 
 COLLADA_(public) //These are for RT::Stack to use. Not clients.
 	/**
@@ -129,7 +142,56 @@ COLLADA_(public) //These are for RT::Stack to use. Not clients.
 	//This old logic doesn't belong in Geometry/CrtGeometry.cpp.
 	void Draw_VBuffer(float*,xs::string);
 	void Draw_VBuffer(float*,std::vector<RT::Material_Instance>&);
+
+COLLADA_(public) //Splines?
+
+	//SCHEDULED FOR REMOVAL
+	RT::Spline *ToSpline();
+	RT::Spline *AsSpline(){ return (RT::Spline*)this; }
+	inline bool IsSpline(){ return ToSpline()!=nullptr; }
+};											   
+class Spline : public RT::Geometry, public RT::Spline_Length
+{
+	#ifdef _DEBUG
+	std::vector<RT::Float> *__SamplePoints;
+	#endif
+
+COLLADA_(public)
+
+	Spline():Open(-1),BSPLINE_Entry()
+	#ifdef _DEBUG
+	,__SamplePoints((std::vector<RT::Float>*)&SamplePoints)
+	#endif
+	{}
+	/**
+	 * The main reason this is retained (not discarded) is
+	 * so the control-points (and graph) can be visualized.
+	 * It may also make sense to apply a <skin> or <morph>
+	 * to the splines. If so they should be handled by all
+	 * new derivations of the @c RT::Controller base class.
+	 */
+	std::vector<RT::Spline_Point> SamplePoints;
+
+	/**
+	 * This is funky. Just do @c Points+Open where it can
+	 * be -1 or 0. It wasn't present until BSPLINE had to
+	 * have a phantom point added to the end, making this
+	 * ambiguous.
+	 * @c BSpline is used to check for the existence of a
+	 * phantom point in what would be the 0th position if
+	 * the curve did not begin with a BSPLINE entry point.
+	 */
+	signed Open:1; unsigned BSPLINE_Entry:1;
+
+	/**
+	 * This will be needed to rebuild the positions array. 
+	 */
+	RT::Up Sense; void Generate_Positions();
 };
+inline RT::Spline *RT::Geometry::ToSpline() //CIRCULAR-DEPENDENCY
+{
+	return dynamic_cast<RT::Spline*>(this); 
+}
 
 //-------.
 	}//<-'

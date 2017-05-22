@@ -75,9 +75,10 @@ void RT::Stack::_ResetCamera()
 
 		//The default camera doesn't have a set zoom.
 		#ifdef NDEBUG
-		#error These factors are arbitrarily chosen.
+		#error 50/1000 are arbitrary. 
 		#endif
-		nZ = RT::Main.Zoom/50; fZ = nZ*1000; //RT::Main.Zoom*10; 
+		nZ = std::max(RT::Main.Zoom,RT::Main.SetRange.Zoom)/50;
+		fZ = nZ*1000;
 	}
 	else if(RT::Main.Zoom>0)
 	{
@@ -125,6 +126,7 @@ void RT::Stack::Draw()
 							 
 	//reset all lights	
 	int l=0,lN = 7;
+	glGetIntegerv(GL_MAX_LIGHTS,&lN);
 	for(size_t i=0;i<Data.size();i++)	
 	if(!Data[i].Node->Lights.empty())
 	{
@@ -134,7 +136,8 @@ void RT::Stack::Draw()
 		while(ll<l) glEnable(GL_LIGHT0+ll++);
 		if(l==lN) break;
 	}
-	while(l<lN) glDisable(GL_LIGHT0+l++);
+	while(l<lN&&glIsEnabled(GL_LIGHT0+l))
+	glDisable(GL_LIGHT0+l++);
 		
 	if(RT::Main.ShowGeometry)
 	{
@@ -358,6 +361,47 @@ void RT::Stack::Draw_ShowHierarchy()
 	}
 	glEnd(); glPointSize(1);
 
+	//Draw <spline> control shapes.	
+	glColor3f(1,1,1); glLineStipple(2,0xAAAA);
+	glLineWidth(2); glEnable(GL_LINE_STIPPLE);
+	for(size_t i=0;i<ShowHierarchy_Splines.size();i++)	
+	for(int j=ShowHierarchy_Splines[i++];j<ShowHierarchy_Splines[i];j++)
+	{
+		RT::Spline *g = DrawData[j].first->AsSpline();
+		if(0==g->Points) continue;
+		RT::Up_Meter um = RT::GetUp_Meter(g->Asset);
+		RT::Matrix wv;
+		RT::MatrixLoadAsset(wv,um.first,um.second);
+		RT::MatrixMult(wv,DrawData[j].Data->Matrix,wv);		
+		RT::MatrixMult(wv,_View,wv);
+		GL::LoadMatrix(wv);		
+		glBegin(GL_LINE_STRIP);
+		//TODO: Try to generalize this to an animation display.
+		int kN = g->BSPLINE_Entry+g->Points+g->Open;
+		for(int k=g->BSPLINE_Entry;k<=kN;k++)
+		{
+			RT::Spline_Point &pt = g->SamplePoints[k*g->PointSize];
+			RT::Float *p = pt.GetParameters();
+			for(int l=0;l<(pt.IsBezier()&&k!=kN?3:1);l++,
+			p+=g->Parameters+(l==2?g->PointSize:0))
+			if(1==g->Parameters) switch(g->Sense)
+			{
+			case RT::Up::X_UP: glVertex3f(p[0],0,0); break;
+			case RT::Up::Y_UP: glVertex3f(0,p[0],0); break;
+			case RT::Up::Z_UP: glVertex3f(0,0,p[0]); break;
+			}
+			else if(2==g->Parameters) switch(g->Sense)
+			{
+			case RT::Up::X_UP: glVertex3f(0,p[0],p[1]); break;
+			case RT::Up::Y_UP: glVertex3f(p[0],0,p[1]); break;
+			case RT::Up::Z_UP: glVertex3f(p[0],p[1],0); break;
+			}
+			else glVertex3d(p[0],p[1],p[2]);
+		}
+		glEnd();
+	}	
+	glLineWidth(1); glDisable(GL_LINE_STIPPLE);
+
 	//Undo set up.
 	glEnable(GL_TEXTURE_2D);
 	glDepthFunc(df);
@@ -396,7 +440,8 @@ int RT::Stack_Data::Light(int l)
 			{
 				switch(i)
 				{
-				case 0: vp.x = +RT::Main.SetRange.Zoom; break;
+				case 0: glLightfv(GL_LIGHT0,GL_AMBIENT,&light->Color.r);
+				        vp.x = +RT::Main.SetRange.Zoom; break;
 				case 1: vp.y = +RT::Main.SetRange.Zoom; break;
 				case 2: vp.z = +RT::Main.SetRange.Zoom; break;
 				case 3: vp.x = -RT::Main.SetRange.Zoom; break;

@@ -83,31 +83,16 @@ struct Float1
 };
 struct Float2 : Float1
 {
-	union{ float f1,g,y,t; };
-		
-	//SCHEDULED FOR REMOVAL?
-	//These come from the retired CrtVec2f class.
-		
-	Float2(float xy=0){ x = y = xy; }
-
-	Float2(float xx, float yy){ x = xx; y = yy; }
-
-	inline bool operator==(const FX::Float2 &v)
-	{
-		assert(!"used?"); return x==v.x&&y==v.y;
-	}
-	inline bool operator!=(const FX::Float2 &v)
-	{
-		assert(!"used?"); return x!=v.x||y!=v.y;
-	}
+	union{ float f1,g,y,t; };		
 };
 struct Float3 : Float2
 {
 	union{ float f2,b,z,p; };
 
-	//SCHEDULED FOR REMOVAL?
+	Float3(){ x = y = z = 0; }
 
-	Float3(float xyz=0){ x = y = z = xyz; }
+	//Float3(float xyz){ x = y = z = xyz; }
+	Float3(double C4244){ x = y = z = (float)C4244; }
 
 	Float3(float (&xyz)[3])
 	{
@@ -199,22 +184,22 @@ struct Float4 : Float3
 
 	//SCHEDULED FOR REMOVAL?
 
-	Float4(float xyzw=0){ x = y = z = w = xyzw; }
-
-	template<class C4244, class W>
-	Float4(C4244 xx, C4244 yy, C4244 zz, W ww)
-	{
-		x = (float)xx; y = (float)yy; z = (float)zz; w = (float)ww;
-
-		daeCTC<sizeof(Float4)==sizeof(FX::Float2)*2>();
-	}
-
+	Float4():Float3(),w()
+	{}
+	template<class C4244>
+	Float4(C4244 xyzw):Float3(xyzw),w((float)xyzw)
+	{}
+	template<class C4244, class A>
 	//This comes from CrtColor4f.
 	//It's not recommended to let aa default to 1.
 	//CrtQuat code will have to use this with 0,1.
-	Float4(const FX::Float3 &c, float aa=1)
+	Float4(C4244 xyz, A alpha):Float3(xyz),a((float)alpha)
+	{}
+	template<class C4244, class W>
+	Float4(C4244 xx, C4244 yy, C4244 zz, W ww)
+	:Float3(xx,yy,zz),w((float)ww)
 	{
-		r = c.r; g = c.g; b = c.b; a = aa;
+		daeCTC<sizeof(Float4)==sizeof(FX::Float2)*2>();
 	}
 
 	//THIS IS UNUSED.

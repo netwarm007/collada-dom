@@ -7,7 +7,7 @@
  */
 
 #define COLLADA_DOM_MAKER \
-"ColladaDOM 3 reference implementation"
+"ColladaDOM 3 Reference Viewer"
 
 //This must match RT & FX.
 #define IMPORTING_COLLADA_DOM

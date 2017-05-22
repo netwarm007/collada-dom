@@ -30,27 +30,26 @@ struct Material_Data
 	//Again this is a first implementation and should
 	//be fleshed out further later. 
 		
+	#ifdef NDEBUG
+	#error Transparency/Transparent should be ignored if 0. (Unless animated?)
+	#endif
+	//https://forums.khronos.org/showthread.php/11108-Transparent?p=36874#post36874
 	FX::Float4 Emission, Ambient, Diffuse;
 	FX::Float4 Specular, Reflective, Transparent;
 	float Shininess, Transparency, Reflectivity, RefractiveIndex;
 
-	Material_Data():Shininess(40),Transparency(1)
+	//These are some historically defined defaults.
+	//Note that by default they are overriden by 0
+	//so that they can be filled out in <material>.
+	Material_Data(float def=0):Shininess(def*40),Transparency(1)
 	,Reflectivity(),RefractiveIndex()
-	//These are likely just arbitrary/historical defaults.
-	,Emission(0,1),Ambient(0.25f,1),Diffuse(1),Specular(0.95f,1){}
-	~Material_Data(){}
+	,Emission(0,1),Ambient(def*0.25,1),Diffuse(def*0.5,1),Specular(def*0.95,1)
+	{}	
 };
-class Material : public RT::Base, public RT::Material_Data
+
+struct Effect_Type
 {
-COLLADA_(public)
-
-	using Material_Data::operator=;
-		  
-	RT::Effect *Effect;	
-
-	FX::Material *COLLADA_FX;
-
-	Material():Effect(),COLLADA_FX(){}
+	enum{ FX=0,CONSTANT,LAMBERT,PHONG,BLINN };
 };
 
 /**
@@ -66,7 +65,27 @@ COLLADA_(public)
 
 	std::vector<RT::Image*> Textures;	
 	
-	FX::Effect *COLLADA_FX; Effect():COLLADA_FX(){}
+	int Type; FX::Effect *COLLADA_FX; 
+	
+	Effect(float def=0):Material_Data(def)	
+	,Type(RT::Effect_Type::PHONG),COLLADA_FX()
+	{}
+};
+
+class Material : public RT::Base, public RT::Material_Data
+{
+COLLADA_(public)
+
+	using Material_Data::operator=;
+		
+	FX::Material *COLLADA_FX;
+
+	RT::Effect *Effect;	
+
+	Material(float def=0):Material_Data(def),Effect(),COLLADA_FX()
+	{}
+	Material(RT::Effect *e):Material_Data(*e),Effect(e),COLLADA_FX()
+	{}
 };
 
 //-------.

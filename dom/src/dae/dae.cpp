@@ -322,10 +322,12 @@ COLLADA_SUPPRESS_C(4355)
 	//*3/2 is to give US a heads up
 	daeCTC<__size_on_client_stack*1/2>=sizeof(*this)>();
 
-	daeDOM_outstanding++;
+	daeDOM_outstanding++; _destructed = false;
 }
 daeDOM::~daeDOM() 
 {  
+	if(_destructed) return; _destructed = true;
+
 	daeDOM_outstanding--;
 
 	if(!isClosed()) _closedDoc(this);

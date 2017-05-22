@@ -85,12 +85,32 @@ COLLADA_(public)
 	 * This avoids confusion between shared/unshared inputs.
 	 * @return Returns <input semantic> if the array exists.
 	 */
-	daeName bind(input &in)
+	daeName bind(const input &in)
 	{
 		accessor = document->idLookup<source>
 		(in->source)->technique_common->accessor;
 		array::operator=(xs::anyURI(accessor->source->*"",document).get<array>());
 		return in->semantic;
+	}
+
+	/**
+	 * This returns the X Y or Z sense of the 1-D param or
+	 * for 2-D it returns X if YZ or Y if XZ or Z if XY in
+	 * order to communicate which two X Y or Z are present.
+	 */
+	RT::Up sense()
+	{
+		if(accessor==nullptr) return 0;
+		size_t d = accessor->param.size();		
+		int x = 0, y = 0, z = 0, out = 0; //X
+		for(size_t i=0;i<d;i++)
+		{
+			daeName name = accessor->param[i]->name;
+			if(x==0&&"X"==name){ x++; out = 0; }
+			if(y==0&&"Y"==name){ y++; out = 1; }
+			if(z==0&&"Z"==name){ z++; out = 2; }
+		}
+		if(d==2) out = z==0?2:y==0?1:0; return out; //XY	
 	}
 
 	#define COLLADA_RT_ACCESSOR_i_s_iN(x) \

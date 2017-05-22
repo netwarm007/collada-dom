@@ -74,7 +74,7 @@
       <StringPooling>true</StringPooling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libcolladadomRT-d.lib;libcolladadomFX-d.lib;libcolladadom25-sd.lib;cg.lib;cgGL.lib;glut32.lib;opengl32.lib;glu32.lib;wsock32.lib;winmm.lib;DevIL.lib;libbulletmath_d.lib;libbulletcollision_d.lib;libbulletdynamics_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(IntDir)viewer_base.lite.obj;libcolladadomRT-d.lib;libcolladadomFX-d.lib;libcolladadom25-sd.lib;cg.lib;cgGL.lib;glut32.lib;opengl32.lib;glu32.lib;wsock32.lib;winmm.lib;DevIL.lib;libbulletmath_d.lib;libbulletcollision_d.lib;libbulletdynamics_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)ColladaDOM-3-reference-d.exe</OutputFile>
       <AdditionalLibraryDirectories>..\..\..\bin\Win32;..\..\..\rt\external-libs\devIL\win32\lib;$(CG_LIB_PATH);..\..\..\rt\external-libs\bullet\lib\vc8;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)$(TargetFileName).intermediate.manifest</ManifestFile>
@@ -137,6 +137,7 @@
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">/bigobj %(AdditionalOptions)</AdditionalOptions>
       <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">/bigobj %(AdditionalOptions)</AdditionalOptions>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\linux\Linux_main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

@@ -10,6 +10,7 @@
 #define __COLLADA_DOM__DAE_SID_RESOLVER_H__
 
 #include "daeIDRef.h"
+#include "daeErrorHandler.h"
 
 ////ISSUES/////////////////////////////////////////
 //daeIDREF and daeSIDREF are virtually identical,//
@@ -442,6 +443,7 @@ COLLADA_(protected) //daeRefResolver::_resolve
 		const_daeDocRef doc;
 		const daeSIDREF &sidref = (daeSIDREF&)ref;		
 
+		daeOK OK;
 		//COLLADA_SUPPRESS_C(4144)
 		switch(req.object!=nullptr?1:0)
 		{
@@ -453,7 +455,7 @@ COLLADA_(protected) //daeRefResolver::_resolve
 				{
 					const daeDoc *cmp = ref.getDoc();
 
-					if(cmp!=nullptr&&doc!=cmp) return DAE_ERR_QUERY_SYNTAX;
+					if(cmp!=nullptr&&doc!=cmp) OK = DAE_ERR_QUERY_SYNTAX;
 				}
 				break;
 			}
@@ -461,18 +463,27 @@ COLLADA_(protected) //daeRefResolver::_resolve
 
 		case 0:	doc = ref.getDoc();
 
-			if(doc==nullptr) return DAE_ERR_INVALID_CALL;
+			if(doc==nullptr) OK = DAE_ERR_INVALID_CALL;
 		}		
 
-		daeString SIDREF = sidref.data();
-		daeSIDREFCache::LesserKey key(daeStringRef(*doc,req),SIDREF);
-		daeElementRef hit = _cache.lookup(key);
-		if(SIDREF[0]=='.'&&hit!=&ref.getParentObject()) hit = nullptr;
-		daeError out = _resolve_exported(hit,doc,sidref,req);
-		#ifdef NDEBUG
-		#error _cache is corrupting the heap atexit. Are SIDREFs ever worth caching?
-		#endif
-		/*if(out==DAE_OK&&hit!=req.object) _cache.add(key,req.object);*/ return out;
+		if(OK==DAE_OK)
+		{
+			daeString SIDREF = sidref.data();
+			daeSIDREFCache::LesserKey key(daeStringRef(*doc,req),SIDREF);
+			daeElementRef hit = _cache.lookup(key);
+			if(SIDREF[0]=='.'&&hit!=&ref.getParentObject()) hit = nullptr;
+			OK = _resolve_exported(hit,doc,sidref,req);
+			#ifdef NDEBUG
+			#error _cache is corrupting the heap atexit. Are SIDREFs ever worth caching?
+			#endif
+			/*if(OK==DAE_OK&&hit!=req.object) _cache.add(key,req.object);*/
+		}
+		
+		if(OK!=DAE_OK) _printError(OK,sidref.getSIDREF()); return OK;
+	}
+	static void _printError(daeError err, const daeRefView &sidref)
+	{
+		daeEH::Warning<<"daeDefaultSIDREFResolver - Failed to resolve:\n"<<sidref;
 	}
 
 	COLLADA_DOM_LINKAGE

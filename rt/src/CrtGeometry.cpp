@@ -35,6 +35,8 @@ void RT::Geometry::Generate_Normals()
 
 	Missing_Normals = false; assert(Normals==nullptr); 
 
+	if(IsSpline()) return; 
+
 	size_t ps = Positions.Stride;	
 	if(ps==0||Positions==nullptr) return; //CRASH TEST
 
@@ -81,8 +83,114 @@ void RT::Geometry::Generate_Normals()
 		}
 	}
 }
+void RT::Geometry::Generate_Positions(RT::Up sense)
+{
+	//The idea here is to convert non 3-D POSITION 
+	//to 3-D because it doesn't seem warranted for
+	//CrtGeometry_fill and skinning to manage this.
+	if(Positions.Dimension>=3) return;
+
+	//This tessellates the spline at the same time
+	//as checking for 2-D or 1-D geometry.
+	if(IsSpline())
+	return ((RT::Spline*)this)->Generate_Positions();
+
+	size_t ps = Positions.Stride;	
+	size_t pd = Positions.Dimension;	
+	const RT::Float *o = &Positions->value[Positions.Offset];		
+	Collada05::float_array fa(const_cast<daeDOM&>(RT::Main.DOM));		
+	fa->value->resize(Vertices*3);		
+	Positions = fa;	
+	Positions.Offset = 0;
+	Positions.Stride = 3;
+	Positions.Dimension = 3;	
+
+	if(ps!=0&&Positions==nullptr) //CRASH TEST
+	return;
+
+	RT::Float *p = fa->value->data();
+	if(pd==1) //sense is the represented dimension.
+	{
+		p+=sense;
+		for(size_t i=0;i<Vertices;i++,o++,p+=3)
+		*p = *o;
+	}
+	else if(pd==2) //sense is the absent dimension.
+	{
+		int a = 0; if(sense==a) a++;
+		int b = a+1; if(sense==b) b++;
+		for(size_t i=0;i<Vertices;i++,o+=2,p+=3)
+		{
+			p[a] = o[0]; p[b] = o[1];
+		}
+	}	
+	else assert(0);	
+}
+void RT::Spline::Generate_Positions()
+{
+	if(Positions==nullptr)
+	{
+		Positions = Collada05::float_array(const_cast<daeDOM&>(RT::Main.DOM));		
+		Positions.Stride = 3;
+		Positions.Dimension = 3;	
+	}
+
+	int resolution = 20-1;
+	if(Algorithms==RT::Spline_Type::LINEAR)
+	resolution = 1;
+	
+	Collada05::float_array::value_ListOfFloats &fa = 
+	const_cast<Collada05::float_array::value_ListOfFloats&>
+	(*Positions->value.operator->());
+	int length = Points+Open;
+	Vertices = length==0?0:1+length*resolution;
+	fa.clear();
+	fa.resize(3*Vertices);
+	
+	if(length!=0)
+	{
+		RT::Spline_Point *sp = &SamplePoints[0];
+		if(BSPLINE_Entry!=0) sp+=PointSize;
+		const RT::Float sep = 1.0f/resolution;
+		const RT::Float sep0 = resolution==1?1:sep;
+	
+		int dimens = std::min<int>(3,Parameters);
+		RT::Float *p = fa.data();	
+		if(1==dimens) p+=Sense; //1-D?
+		if(2==dimens&&0==Sense) p+=1; //YZ?
+		sp->Fill(p,0,dimens,sp+PointSize,0);
+		p+=3;
+		for(int i=0;i<length;i++,sp+=PointSize)
+		{
+			RT::Float s = sep0;
+			for(int i=0;i<resolution;i++,s+=sep)
+			{
+				sp->Fill(p,0,dimens,sp+PointSize,s);
+				p+=3;
+			}
+		}
+		if(2==dimens&&1==Sense) //XZ?
+		{
+			p = fa.data();
+			RT::Float *pN = p+fa.size();
+			for(;p<pN;p+=3) std::swap(p[1],p[2]);
+		}
+
+		Elements.resize(1);
+		Elements[0].Mode = GL_LINE_STRIP;
+		Elements[0].Region = 0;
+		Elements[0].Width = Vertices;
+	}
+	else Elements.clear();
+		
+	size_t i = ElementBuffer.size();
+	ElementBuffer.resize(Vertices);
+	while(++i<Vertices) ElementBuffer[i] = i;
+}
 
 //SCHEDULED FOR REMOVAL
+static RT::Effect CrtGeometry_Effect = 1;
+static RT::Material CrtGeometry_Material = &CrtGeometry_Effect;
 void RT::Geometry::Draw_VBuffer(float *p, std::vector<RT::Material_Instance> &materials)
 {   	
 	FX::Material *fx = nullptr;
@@ -103,16 +211,21 @@ void RT::Geometry::Draw_VBuffer(float *p, std::vector<RT::Material_Instance> &ma
 				fx = nullptr;
 			}
 
-			for(size_t i=0;i<materials.size();i++)			
+			RT::Material *m = nullptr;
+			for(size_t i=0;i<materials.size();i++)						
 			if(symbol==materials[i].Symbol)
 			{
-				RT::Material *m = materials[i].Material;
-				fx = m->COLLADA_FX;				
-				if(fx!=nullptr)
-				RT::Main.Cg.SetPassState(fx,0);
-				else RT::Main.Stack.SetMaterial(m);
-				break;
+				m = materials[i].Material;
+				goto have_m;
 			}
+			//<spline> has no symbol to speak of.			
+			if(!materials.empty()) m = materials[0].Material;
+			//<bind_material> is optional.
+			if(materials.empty()) m = &CrtGeometry_Material;			
+			have_m: 
+			fx = m->COLLADA_FX;
+			if(fx==nullptr) RT::Main.Stack.SetMaterial(m);
+			if(fx!=nullptr) RT::Main.Cg.SetPassState(fx,0);
 		}
 
 		if(format!=e.GetFormat())
@@ -239,6 +352,7 @@ struct CrtGeometry_fill
 };
 size_t RT::Geometry::Size_VBuffer()
 {
+	assert(3<=Positions.Dimension);
 	return CrtGeometry_fill<0>(nullptr,*this,nullptr); 
 }
 size_t RT::Geometry::Fill_VBuffer(float *b, xs::string m)

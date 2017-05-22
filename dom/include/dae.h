@@ -765,16 +765,31 @@ COLLADA_(private) //INVISIBLE
 
 		friend class daeStringRef;
 		friend class daeMetaElement;
-		/** The database. Could be reference, but must be modelable. */
+		/** 
+		 * The database. Could be reference, but must be modelable. 
+		 */
 		daeDatabase_base *_database; 		
-		/** Private data pointer belonging to the database. */
+		/**
+		 * Private data pointer belonging to the database. 
+		 */
 		mutable void *_databaseRejoinder; 
-		/** Call @c daePlatform::detachDB() or @c delete the database. */
+		/**
+		 * Call @c daePlatform::detachDB() or @c delete the database. 
+		 */
 		bool _detachDatabase, _deleteDatabase;		
-		/** The platform. Can be dummy platform if not provided. */
+		/**
+		 * The platform. Can be dummy platform if not provided. 
+		 */
 		daePlatform *_platform;
-		/** The system-wide, user-supplied, default platform. */
+		/** 
+		 * The system-wide, user-supplied, default platform. 
+		 */
 		static daePlatform *_globalPlatform;		
+		/**
+		 * Lets clients call @c ~daeDOM() manually. 
+		 * @see @c daeDOM_outstanding
+		 */
+		bool _destructed;
 
 		//SUB-OBJECT
 		/** List of @c daeRef "resolvers." */

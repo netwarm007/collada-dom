@@ -195,7 +195,7 @@ struct daeTypist
 	 * @see @c daeType<T>::Typwriter<daeArray<T>>::unserialize().
 	 */
 	static void supercharge(...)
-	{}	
+	{}
 	template<class T>
 	/**OVERLOAD, EXAMPLE
 	 * supercharge() is used to imbue @a tmp with superpowers. 
@@ -965,12 +965,28 @@ template<> struct daeTypist<daeTokenRef> : daeTypist<daeStringRef> //xs:token
 		daeStringCP buf[512]; src >> std::setw(sizeof(buf)) >> buf;
 		assert(buf[0]=='\0'&&src.eof()||strlen(buf)!=sizeof(buf)-1);
 		#ifdef NDEBUG
-		#error Would like to to use dst.set(buf,extent) here.
-		#endif
-		//TODO? daeStringRef could use a non-const buffer setter.
-		//It would not help here, but it would make users' lives
-		//easier. Unfortunately it'll take some thought to do it.
-		if(!src.fail()) dst = (daeString)buf; return DAE_OK;
+		#error Would like to to use dst.set(buf,extent) here.		
+		#endif		
+		if(!src.fail()) 
+		{
+			//This is so BEZIER BEZIER BEZIER style name arrays do
+			//not invoke the string-table for subsequent identical
+			//tokens. It's a good strategy in general, but COLLADA
+			//should've used its regular indexing model with these.
+			if(0==src.precision(0)) //HACK: Don't touch the memory!
+			{
+				size_t len = dst.size(); 
+				assert(len!=0&&len*sizeof(daeStringCP)<sizeof(buf));
+				if(buf[len]=='\0'&&dst[len-1]==buf[len-1]
+				&&0==memcmp(dst,buf,len*sizeof(daeStringCP)))			
+				return DAE_OK;
+			}
+			//TODO? daeStringRef could use a non-const buffer setter.
+			//It would not help here, but it would make users' lives
+			//easier. Unfortunately it'll take some thought to do it.
+			dst = (daeString)buf;
+		}
+		return DAE_OK;
 	}
 	static daeOK decodeXML(std::ostream &dst, const daeTokenRef &src)
 	{

@@ -77,6 +77,7 @@ COLLADA_(namespace)
 	class PhysicsModel;
 	struct RangeFinder;
 	struct RigidBody;
+	class Spline;
 	class Stack_Data;
 	struct Target;		
 	//SCHEDULED FOR REMOVAL?

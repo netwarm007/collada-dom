@@ -179,6 +179,8 @@ void RT::Frame::_Destroy()
 	#ifdef IL_VERSION
 	ilShutDown();
 	#endif
+
+	DOM.~daeDOM(); //daeDOM_outstanding 
 }
 
 bool RT::Frame::Load(const xs::anyURI &URI)
@@ -377,6 +379,9 @@ void RT::Frame::_InitMembers()
 
 	//Animation Controls 
 	AnimationOn = true;	AnimationPaused = false;
+
+	//The viewer is turning this on by default.
+	AnimationLinear = false;
 }
 
 void RT::Frame::Init()
@@ -478,9 +483,9 @@ RT::Stack_Data &RT::Stack::FindAnyLight()
 		static RT::Light default_light[6];		
 		for(int i=0;i<6;i++)
 		{
-			default_light[i].Id = "COLLADA_RT_default_light";		
+			default_light[i].Id = "COLLADA_RT_default_light";
 			Data[0].Node->Lights.push_back(default_light+i);
-		}		
+		}			
 		position = Data[0];
 		position.Matrix[M30] = position.Matrix[M31] = 
 		position.Matrix[M32] = RT::Main.SetRange.Zoom;
@@ -586,6 +591,20 @@ void RT::Stack::Select_AddData_Controllers_and_finish_up()
 		(DrawData[i].Data->Matrix,DrawData[i].first->SetRange.Box[j],x).x;
 		RT::Main.SetRange.FitZoom();		
 		RT::Main.SetDefaultCamera(); RT::Main.Center(); 
+		 
+		//I feel guilty for scanning for these evert frame.
+		ShowHierarchy_Splines.clear();
+		RT::Geometry *f,*g = nullptr;
+		for(size_t i=0;i<DrawData.size();i++)
+		{
+			f = DrawData[i].first; if(f==g) continue;
+			g = f;
+			if(g->IsSpline()&&ShowHierarchy_Splines.size()%2==0
+			||!g->IsSpline()&&ShowHierarchy_Splines.size()%2==1)
+			ShowHierarchy_Splines.push_back((int)i);
+		}
+		if(ShowHierarchy_Splines.size()%2==1)
+		ShowHierarchy_Splines.push_back(DrawData.size());
 	}
 }
 
@@ -868,6 +887,7 @@ void RT::Camera_State::Center()
 	{
 		Y = RT::Main.SetRange.Y();
 		Zoom = RT::Main.SetRange.Zoom;	
+		if(Zoom!=0)
 		daeEH::Verbose<<"Zoom is "<<Zoom;
 	}
 	else Zoom = 0; 
@@ -879,6 +899,10 @@ void RT::Camera_State::Matrix(RT::Matrix *view, RT::Matrix *inverseview)const
 	if(inverseview==nullptr) inverseview = view;
 	RT::MatrixCopy(Parent->Matrix,*inverseview);	
 
+	#ifdef NDEBUG
+	#error This isn't really understood.
+	#endif
+	//This works to make the camera interactive.
 	RT::Matrix &i = *inverseview;
 	switch(RT::GetUp_Meter(Parent->Node->Asset).first)
 	{

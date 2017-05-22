@@ -249,6 +249,388 @@ RT::Camera *RT::DBase::LoadCamera(ColladaYY::const_camera &in)
 	Cameras.push_back(out); return out;
 }
 
+template<class T> //sampler or control_vertices
+struct CrtSceneRead_spline
+{
+	template<class T>
+	struct is_animation{ enum{ value=0 }; };
+	template<>
+	struct is_animation<ColladaYY::const_sampler>{ enum{ value=1 }; };
+
+	typedef const typename DAEP::Schematic<typename T::input>::type 
+	SamplerInput;
+
+	const daeDocument *doc; bool fat;
+	CrtSceneRead_spline(const DAEP::Object *in)
+	:doc(dae(in)->getDoc()->getDocument()) //...
+	,INPUT(doc),OUTPUT(doc),IN_TANGENT(doc),OUT_TANGENT(doc),INTERPOLATION(doc)		
+	,POSITION(INPUT),LINEAR_STEPS(OUTPUT)
+	{
+		assert(&doc<(void*)&INPUT); //C++		
+	}	
+	short BSPLINE,BSPLINE2;
+	//Reminder: CONTINUITY is strictly notational.
+	RT::AccessorYY<float> &POSITION,&LINEAR_STEPS;
+	RT::AccessorYY<float> INPUT,OUTPUT,IN_TANGENT,OUT_TANGENT;
+	RT::AccessorYY<ColladaYY::const_Name_array> INTERPOLATION;	
+	void SetSamplerInput(const SamplerInput &in)
+	{	
+		if(in.semantic=="INPUT"
+			 &&is_animation<T>::value) INPUT.bind(&in);
+		else if(in.semantic=="OUTPUT"
+			 &&is_animation<T>::value) OUTPUT.bind(&in);	
+		else if(in.semantic=="POSITION"
+			 &&!is_animation<T>::value) POSITION.bind(&in);
+		else if(in.semantic=="IN_TANGENT") IN_TANGENT.bind(&in);
+		else if(in.semantic=="OUT_TANGENT") OUT_TANGENT.bind(&in);
+		else if(in.semantic=="INTERPOLATION") INTERPOLATION.bind(&in);
+		else if(in.semantic=="LINEAR_STEPS"
+			 &&!is_animation<T>::value) LINEAR_STEPS.bind(&in);
+		else daeEH::Warning<<"Unrecognized <sampler> semantic: "<<in.semantic;
+	}		
+	bool BindInputs(T &sampler)
+	{
+		if(sampler==nullptr) return false;
+
+		//Each channel's <sampler> is almost required to be unique.		
+		INPUT.bind(); IN_TANGENT.bind();
+		OUTPUT.bind(); OUT_TANGENT.bind(); INTERPOLATION.bind();
+		POSITION.bind(); LINEAR_STEPS.bind(); //CONTINUITY.bind();
+		{
+			for(size_t i=0;i<sampler->input.size();i++)
+			SetSamplerInput(*sampler->input[i]);
+		}		
+		fat = IN_TANGENT!=nullptr&&OUT_TANGENT!=nullptr;
+		
+		daeName a,b;
+		if(INTERPOLATION!=nullptr)
+		{			
+			INTERPOLATION->value->get1at(0,a);
+			INTERPOLATION->value->get1at(INTERPOLATION.accessor->count-1,b);
+		}
+		BSPLINE = "BSPLINE"==a?1:0; BSPLINE2 = "BSPLINE"==b?1:0; return true;
+	}	
+	bool Sample(RT::Spline_Length &ch, RT::Spline_Point *pp, bool closed=false)
+	{
+		//HISTORY
+		//This subroutine is hoisted up out of LoadAnimatin_channel 
+		//so that it can be used with LoadGeometry_technique_common.
+		ch.Algorithms = 0; RT::Spline_Point *p;
+		
+		//jN was designed for INPUT, so it's 1 less.
+		size_t iN = ch.Points, jN = ch.Parameters-1;
+		
+		//Copying variable length packs is dicey!?!
+		#ifdef NDEBUG
+		#error This needs thought.
+		#endif
+		RT::AccessorYY<float>&OUTPUT_or_POSITION 
+		= is_animation<T>::value?OUTPUT:POSITION;
+		const size_t o_s = OUTPUT_or_POSITION.accessor->stride;	
+		const size_t o_o = OUTPUT_or_POSITION.accessor->offset;		
+		const size_t OoR = o_o+o_s*iN-o_s+jN+(is_animation<T>::value?0:1);
+		if(OoR>OUTPUT_or_POSITION->value.size())
+		{
+			OUTPUT._out_of_range(); return false;
+		}	
+		const RT::Float *o_1 = &OUTPUT_or_POSITION->value[o_o]-1;
+		if(!is_animation<T>::value) //UNDO the -1?
+		{
+			 o_1+=1; assert(&OUTPUT_or_POSITION==&INPUT); //<spline>
+		}
+
+		if(INTERPOLATION!=nullptr)
+		{
+			p = pp; xs::ID a = nullptr, b = a;
+			int algo = RT::Spline_Type::LINEAR;
+			size_t i; for(i=0;i<iN;i++,p+=ch.PointSize) closed:
+			{
+				if(1==INTERPOLATION.get1at(i,a)&&a!=b) 
+				{
+					daeName c = b = a;
+					if(c=="BEZIER"&&fat)
+					algo = RT::Spline_Type::BEZIER;
+					else if("LINEAR"==c)
+					algo = RT::Spline_Type::LINEAR;
+					else if("BSPLINE"==c)
+					algo = RT::Spline_Type::BSPLINE;
+					else if("HERMITE"==c&&fat)
+					algo = RT::Spline_Type::HERMITE;
+					else if("CARDINAL"==c&&fat)
+					algo = RT::Spline_Type::CARDINAL;
+					else if("STEP"==c)
+					algo = RT::Spline_Type::STEP;					
+					else daeEH::Error<<"Unrecognized INTERPOLATION mode "<<c
+					<<(fat?" or missing OUT_TANGENT or IN_TANGENT.":"");
+					ch.Algorithms|=algo; 
+				}
+				p->Algorithm = algo;
+			}
+			if(closed&&i==iN) goto closed;
+		}
+		else ch.Algorithms = RT::Spline_Type::LINEAR;
+			
+		p = pp;
+		for(size_t i=0;i<iN;i++,p+=ch.PointSize)
+		{
+			RT::Float *params = p->GetParameters();
+			if(is_animation<T>::value) INPUT.get1at(i,params[0]);
+			if(!is_animation<T>::value) params[0] = o_1[0];			
+			for(size_t j=1;j<=jN;j++) params[j] = o_1[j]; o_1+=o_s;
+		}
+		if(fat) //Triplewide?
+		{				
+			//Special case 1-D tangent values?
+			//HOW THE HECK CAN THIS BE DETECTED???
+			const int special_case = is_animation<T>::value
+			&&OUT_TANGENT.accessor->param.size()==OUTPUT.accessor->param.size();
+
+			//Copying variable length packs is dicey!?!
+			#ifdef NDEBUG
+			#error This needs thought.
+			#endif			
+			const RT::Float *ot = nullptr, *it = nullptr;
+			const size_t ot_s = OUT_TANGENT.accessor->stride;	
+			const size_t ot_o = OUT_TANGENT.accessor->offset;
+			if(ot_o+ot_s*OUT_TANGENT.accessor->count<=OUT_TANGENT->value.size())
+			ot = &OUT_TANGENT->value[ot_o]-special_case;
+			else OUT_TANGENT._out_of_range(); 
+			const size_t it_s = IN_TANGENT.accessor->stride;	
+			const size_t it_o = IN_TANGENT.accessor->offset;
+			if(it_o+it_s*IN_TANGENT.accessor->count<=IN_TANGENT->value.size())
+			it = &IN_TANGENT->value[it_o]-special_case;
+			else IN_TANGENT._out_of_range();
+			if(it==nullptr||ot==nullptr) return false;
+
+			p = pp; for(size_t i=iN;i-->0;p+=ch.PointSize)
+			{
+				RT::Float *params = p->GetParameters()+ch.Parameters;
+				for(size_t j=special_case;j<=jN;j++) params[j] = ot[j]; ot+=ot_s;
+				params+=ch.Parameters;
+				for(size_t j=special_case;j<=jN;j++) params[j] = it[j]; it+=it_s;
+			}
+
+			//"Special case 1-D tangent values" 
+			if(1==special_case&&is_animation<T>::value) 
+			{
+				daeEH::Error<<"VIOLATION OF SECTION \"Special case 1-D tangent values\" DETECTED!";
+				daeEH::Warning<<"Such violations are more common than not; Following directive.";			
+
+				p = pp; RT::Float i0,i1,i_1 = 0; //Read i-1.
+				for(size_t i=iN-1;i-->0;i_1=i0,p+=ch.PointSize)
+				{
+					RT::Float *params = p->GetParameters();
+					//OUT_TANGENT
+					i0 = params[0];					
+					i1 = params[ch.PointSize];
+					params+=ch.Parameters;
+					//NOTE: The manual has criss-crossed
+					//control points. It may be a mistake.
+					//These are uncrossed and rewritten to
+					//be easily undestood.
+					//It changes the length of the tangents
+					//but they are linear.
+					params[0] = i0+(i1-i0)/3; //i0*2/3+i1/3;
+					if(p->Algorithm==RT::Spline_Type::HERMITE)
+					params[0] = 3*(params[0]-i0);				
+					//IN_TANGENT
+					params+=ch.Parameters;
+					params[0] = i_1+(i0-i_1)*2/3; //i_1/3+i0*2/3;
+					if(p->Algorithm==RT::Spline_Type::HERMITE)
+					params[0] = 3*(i0-params[0]);
+				}//IN_TANGENT[iN-1]
+				RT::Float *params = p->GetParameters(); p+=ch.PointSize;
+				i0 = params[0];
+				params+=ch.Parameters;
+				params[0] = 0; //This must not be used.
+				params+=ch.Parameters;
+				params[0] = i_1+(i0-i_1)*2/3; //i_1/3+i0*2/3;
+				if(p->Algorithm==RT::Spline_Type::HERMITE)
+				params[0] = 3*(i0-params[0]);				
+			}					
+		}
+		
+		#ifdef NDEBUG
+		#error Is there IN/OUT_TANGENT values if modes differ?
+		#endif
+		//MIRRORING/WRAPPING
+		//Reminder: INTERPOLATION includes an additional
+		//mode if closed that needs to be preserved here.
+		RT::Spline_Point *ppN = pp+iN*ch.PointSize;		
+		if(BSPLINE!=0) 
+		{
+			int k = ch.PointSize; p = pp-k; if(!closed) //Mirror?
+			{
+				p[0].Algorithm = RT::Spline_Type::BSPLINE;
+				while(k-->1) p[k].Mirror(pp[k],pp[k+ch.PointSize]);
+			}
+			else while(k-->0) p[k] = ppN[k-ch.PointSize]; //Or wrap?
+		}
+		if(BSPLINE2!=0||closed)
+		{
+			int k = ch.PointSize; if(BSPLINE2!=0) //Mirror?
+			{
+				p = ppN-ch.PointSize; assert(!closed);
+				ppN[0].Algorithm = RT::Spline_Type::BSPLINE;
+				while(k-->1) ppN[k].Mirror(p[k],p[k-ch.PointSize]);
+			}
+			else while(k-->1) ppN[k] = pp[k]; //Or wrap?
+		}		
+
+		return true;
+	}
+};
+struct RT::DBase::LoadAnimation_channel 
+:
+CrtSceneRead_spline<ColladaYY::const_sampler>
+{	
+	RT::Animation *out;
+	LoadAnimation_channel(RT::Animation *out, ColladaYY::const_animation &in)
+	:out(out),CrtSceneRead_spline(in)
+	{
+		for(size_t i=0;i<in->channel.size();i++) 
+		Load(in->channel[i]);			
+		if(out->Channels.empty()) daeEH::Warning<<"No <channel> remains/exists.";
+	}		
+	daeSIDREF SIDREF;	
+	void Load(ColladaYY::const_channel in)
+	{	
+		daeRefRequest req;
+		SIDREF = in->target;
+		if(!SIDREF.get(req)||!req.isAtomicType())
+		{
+			#ifdef NDEBUG
+			#error If there is an element but no data, then use the value's capacity.
+			#endif
+			if(req.object!=nullptr)
+			daeEH::Error<<"Animation target "<<in->target<<" is not understood.";
+			return;
+		}
+
+		//This check is needed, because if a selection is not applied, the returned
+		//length is the length of the string itself, which will treat each codepoint
+		//as a keyframe parameter.
+		switch(req.type->writer->getAtomicType())
+		{
+		case daeAtomicType::STRING: case daeAtomicType::TOKEN:
+
+			daeEH::Error<<"Animation target is an untyped string "<<in->target<<"\n"<<
+			"(Is the target an extensions?)";
+			return;
+		}
+
+		ColladaYY::const_sampler sampler;			
+		doc->idLookup(in->source,sampler);
+		if(!BindInputs(sampler)||INPUT==nullptr||OUTPUT==nullptr)
+		{	
+			daeEH::Error<<"No <channel> INPUT and/or OUTPUT data for sampler "<<in->source;
+			return;
+		}			
+
+		RT::Animation_Channel ch = in->target;
+		RT::Target t(req.rangeMin,req.rangeMax);
+		t.Fragment = req->a<xs::any>();
+		ch.Target = t;
+		size_t iN = INPUT.accessor->count;
+		size_t jN = t.GetSize();			
+		if(iN<2)
+		{
+			daeEH::Error<<"Degenerate animation INPUT count is "<<iN;
+			return;
+		}		
+
+		bool transpose = false;
+		//2017: ItemTargeted was added so not to encode
+		//so much information for no purpose. But there
+		//is still this problem of transposing <matrix>.
+		if(!RT::Matrix_is_COLLADA_order
+		&&nullptr!=req->a<ColladaYY::matrix>()) if(jN==1) 
+		{
+			ch.Target.Min =
+			ch.Target.Max = ch.Target.Min%4*4+ch.Target.Min/4;
+		}
+		else if(jN!=16) //SID member selection is all-or-1.
+		{
+			daeEH::Error<<
+			"Failed to transpose animated <matrix> with "<<jN<<" params/channels.\n"
+			"(1 or 16 expected.)";
+			return;
+		}
+		else transpose = true;
+		
+		ch.Points = (short)iN;
+		ch.Parameters = (short)(1+jN);
+		ch.PointSize = (short)1+ch.Parameters;
+		if(fat) ch.PointSize+=2*ch.Parameters;
+		BSPLINE*=ch.PointSize; BSPLINE2*=ch.PointSize;
+		ch.SamplePointsMin = BSPLINE+(short)out->SamplePoints.size();
+		
+		const RT::Spline_Point def = { RT::Spline_Type::LINEAR,0 };
+		out->SamplePoints.resize(ch.SamplePointsMin+iN*ch.PointSize+BSPLINE2,def);
+		RT::Spline_Point *p,*pp = &out->SamplePoints[ch.SamplePointsMin];
+		if(!Sample(ch,pp))
+		return out->SamplePoints.resize(ch.SamplePointsMin-BSPLINE);
+		
+		if(transpose) //RT::Matrix_is_COLLADA_order?
+		{
+			p = pp;
+			for(size_t i=0;i<iN;i++,p+=ch.PointSize)			
+			{
+				RT::Matrix4x4Transpose(p->GetParameters()+1);
+				if(fat)
+				RT::Matrix4x4Transpose(p->GetParameters()+1+16+1);
+				if(fat)
+				RT::Matrix4x4Transpose(p->GetParameters()+1+16+1+16+1);
+			}
+		}
+		
+		out->TimeMin = std::min(out->TimeMin,pp->GetParameters()[0]);
+		out->TimeMax = std::max(out->TimeMax,pp[(iN-1)*ch.PointSize].GetParameters()[0]);
+
+		//If BSPLINE is involved a global time-table is present.
+		if(0!=(ch.Algorithms&RT::Spline_Type::BSPLINE))
+		{
+			//Allocate iN time records on the back and counting
+			//backward fill them in, including the last point's
+			//that is special because it doesn't have a segment.
+			out->SamplePoints.resize(out->SamplePoints.size()+iN);
+			pp = &out->SamplePoints[ch.SamplePointsMin];
+			p = &out->SamplePoints.back()+1;
+			RT::Float *t = (RT::Float*)p-1;			
+			p-=2*ch.PointSize+BSPLINE2+iN;
+			p->Fill(t--,0,1,p+ch.PointSize,1);
+			for(;p>=pp;p-=ch.PointSize)
+			p->Fill(t--,0,1,p+ch.PointSize,0);
+			ch.BSPLINE_Real_TimeTable_1 = t-(RT::Float*)pp;
+		}
+
+		out->Channels.push_back(ch);		
+	}
+};
+void RT::DBase::LoadAnimation(ColladaYY::const_animation &in)
+{						
+	assert(RT::Main.LoadAnimations);
+
+	daeEH::Verbose<<"Adding new animation "<<in->id;
+
+	RT::Animation *out = COLLADA_RT_new(RT::Animation);	
+	out->Id = in->id; out->DocURI = RT::DocURI(in);
+
+	LoadAnimation_channel(out,in);
+
+	//also get it's last key time and first key time
+	RT::Asset.TimeMin = std::min(RT::Asset.TimeMin,out->TimeMin);
+	RT::Asset.TimeMax = std::max(RT::Asset.TimeMax,out->TimeMax);
+
+	//RECURSIVE
+	Animations.push_back(out);
+	for(size_t i=0;i<in->animation.size();i++) 
+	{
+		ColladaYY::const_animation yy = in->animation[i];
+		LoadAnimation(yy);	
+	}
+}
+
 struct RT::DBase::LoadEffect_profile_COMMON
 {
 	RT::Effect *out;
@@ -301,21 +683,25 @@ struct RT::DBase::LoadEffect_profile_COMMON
 	template<class blinn> void Load_blinn(blinn &blinn)
 	{
 		Load_phong(blinn);
+		out->Type = RT::Effect_Type::BLINN;
 	}	
 	template<class phong_base> void Load_phong(phong_base &phong)
 	{
-		Load_lambert(phong);		
+		Load_lambert(phong); 
+		out->Type = RT::Effect_Type::PHONG;
 		Load_color_or_texture(phong.specular,out->Specular);			
 		Load_float_or_param(phong.shininess,out->Shininess);
 	}	
 	template<class lambert_base> void Load_lambert(lambert_base &lambert)
 	{
 		Load_constant(lambert);
+		out->Type = RT::Effect_Type::LAMBERT;
 		Load_color_or_texture(lambert.ambient,out->Ambient);	
 		Load_color_or_texture(lambert.diffuse,out->Diffuse);	
 	}
 	template<class constant_base> void Load_constant(constant_base &constant)
 	{
+		out->Type = RT::Effect_Type::CONSTANT;
 		Load_color_or_texture(constant.emission,out->Emission);	
 		Load_color_or_texture(constant.reflective,out->Reflective);	
 		Load_float_or_param(constant.reflectivity,out->Reflectivity);			
@@ -446,25 +832,57 @@ RT::Material *RT::DBase::LoadMaterial(ColladaYY::const_material &in)
 	Materials.push_back(out); return out;	
 }
 
-struct RT::DBase::LoadGeometry_technique_common
+struct RT::DBase::LoadGeometry_technique_common 
 {
-	enum //These are feature test placeholders.
-	{
-		Load_spline=0 
-	};
+	void Load_spline(ColladaYY::const_spline in)
+	{	
+		CrtSceneRead_spline<ColladaYY::const_spline::control_vertices>
+		spline(inputs.array.document);
+
+		ColladaYY::const_spline::control_vertices cv = in->control_vertices;
+		if(!spline.BindInputs(cv)||spline.POSITION==nullptr)
+		{
+			daeEH::Error<<"No <spline> POSITION data for "<<out->Id;
+			return;
+		}
+
+		assert(out->IsSpline()); //SHADOWING
+		RT::Spline *out = (RT::Spline*)this->out;
+		
+		size_t iN = spline.POSITION.accessor->count;
+		if(iN<2) return;
+		size_t jN = spline.POSITION.accessor->param.size();
+		if(jN==0) return;		
+		out->Points = (short)iN;
+		out->Parameters = (short)jN;
+		out->PointSize = (short)1+out->Parameters;		
+		if(spline.fat) out->PointSize+=2*out->Parameters;
+		spline.BSPLINE*=out->PointSize; 
+		spline.BSPLINE2*=in->closed?0:out->PointSize;
+		out->Sense = spline.POSITION.sense();
+		if(in->closed) out->Open = 0; 
+		if(spline.BSPLINE!=0) out->BSPLINE_Entry = 1;
+				
+		const RT::Spline_Point def = { RT::Spline_Type::LINEAR,0 };
+		out->SamplePoints.resize(spline.BSPLINE+(in->closed?iN+1:iN)*out->PointSize+spline.BSPLINE2,def);		
+		if(!spline.Sample(*out,&out->SamplePoints[spline.BSPLINE],in->closed))	
+		{
+			out->SamplePoints.clear(); out->Points = 0; 
+		}
+	}
 	template<class mesh_or_convex_mesh>
 	void Load_mesh(mesh_or_convex_mesh &in)
 	{
 		ColladaYY::const_vertices vertices = in.vertices;
 		if(vertices!=nullptr)
 		{
-			inputs = Inputs(vertices->input,doc);			
+			inputs = vertices->input;
 			if(0!=inputs.normal.count) 
 			out->Missing_Normals = false; //HACK
 			out->Vertices = inputs.position.count;
-			out->Positions = inputs.position.source;
+			out->Positions = inputs.position.source;			
 			out->Normals = inputs.normal.source;
-			out->TexCoords = inputs.texture0.source;			
+			out->TexCoords = inputs.texture0.source;						
 		}	
 		//These parameters are humble triangulation codes.
 		//0 for fans that pivot around 0.
@@ -477,9 +895,9 @@ struct RT::DBase::LoadGeometry_technique_common
 		Load_p<0>(in.trifans);			
 		Load_p<-2>(in.lines); Load_p<-1>(in.linestrips);	
 	}
-	RT::Geometry *out; const daeDocument *doc;		
+	RT::Geometry *out; 
 	LoadGeometry_technique_common(RT::Geometry *out, ColladaYY::const_geometry &in)
-	:out(out),doc(dae(in)->getDocument())
+	:out(out),inputs(dae(in)->getDoc()->getDocument())
 	{		
 		if(!in->mesh.empty())
 		{
@@ -491,6 +909,13 @@ struct RT::DBase::LoadGeometry_technique_common
 			//LoadGeometry_technique_common will not do this.
 			assert(in->convex_mesh->convex_hull_of->empty());
 		}
+		else if(!in->spline.empty())
+		{
+			Load_spline(in->spline);
+		}
+
+		out->Generate_Positions(inputs.position_sense);
+
 		//This sorts in order of material, format, then mode.
 		std::sort(out->Elements.begin(),out->Elements.end());
 
@@ -503,8 +928,11 @@ struct RT::DBase::LoadGeometry_technique_common
 
 	struct Inputs //SINGLETON
 	{	
-		Inputs(){} //compiler
-	
+		RT::AccessorYY<float> array;
+
+		Inputs(const daeDocument *doc):array(doc)
+		{} 	
+		
 		struct Input
 		{	
 			unsigned offset, count;
@@ -513,12 +941,15 @@ struct RT::DBase::LoadGeometry_technique_common
 
 			RT::Geometry_Semantic source;
 
-		}position,normal,texture0; int max_offset;
+		}position,normal,texture0;
 		
-		template<class input>
-		Inputs(input &in, const daeDocument *doc):max_offset()
+		int position_sense; int max_offset;
+		
+		template<class input> void operator=(input &in)
 		{
-			RT::AccessorYY<float> array(doc);
+			max_offset = 0;
+			position = normal = texture0 = Input();
+
 			for(size_t i=0;i<in.size();i++)
 			{
 				Input *set = _SetOffset(*in[i]);
@@ -528,9 +959,31 @@ struct RT::DBase::LoadGeometry_technique_common
 				set->source = COLLADA_RT_cast(float_array,array);
 				if(array==nullptr) continue;
 
+				size_t dimens = array.accessor->param.size();								
+				if(dimens==0) continue;
+				if(dimens<3) if(set==&position) //2-D or 1-D?
+				{
+					position_sense = array.sense(); //Which XYZ are present?
+				}
+				else if(set==&normal)
+				{
+					daeEH::Error<<"Unsupported NORMAL dimension is "<<dimens;
+					continue;
+				}
+				if(set==&texture0) if(dimens==1)
+				{
+					daeEH::Error<<"Unsupported TEXCOORD dimension is 1.";
+					continue;
+				}
+				else if(dimens>2)
+				{
+					daeEH::Warning<<"Slicing FX TEXCOORD to 2-D.";
+				}
+
 				set->count = array.accessor->count;
 				set->source.Offset = array.accessor->offset;
-				set->source.Stride = array.accessor->stride;
+				set->source.Stride = array.accessor->stride;				
+				set->source.Dimension = dimens;
 			}
 		}
 		Input *_SetOffset(const ColladaYY_XSD::
@@ -624,7 +1077,7 @@ struct RT::DBase::LoadGeometry_technique_common
 			const typename T::XSD::type &in_i = *in[i];	
 			if(in_i.p.empty()) continue;
 
-			inputs = Inputs(in_i.input,doc);
+			inputs = in_i.input;
 			if(0!=inputs.normal.count)  
 			out->Missing_Normals = false; //HACK
 			int indexes = //Unhandled vertex-attributes are discarded.
@@ -695,8 +1148,6 @@ struct RT::DBase::LoadGeometry_technique_common
 			return;
 		}		
 
-		assert(!tristrip);
-
 		if(M==0||tristrip) //0 is triangle fans.				
 		{
 			p->value->get1at(i,index0); i+=stride;
@@ -705,7 +1156,7 @@ struct RT::DBase::LoadGeometry_technique_common
 		{
 			p->value->get1at(i,index1); i+=stride;
 		}
-		for(;i<iN;index1=index[nN-1])
+		for(bool alt=false;i<iN;index1=index[nN-1],alt=!alt)
 		{
 			for(int n=0;n<nN;n++,i+=stride)
 			if(1!=p->value->get1at(i,index[n]))
@@ -714,11 +1165,12 @@ struct RT::DBase::LoadGeometry_technique_common
 
 			#ifdef NDEBUG
 			#error Get visuals. Do tristrips alternate?
-			#endif
+			#endif		
+			if(tristrip&&alt) std::swap(index0,index1);
 			if(M==0||tristrip) buf.push_back(index0);
 			if(M==0||M==-1||tristrip) buf.push_back(index1);				
 			for(int n=0;n<nN;n++) buf.push_back(index[n]);	
-			if(tristrip) index0 = index1;
+			if(tristrip&&!alt) index0 = index1;
 		}
 	}		
 };
@@ -729,23 +1181,13 @@ RT::Geometry *RT::DBase::LoadGeometry(ColladaYY::const_geometry &in)
 	RT::Geometry *out = GetGeometry(in);
 	if(out!=nullptr) return out; //geometry was instanced
 	
-	if(!in->spline.empty())
+	if(!in->convex_mesh.empty()
+	 &&!in->convex_mesh->convex_hull_of->empty())
 	{
-		if(!LoadGeometry_technique_common::Load_spline)
-		{
-			daeEH::Warning<<"Not visualising <spline> of geometry "<<in->id;
-			return nullptr;
-		}
-	}
-	else if(!in->convex_mesh.empty())
-	{
-		if(!in->convex_mesh->convex_hull_of->empty())
-		{
-			//Physics processes convex_hull_of. The physics library is computing the
-			//hull. In the unlikely event this is entered, it will just fail to show.
-			daeEH::Warning<<"Not visualizing \"convex_hull_of\" geometry "<<in->id;
-			return nullptr;
-		}
+		//Physics processes convex_hull_of. The physics library is computing the
+		//hull. In the unlikely event this is entered, it will just fail to show.
+		daeEH::Warning<<"Not visualizing \"convex_hull_of\" geometry "<<in->id;
+		return nullptr;
 	}
 
 	daeEH::Verbose<<"Adding new Geometry "<<in->id;
@@ -753,6 +1195,9 @@ RT::Geometry *RT::DBase::LoadGeometry(ColladaYY::const_geometry &in)
 	//Assuming <source><asset> doesn't specify up/meter.
 	RT::Main_Asset _RAII(in);
 
+	if(!in->spline.empty())
+	out = COLLADA_RT_new(RT::Spline);
+	else
 	out = COLLADA_RT_new(RT::Geometry);
 	out->Id = in->id; out->DocURI = RT::DocURI(in);
 
@@ -801,163 +1246,6 @@ RT::Image *RT::DBase::LoadImage(ColladaYY::const_image &in)
 	//NOTE: If the image failed to load, there's no sense in
 	//continually trying to reload it.
 	Images.push_back(out); return out;
-}
-
-struct RT::DBase::LoadAnimation_channel
-{	
-	RT::Animation *out; const daeDocument *doc;
-	LoadAnimation_channel(RT::Animation *out, ColladaYY::const_animation &in)
-	:out(out),doc(dae(in)->getDocument()) //...
-	,INPUT(doc),OUTPUT(doc),IN_TANGENT(doc),OUT_TANGENT(doc),INTERPOLATION(doc)		
-	{
-		assert(&doc<(void*)&INPUT); //C++
-		for(size_t i=0;i<in->channel.size();i++) 
-		Load(in->channel[i]);			
-		if(out->Channels.empty()) daeEH::Warning<<"No <channel> remains/exists.";
-	}		
-	daeSIDREF SIDREF;
-	RT::AccessorYY<float> INPUT,OUTPUT,IN_TANGENT,OUT_TANGENT;		
-	RT::AccessorYY<ColladaYY::const_Name_array> INTERPOLATION;
-	void SetSamplerInput(ColladaYY::const_sampler::input in)
-	{						  
-		if(in->semantic=="INPUT") INPUT.bind(in);
-		else if(in->semantic=="OUTPUT") OUTPUT.bind(in);
-		else if(in->semantic=="IN_TANGENT") IN_TANGENT.bind(in);
-		else if(in->semantic=="OUT_TANGENT") OUT_TANGENT.bind(in);
-		else if(in->semantic=="INTERPOLATION") INTERPOLATION.bind(in);
-		else daeEH::Warning<<"Unrecognized <sampler> semantic: "<<in->semantic;
-	}			
-	void Load(ColladaYY::const_channel in)
-	{	
-		daeRefRequest req;
-		SIDREF = in->target;
-		if(!SIDREF.get(req)||!req.isAtomicType())
-		{
-			#ifdef NDEBUG
-			#error If there is an element but no data, then use the value's capacity.
-			#endif
-			daeEH::Error<<"Animation target "<<in->target<<" is not understood.";
-			return;
-		}
-
-		//This check is needed, because if a selection is not applied, the returned
-		//length is the length of the string itself, which will treat each codepoint
-		//as a keyframe parameter.
-		switch(req.type->writer->getAtomicType())
-		{
-		case daeAtomicType::STRING: case daeAtomicType::TOKEN:
-
-			daeEH::Error<<"Animation target is an untyped string "<<in->target<<"\n"<<
-			"(Is the target an extensions?)";
-			return;
-		}
-				
-		//Each channel's <sampler> is almost required to be unique.		
-		INPUT.bind(); IN_TANGENT.bind();
-		OUTPUT.bind(); OUT_TANGENT.bind(); INTERPOLATION.bind();
-		{
-			ColladaYY::const_sampler sampler;			
-			if(doc->idLookup(in->source,sampler)!=nullptr)
-			for(size_t i=0;i<sampler->input.size();i++)
-			SetSamplerInput(sampler->input[i]);
-		}
-		if(INPUT==nullptr||OUTPUT==nullptr)
-		{	
-			daeEH::Error<<"No <channel> INPUT and/or OUTPUT data for sampler "<<in->source;
-			return;
-		}		
-
-		RT::Animation_Channel ch = in->target;
-		RT::Target t(req.rangeMin,req.rangeMax);
-		t.Fragment = req->a<xs::any>();
-		ch.Target = t;
-		size_t iN = INPUT.accessor->count;
-		size_t jN = t.GetSize();			
-
-		bool transpose = false;
-		//2017: ItemTargeted was added so not to encode
-		//so much information for no purpose. But there
-		//is still this problem of transposing <matrix>.
-		if(!RT::Matrix_is_COLLADA_order
-		&&nullptr!=req->a<ColladaYY::matrix>()) if(jN==1) 
-		{
-			ch.Target.Min =
-			ch.Target.Max = ch.Target.Min%4*4+ch.Target.Min/4;
-		}
-		else if(jN!=16) //SID member selection is all-or-1.
-		{
-			daeEH::Error<<
-			"Failed to transpose animated <matrix> with "<<jN<<" params/channels.\n"<<
-			"(1 or 16 expected.)";
-			return;
-		}
-		else transpose = true;
-		
-		ch.Points = (short)iN;
-		ch.Parameters = (short)(1+jN);
-		ch.PointSize = (short)1+ch.Parameters; //LINEAR
-		ch.SamplePointsMin = (short)out->SamplePoints.size();
-		ch.Algorithms = 0;
-		if(iN==0) return; //C++98/03 support
-
-		//Copying variable length units is dicey.
-		size_t o_s = OUTPUT.accessor->stride;	
-		size_t o_o = OUTPUT.accessor->offset;
-		if(o_o+o_s*OUTPUT.accessor->count>OUTPUT->value.size())
-		{
-			OUTPUT._out_of_range(); return;
-		}		
-		const RT::Float *o_1 = &OUTPUT->value[o_o]-1;
-
-		//POINT-OF-NO-RETURN//
-		out->SamplePoints.resize(ch.SamplePointsMin+iN*ch.PointSize);
-		RT::Spline_Point *p = &out->SamplePoints[ch.SamplePointsMin];
-
-		RT::Float t0; INPUT.get1at(0,t0);
-		out->TimeMin = std::min(out->TimeMin,t0);
-		for(size_t i=0;i<iN;i++,p+=ch.PointSize)
-		{
-			//Reminder: don't set to BEZIER/HERMITE if there are not
-			//IN_TANGENT and OUT_TANGENT data included in PointsSize.
-			p->Algorithm = RT::Spline_Algorithm::LINEAR;
-			p->LinearSteps = 0; 			
-			ch.Algorithms|=p->Algorithm;
-			RT::Float *params = p->GetParameters();
-			INPUT.get1at(i,params[0]);
-			for(size_t j=1;j<=jN;j++) params[j] = o_1[j]; o_1+=o_s;
-		}
-		if(transpose)
-		{
-			p-=iN*ch.PointSize;
-			for(size_t i=0;i<iN;i++,p+=ch.PointSize)			
-			RT::Matrix4x4Transpose(p->GetParameters()+1);
-		}
-		out->Channels.push_back(ch);				
-		out->TimeMax = std::max(out->TimeMax,p[-ch.PointSize].GetParameters()[0]);
-	}
-};
-void RT::DBase::LoadAnimation(ColladaYY::const_animation &in)
-{						
-	assert(RT::Main.LoadAnimations);
-
-	daeEH::Verbose<<"Adding new animation "<<in->id;
-
-	RT::Animation *out = COLLADA_RT_new(RT::Animation);	
-	out->Id = in->id; out->DocURI = RT::DocURI(in);
-
-	LoadAnimation_channel(out,in);
-
-	//also get it's last key time and first key time
-	RT::Asset.TimeMin = std::min(RT::Asset.TimeMin,out->TimeMin);
-	RT::Asset.TimeMax = std::max(RT::Asset.TimeMax,out->TimeMax);
-
-	//RECURSIVE
-	Animations.push_back(out);
-	for(size_t i=0;i<in->animation.size();i++) 
-	{
-		ColladaYY::const_animation yy = in->animation[i];
-		LoadAnimation(yy);	
-	}
 }
 
 struct RT::DBase::LoadController_skin

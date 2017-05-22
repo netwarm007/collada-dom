@@ -168,6 +168,10 @@ COLLADA_(public) //new APIs
 	 */
 	std::vector<RT::Stack_Data*> ControllerData;
 
+	//This is some BS just to avoid searching.
+	//Maybe incorporate cameras and lights too?
+	std::vector<int> ShowHierarchy_Splines;
+
 	Stack();
 	/**INTERNAL
 	 * This rebuilds the "stack." The stack-model
@@ -423,6 +427,7 @@ struct Frame_State : RT::Camera_State
 	//Animation Controls 
 	bool AnimationOn;
 	bool AnimationPaused;
+	bool AnimationLinear;
 	RT::Float Time,Delta;
 };
 

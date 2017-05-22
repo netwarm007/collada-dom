@@ -21,7 +21,7 @@ COLLADA_(namespace)
  * JUST BECAUSE EVERYTHING is here doesn't mean it's
  * all been implemented. (YET.)
  */
-struct Spline_Algorithm
+struct Spline_Type
 {
 	enum
 	{	
@@ -29,18 +29,12 @@ struct Spline_Algorithm
 	LINEAR=2,
 	BSPLINE=4,
 	HERMITE=8, //Requires IN/OUT_TANGENT like BEZIER.
-	CARDINAL=16,
+	CARDINAL=16, //Is this synonymous with HERMITE???
 	STEP=32,
-	INTERPOLATION_MASK=0xFF,
-	C0=256, //CONTINUITY
-	C1=512, //CONTINUITY
-	G1=1024, //CONTINUITY
-	CONTINUITY_MASK=0x700,
-	LINEAR_STEPS=2048, //LINEAR_STEPS prescence only.
 	};
 };
 
-/**VARIABLE-LENGTH
+/**UNION, VARIABLE-LENGTH
  * Parameters are stored after the descriptor fields.
  * The number of parameters is held in @c RT::Spline.
  */
@@ -52,17 +46,151 @@ struct Spline_Point
 	 */
 	int Algorithm:sizeof(RT::Float)*CHAR_BIT/2;
 	int LinearSteps:sizeof(RT::Float)*CHAR_BIT/2;
-
+	   
 	RT::Float *GetParameters()
 	{
 		daeCTC<sizeof(this)==sizeof(RT::Float)>;
 		return (RT::Float*)this+1;
 	}
 
-	RT::Float Lerp(size_t param, RT::Spline_Point *p2, RT::Float t)
+	bool IsBezier() //Read: has control-points.
 	{
-		RT::Float out = GetParameters()[param];
-		return out+(p2->GetParameters()[param]-out)*t;
+		return Algorithm==RT::Spline_Type::BEZIER;
+	}
+	bool IsHermite() //Read: has tangent-things.
+	{
+		if(Algorithm==RT::Spline_Type::HERMITE
+		||Algorithm==RT::Spline_Type::CARDINAL)
+		return true; return false;
+	}
+	bool IsBSpline() //Read: has bookend points.
+	{
+		return Algorithm==RT::Spline_Type::BSPLINE;
+	}
+		
+	/**UNION, ALIASING
+	 * Constructs BSPLINE bookend points.
+	 */
+	void Mirror(RT::Spline_Point p1, RT::Spline_Point p2)
+	{
+		*(RT::Float*)this = 
+		*(RT::Float*)&p1-*(RT::Float*)&p2+*(RT::Float*)&p1;
+	}
+
+	template<int UNUSED>
+	RT::Float Sample1D(size_t,RT::Spline_Point*,RT::Float)
+	;
+	template<>
+	RT::Float Sample1D<RT::Spline_Type::LINEAR>
+	(size_t parameter, RT::Spline_Point *p2, RT::Float s)
+	{
+		RT::Float out = GetParameters()[parameter];
+		return out+(p2->GetParameters()[parameter]-out)*s;
+	}
+	template<>
+	RT::Float Sample1D<RT::Spline_Type::STEP>
+	(size_t parameter, RT::Spline_Point *p2, RT::Float s)
+	{
+		return (s>=1?p2:this)->GetParameters()[parameter];
+	}
+	template<>
+	RT::Float Sample1D<RT::Spline_Type::BEZIER>
+	(size_t parameter, RT::Spline_Point *p2, RT::Float s)
+	{
+		#define _ const RT::Float \
+		&P0 = GetParameters()[parameter],\
+		&P1 = p2->GetParameters()[parameter],\
+		&C0 = (&P0)[Stride(p2)],\
+		&C1 = (&P1)[Stride(p2)*2];
+		_ return //P0,P1,C0,C1
+		P0*pow(1-s,3) + 3*C0*s*pow(1-s,2) + 3*C1*(1-s)*s*s + P1*s*s*s;
+	}
+	template<>
+	RT::Float Sample1D<RT::Spline_Type::HERMITE>
+	(size_t parameter, RT::Spline_Point *p2, RT::Float s)
+	{
+		_ return //P0,P1,T0,T1 
+		P0*(2*s*s*s-3*s*s+1) + C0*(s*s*s-2*s*s+s) + P1*(-2*s*s*s+3*s*s) + C1*(s*s*s-s*s);
+		#undef _
+	}
+	size_t Stride(RT::Spline_Point *p2) //BEZIER(1) HERMITE(8) CARDINAL(16)
+	{
+		//HACK: THIS IS EQUAL TO Parameters THAT'S NOT STORED IN THE POINTS.
+		size_t stride = p2-this-1; assert(stride%3==0&&0!=(Algorithm&(1|8|16)));
+		return stride/3;
+	}
+	template<>
+	RT::Float Sample1D<RT::Spline_Type::BSPLINE>
+	(size_t parameter, RT::Spline_Point *p2, RT::Float s)
+	{
+		const RT::Float
+		&P0 = (this-(p2-this))->GetParameters()[parameter],
+		&P1 = GetParameters()[parameter],
+		&P2 = p2->GetParameters()[parameter],
+		&P3 = (p2+(p2-this))->GetParameters()[parameter];
+		return
+		P0/6*(-s*s*s+3*s*s-3*s+1) + P1/6*(3*s*s*s-6*s*s+4) + P2/6*(-3*s*s*s+3*s*s+3*s+1) + P3/6*(s*s*s);		
+	}
+
+	template<int A>
+	void Fill(RT::Float *dst, size_t i, size_t iN, RT::Spline_Point *p2, RT::Float s)
+	{
+		while(i<iN) *dst++ = Sample1D<A>(i++,p2,s);
+	}	
+	void Fill(RT::Float *dst, size_t i, size_t iN, RT::Spline_Point *p2, RT::Float s)
+	{
+		switch(Algorithm)
+		{	
+		case RT::Spline_Type::BEZIER:
+		Fill<RT::Spline_Type::BEZIER>(dst,i,iN,p2,s); 	
+		break;	
+		default: assert(0);
+		case RT::Spline_Type::LINEAR: 
+		Fill<RT::Spline_Type::LINEAR>(dst,i,iN,p2,s); 	
+		break;
+		case RT::Spline_Type::BSPLINE:
+		Fill<RT::Spline_Type::BSPLINE>(dst,i,iN,p2,s); 	
+		break;
+		//The manual says CARDINAL's tension constant
+		//is "baked into" the tangents.
+		case RT::Spline_Type::CARDINAL: 
+		case RT::Spline_Type::HERMITE:
+		Fill<RT::Spline_Type::HERMITE>(dst,i,iN,p2,s); 	
+		break;
+		break;
+		case RT::Spline_Type::STEP:	
+		Fill<RT::Spline_Type::STEP>(dst,i,iN,p2,s); 	
+		break;
+		}
+	}	
+
+	template<int A>
+	RT::Float Find(RT::Spline_Point *p2, RT::Float time, RT::Float tolerance=1/60.0f)
+	{
+		const int maximum = 16; tolerance/=2;
+
+		if(time<=GetParameters()[0]+tolerance) 
+		return 0; 
+		if(time>=p2->GetParameters()[0]-tolerance) 
+		return 1;
+
+		RT::Float floor = 0, ceiling = 1, s = 0.5f;
+		for(int attempts=maximum;attempts-->0;)
+		{
+			RT::Float difference = time-Sample1D<A>(0,p2,s); 
+			if(difference>tolerance)
+			{
+				floor = s; s+=(ceiling-s)/2;
+			}
+			else if(difference<-tolerance)
+			{
+				ceiling = s; s-=(s-floor)/2;
+			}
+			else return s;
+		}
+		static bool animation_exceeds_max_samples = false;
+		assert(animation_exceeds_max_samples); 
+		animation_exceeds_max_samples = true; return s;
 	}
 };
 
@@ -111,6 +239,10 @@ COLLADA_(public)
 	 * The next is at @c SamplePointsMin+PointSize.
 	 */
 	short SamplePointsMin;
+	/**PADDING
+	 * This is just padding, so may as well use it.
+	 */
+	short BSPLINE_Real_TimeTable_1;
 	/**
 	 * This is the parameters of @c SIDREF that're
 	 * to be animated.
@@ -122,7 +254,7 @@ COLLADA_(public)
 	 * PARTIAL CONSTRUCTOR
 	 */
 	Animation_Channel(xs::string SIDREF)
-	:SamplePointsMin()
+	:SamplePointsMin(),BSPLINE_Real_TimeTable_1()
 	#ifdef _DEBUG
 	,SIDREF(SIDREF)
 	#endif
@@ -134,7 +266,7 @@ COLLADA_(public)
 	 * @param p0 must be @c Points*PointSize values.
 	 * @see RT::Animator::Animate() & RT::Main.Time.
 	 */
-	void Apply(RT::Float out[], RT::Spline_Point p0[]);
+	void Fill(RT::Float out[], RT::Spline_Point p0[]);
 };
 
 /**
@@ -154,6 +286,7 @@ COLLADA_(public)
 	/**
 	 * This is a raw data buffer punctuated by control-blocks for
 	 * each control-point in the animation key-frame splines data.
+	 * If BSPLINE is present there are time-tables after the data.
 	 */
 	std::vector<RT::Spline_Point> SamplePoints;
 	/**

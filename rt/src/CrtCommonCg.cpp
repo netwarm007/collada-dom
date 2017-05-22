@@ -353,8 +353,8 @@ bool RT::Frame_Cg::SetPhongFragmentProgram()
 	//!!!GAC maybe crtSceneRead should make a default material and bind polys without materials to it?
 	FX::Float4 mtrlAmbientColor(0);
 	FX::Float4 mtrlDiffuseColor(1);
-	FX::Float4 mtrlSpecularColor(0.5f,1);
-	float mtrlShininess = 5.0f;
+	FX::Float4 mtrlSpecularColor(0.5,1);
+	float mtrlShininess = 5;
 
 	//Override defaults if there is a material.
 	if(material!=nullptr)

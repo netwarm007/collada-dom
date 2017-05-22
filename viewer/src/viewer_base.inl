@@ -45,7 +45,7 @@ static CGparameter amplitudeGlobalParameter = 0;
 static bool fullscreen = false;
 static bool togglewireframe = false;
 static bool togglelighting = true;
-static int togglecullingface = 0;
+static int togglecullingface = 1;
 				
 //Main Render
 static void DrawGLScene()
@@ -56,13 +56,14 @@ static void DrawGLScene()
 	RT::Main.Refresh();
 } 
 //GL Setup (for some reason PS3_main uses 0,0,1,0.5)
-static void InitGL(float r=0.9f, float g=0.9f, float b=0.9f, float a=1)
+static void InitGL(double r=0.9, double g=0.9, double b=0.9, double a=1)
 {
 	//Assuming COLLADA wants behavior more like this.
 	//Technically profile_COMMON should use technical shaders.
 	//
 	//glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL,GL_SINGLE_COLOR);
-	glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL,GL_SEPARATE_SPECULAR_COLOR);
+	glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL,GL_SEPARATE_SPECULAR_COLOR);	
+	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,GL_TRUE);
 
 	glShadeModel(GL_SMOOTH);
 	glClearColor(r,g,b,a); glClearDepth(1);	
@@ -73,8 +74,8 @@ static void InitGL(float r=0.9f, float g=0.9f, float b=0.9f, float a=1)
 	glEnable(GL_NORMALIZE); //"inverse transpose" needs post-normalization.
 
 	//Sometimes models present incorrectly because back-faces obscure them.
-	assert(0==togglecullingface);
-	glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //0
+	assert(1==togglecullingface);
+	glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //1
 }
 //Resize And Initialize The GL Window
 static void ResizeGLScreen(int width, int height)
@@ -84,15 +85,15 @@ static void ResizeGLScreen(int width, int height)
 
 //GLUT can now emulate a wheel by draggin the middle
 //button along the vertical dimension.
-static float MouseWheelSpeed = 0.02f/1.5f;
+static float MouseWheelSpeed = 0.02/1.5f;
 static float MouseRotateSpeed = 0.5f;
 static float MouseTranslateSpeed = 0.0025f;
 static float KeyboardRotateSpeed = 5;
 static float KeyboardTranslateSpeed = 10;
-static void AdjustUISpeed(float x)
+static void AdjustUISpeed(double x)
 {
-	if(x>1&&MouseRotateSpeed>=1.25f
-	 ||x<1&&MouseRotateSpeed<=0.25f) return;
+	if(x>1&&MouseRotateSpeed>=1.25
+	 ||x<1&&MouseRotateSpeed<=0.25) return;
 
 	//Dampening rotation. Increasing translation.
 	float d = (x-1)/2; float rx = x-d; if(d>0) x+=d;
@@ -127,17 +128,28 @@ static void ProcessInput(unsigned char ASCII)
 
 	case 'm': case 'M':
 
-		AdjustUISpeed(1.25f);
+		AdjustUISpeed(1.25);
 		break;
 
 	case 'n': case 'N':
 
-		AdjustUISpeed(0.75f);
+		AdjustUISpeed(0.75);
 		break;
 
 	case 'o': case 'O':
 
 		RT::Main.AnimationOn = !RT::Main.AnimationOn;
+		break;
+
+	case 'i': case 'I':	//INTERPOLATION
+
+		//Reminder: COLLADA_viewer_main is turning this on
+		//because the samples/ have bad animation data and
+		//because COLLADA resources tend to be low quality.
+		if(RT::Main.AnimationLinear=!RT::Main.AnimationLinear)
+		daeEH::Verbose<<"[I]NTERPOLATION is off. LINEAR animation is on.";
+		else
+		daeEH::Verbose<<"[I]NTERPOLATION is on. LINEAR animation is off.";		
 		break;
 
 	case 'p': case 'P':
@@ -212,17 +224,17 @@ static void ProcessInput(unsigned char ASCII)
 		
 	case 'f': case 'F':
 
-		if(togglecullingface==0) //turn it front
+		if(togglecullingface==0) //turn it back
 		{ 
-			togglecullingface = 1; glEnable(GL_CULL_FACE); glCullFace(GL_FRONT);			
+			togglecullingface = 1; glEnable(GL_CULL_FACE); glCullFace(GL_BACK);			
 		}
 		else if(togglecullingface==1) //turn it both
 		{ 
 			togglecullingface = 2; glDisable(GL_CULL_FACE);			
 		}
-		else //turn it back
+		else //turn it front
 		{ 
-			togglecullingface = 0; glEnable(GL_CULL_FACE); glCullFace(GL_BACK);
+			togglecullingface = 0; glEnable(GL_CULL_FACE); glCullFace(GL_FRONT);
 		}
 		break;
 
@@ -470,19 +482,7 @@ static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 					
 	//Set the default screen size
 	RT::Main.Width = Xsize; RT::Main.Height = Ysize;
-	
-
-
-	//TESTING
-	//TESTING
-	//TESTING
-	//TESTING
-	//RT::Main.LoadImages = false;
-	//RT::Main.LoadEffects = false;
-	//RT::Main.LoadAnimations = false;
-
-
-
+											   
 	//These are from WinMain. They may not be portable?
 	time_t seconds = time(nullptr);
 	clock_t clocka = clock();
@@ -505,6 +505,10 @@ static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 	//This block of code shows how to enumerate all the effects, get their parameters and then
 	//get their UI information.
 	InitSceneEffects();
+
+	//Disable INTEPORLATION by default.
+	if(!RT::Main.AnimationLinear)
+	ProcessInput('I');
 
 	//GLUT's main loop calls exit() to exit.
 	//This is so RT::Main::DOM is cleared before
