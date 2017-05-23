@@ -38,25 +38,40 @@ COLLADA_(public)
 
 COLLADA_(public)
 
-	Camera():Xfov(),Yfov(),Aspect(),ZNear(0.1f),ZFar(1000),Xmag(),Ymag(){}
+	Camera():Xfov(),Yfov(),Aspect(),ZNear(0.1f),ZFar(1000),Xmag(),Ymag()
+	,_Model(){}
 	~Camera(){}
 
-	inline int Refresh()
+	//There's probably a better way?
+	//New: It seems COLLADA lets the aspect ratio be viewport dendendent.
+	int _Model;
+
+	inline int Refresh(RT::Float vpAspect=0)
 	{
 		int o = Xmag!=0||Ymag!=0?2:3;
-		Refresh(o==2?Xmag:Xfov,o==2?Ymag:Yfov); return o;
+		RT::Float &x = o==2?Xmag:Xfov;
+		RT::Float &y = o==2?Ymag:Yfov;
+		if(_Model==0)
+		{
+			if(x!=0) _Model|=1;
+			if(y!=0) _Model|=2;
+			if(Aspect!=0) _Model|=4;
+		}
+		RT::Float &z = (_Model&4)!=0?Aspect:vpAspect;
+
+		Refresh(x,y,z); return o;
 	}
-	inline void Refresh(RT::Float &X, RT::Float &Y)
+	inline void Refresh(RT::Float &X, RT::Float &Y, const RT::Float &A)
 	{
-		if(Aspect==0)
+		if((_Model&4)==0) //Need aspect?
 		{
-			Aspect = X==0||Y==0?16.0f/9:X/Y; 
+			Aspect = (_Model&1)==0||(_Model&2)==0?16.0f/9:X/Y; 
 		}
-		if(Y==0)
+		if((_Model&2)==0) //Need ymag/yfov?
 		{
-			Y = X!=0?Aspect/X:36;
+			Y = X!=0?X/A:36;
 		}
-		if(X==0) X = Aspect*Y;
+		if((_Model&1)==0) X = A*Y; //xmag/xfov?
 	}
 };
 

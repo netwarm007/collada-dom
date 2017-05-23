@@ -217,6 +217,8 @@ struct RT::DBase::LoadCamera_technique_common
 		out->ZNear*=RT::Asset.Meter;
 		if(LoadTargetable_of(in.zfar,out->ZFar)) 
 		out->ZFar*=RT::Asset.Meter;
+		out->Xmag*=RT::Asset.Meter;
+		out->Ymag*=RT::Asset.Meter;
 	}
 	void Load_shape_2(const DAEP::Schematic<ColladaYY::orthographic>::type &in)
 	{
@@ -229,7 +231,7 @@ struct RT::DBase::LoadCamera_technique_common
 	}
 	void Load_shape_2(const DAEP::Schematic<ColladaYY::perspective>::type &in)
 	{
-		LoadTargetable_of(in.xfov,out->Xfov); out->Xmag = 0;
+		LoadTargetable_of(in.xfov,out->Xfov); out->Xmag = 0; 
 		LoadTargetable_of(in.yfov,out->Yfov); out->Ymag = 0;
 	}
 };

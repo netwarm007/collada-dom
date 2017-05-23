@@ -62,17 +62,9 @@ void RT::Stack::_ResetCamera()
 	RT::Camera *c = RT::Main.Camera;
 
 	//Reminder: near/far are macros.
-	RT::Float nZ = c->ZNear, fZ = c->ZFar; 
-	//HACK
-	#ifdef NDEBUG
-	#error COLLADA doesn't have an automatic aspect ratio mode.
-	#endif
+	RT::Float nZ = c->ZNear, fZ = c->ZFar; 	
 	if(c->Id=="COLLADA_RT_default_camera")
 	{
-		//Just force Refresh to use Width/Height.
-		c->Aspect = (RT::Float)RT::Main.Width/RT::Main.Height;		
-		c->Yfov = 36;
-
 		//The default camera doesn't have a set zoom.
 		#ifdef NDEBUG
 		#error 50/1000 are arbitrary. 
@@ -91,10 +83,9 @@ void RT::Stack::_ResetCamera()
 	}
 
 	//Get the camera from the instance and set the projection matrix from it
-	glMatrixMode(GL_PROJECTION); 
-	//SCHEDULED FOR REMOVAL
-	//These APIs call glMultMatrix
-	glLoadIdentity(); switch(c->Refresh())
+	glMatrixMode(GL_PROJECTION); 	
+	glLoadIdentity(); //These APIs call glMultMatrix.
+	switch(c->Refresh((RT::Float)RT::Main.Width/RT::Main.Height))
 	{
 	case 2: glOrtho(-c->Xmag,c->Xmag,-c->Ymag,c->Ymag,nZ,fZ); break;
 	case 3: //gluPerspective(c->Yfov,c->Aspect,nZ,fZ); break;

@@ -422,6 +422,7 @@ void RT::Frame::SetDefaultCamera()
 	Parent = &Stack.Data[0]; 
 	static RT::Camera default_camera;
 	default_camera.Id = "COLLADA_RT_default_camera";
+	default_camera.Yfov = 36;
 	Camera = &default_camera;
 }
 void RT::Frame::SetNextCamera()
