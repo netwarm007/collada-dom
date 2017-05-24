@@ -70,7 +70,12 @@ static void CrtCommongCg_ErrorCallback()
 	const char *listing = cgGetLastListing(RT::Main.Cg.Context);
 	if(RT::Main.Loading)
 	daeEH::Error<<"Cg Error Detected: "<<string<<"...\n"<<listing;
-	else assert(0);
+	else if(nullptr==RT::Main.Data) 
+	{
+		//FreeGLUT raises "The profile is not supported."
+		//CG_INVALID_PROFILE_ERROR on termination???
+	}
+	else assert(0); 
 }
 
 static bool CrtCommongCg_CheckForCgError()

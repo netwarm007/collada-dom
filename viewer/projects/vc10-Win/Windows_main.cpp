@@ -7,6 +7,8 @@
  */
 #include "viewer_base.pch.h" //PCH 
 
+#include <iostream> //HACK for AttachConsole???
+
 #include <zmouse.h>
 #if _DEBUG //#define HEAP_DEBUG will use the older _CrtSetDbgFlag params
 #include <crtdbg.h>
@@ -14,7 +16,19 @@
 	  
 //2017 adds poorly worded NO_GLUT macro
 #ifndef NO_GLUT
-#include <gl\glut.h>   
+#if 1
+#include <gl/glut.h>   
+#else
+#include "../../../viewer\external-libs/freeglut/include/GL/glut.h"
+#endif
+#ifndef FREEGLUT
+#pragma comment(lib,"glut32.lib")
+#ifdef NDEBUG
+#pragma comment(lib,"freeglut_static.lib")
+#else
+#pragma comment(lib,"freeglut_staticd.lib")
+#endif
+#endif
 #endif
 
 #include "../../src/viewer_base.inl"
@@ -25,24 +39,47 @@
 #include "Windows_wgl.inl" 
 #endif
 
+HWND Window = 0;
+BOOL WINAPI Windows_CONSOLE_HandlerRoutine(DWORD dwCtrlType)
+{
+	switch(dwCtrlType)
+	{
+	case CTRL_C_EVENT:
+	case CTRL_CLOSE_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
+
+		//HACK: This is happening on another thread that is causing an
+		//assert() to be fired on shutdown that locks the debugger/IDE.
+		SendMessage(Window,WM_DESTROY,0,0);
+		return 1;
+	}
+	return 0;
+}
+
 //going behind GLUT to add WM_MOUSEWHEEL
 static HHOOK Windows_main_GLUT_hook = 0;	
 static LRESULT CALLBACK Windows_main_GLUT(HWND GLUT, UINT msg, WPARAM w, LPARAM l, UINT_PTR, DWORD_PTR)
 {
 	switch(msg)
 	{
-	case WM_MOUSEWHEEL:
+ 	case WM_MOUSEWHEEL:
 	{
+		#ifndef FREEGLUT
 		short delta =
 		GET_WHEEL_DELTA_WPARAM(w);
 		if(mouseDown[2]) delta/=WHEEL_DELTA/10;
-		RT::Main.ZoomIn(-delta*MouseWheelSpeed); break;
+		RT::Main.ZoomIn(-delta*MouseWheelSpeed);
+		#endif
+		break;
 	}
 	//GLUT has a bug when letting up outside its window.
 	case WM_CAPTURECHANGED:	
 		
+		#ifndef FREEGLUT
 		if(GLUT!=(HWND)l) 
-		mouseDown[0] = mouseDown[1] = mouseDown[2] = false; break;
+		mouseDown[0] = mouseDown[1] = mouseDown[2] = false; 
+		#endif
+		break;
 	}		
 	return DefSubclassProc(GLUT,msg,w,l);
 }
@@ -51,8 +88,17 @@ static LRESULT CALLBACK Windows_main_GLUT_hook_proc(int code, WPARAM w, LPARAM l
 	LRESULT out = CallNextHookEx(Windows_main_GLUT_hook,code,w,l);
 	if(code==HCBT_CREATEWND)
 	{
-		SetWindowSubclass((HWND)w,Windows_main_GLUT,0,0);
+		//Might want to do more here later. FreeGLUT doesn't require
+		//anything. The CONSOLE handler needs the main window handle.
+		Window = (HWND)w;
+		#ifndef FREEGLUT 
+		SetWindowSubclass(Window,Windows_main_GLUT,0,0);		
+		#endif
 		UnhookWindowsHookEx(Windows_main_GLUT_hook);
+
+		//Give the CONSOLE window an icon. Assuming it's unattached!!
+		PostMessage(GetConsoleWindow(),WM_SETICON,ICON_BIG,GetClassLong(Window,GCL_HICON));
+		PostMessage(GetConsoleWindow(),WM_SETICON,ICON_SMALL,GetClassLong(Window,GCL_HICON));
 	}
 	return out;
 }
@@ -88,7 +134,7 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 	#endif
 	#endif
 
-	//Convert UTF16_LE to UTF8.
+	//Convert UTF16_LE to UTF8 and do CONSOLE stuff before main().
 	int argc = 0;
 	wchar_t **argw = CommandLineToArgvW(GetCommandLineW(),&argc);
 	char **argv = new char*[argc];
@@ -99,8 +145,21 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 		if(GetLastError()!=ERROR_INSUFFICIENT_BUFFER) continue;
 		buffer.resize(2*buffer.size()); goto top;
 	}
-	//Leave this even though this happens to be a console app.
-	AttachConsole(GetCurrentProcessId()); 
+	//This is not necessary for CONSOLE applications, but it's better
+	//to not be a console application since that tends to close doors.
+	if(!AttachConsole(GetCurrentProcessId()))
+	{
+		AllocConsole(); FILE *C2143;
+		freopen_s(&C2143,"CONOUT$","w",stdout);
+		freopen_s(&C2143,"CONOUT$","w",stderr);
+		//BLACK MAGIC: better to clear these together after reopening.
+		clearerr(stdout); clearerr(stderr); 
+		//The C-Runtime (CRT) in the DLL doesn't know it's redirected.
+		daeErrorHandler::setErrorHandler(new daeStandardErrorHandler);		
+	}
+	//There are shutdown issues if the CONSOLE is used. Especially if
+	//debugging.
+	SetConsoleCtrlHandler(Windows_CONSOLE_HandlerRoutine,1);
 	UINT cp = GetConsoleOutputCP(); SetConsoleOutputCP(65001);	
 	int exit_code = main(argc,argv); SetConsoleOutputCP(cp); return exit_code;
 } 

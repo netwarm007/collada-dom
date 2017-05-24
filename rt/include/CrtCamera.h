@@ -65,11 +65,11 @@ COLLADA_(public)
 	{
 		if((_Model&4)==0) //Need aspect?
 		{
-			Aspect = (_Model&1)==0||(_Model&2)==0?16.0f/9:X/Y; 
+			Aspect = (_Model&1)==0||(_Model&2)==0?A!=0?A:16.0f/9:X/Y; 
 		}
 		if((_Model&2)==0) //Need ymag/yfov?
 		{
-			Y = X!=0?X/A:36;
+			Y = (_Model&1)!=0?A/X:36;
 		}
 		if((_Model&1)==0) X = A*Y; //xmag/xfov?
 	}

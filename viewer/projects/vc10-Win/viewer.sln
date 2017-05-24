@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "viewer", "viewer.vcxproj", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dom", "..\..\..\dom\projects\vc10-Win\dom.vcxproj", "{02BD8297-6078-4D09-9BA5-3EDBCF475AE7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "freeglut", "..\..\external-libs\freeglut\vc10-Win\freeglut.vcxproj", "{DB956931-C053-4DB8-A3FD-605732E0502E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -35,6 +37,10 @@ Global
 		{02BD8297-6078-4D09-9BA5-3EDBCF475AE7}.Debug|Win32.Build.0 = Debug|Win32
 		{02BD8297-6078-4D09-9BA5-3EDBCF475AE7}.Release|Win32.ActiveCfg = Release|Win32
 		{02BD8297-6078-4D09-9BA5-3EDBCF475AE7}.Release|Win32.Build.0 = Release|Win32
+		{DB956931-C053-4DB8-A3FD-605732E0502E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DB956931-C053-4DB8-A3FD-605732E0502E}.Debug|Win32.Build.0 = Debug|Win32
+		{DB956931-C053-4DB8-A3FD-605732E0502E}.Release|Win32.ActiveCfg = Release|Win32
+		{DB956931-C053-4DB8-A3FD-605732E0502E}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

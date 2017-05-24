@@ -6,12 +6,19 @@
  *
  */
 
+#ifdef FREEGLUT
+#define GLUTAPIENTRY FGAPIENTRY
+#endif
+
 #include <time.h>  
 #include <fstream> 
 
 //These are not really used.
 #include "CrtScene.h"
 #include "CrtEffect.h"
+
+//EXPERIMENTAL
+#include "viewer_menu.hpp"
 
 using namespace COLLADA;
 
@@ -56,7 +63,7 @@ static void DrawGLScene()
 	RT::Main.Refresh();
 } 
 //GL Setup (for some reason PS3_main uses 0,0,1,0.5)
-static void InitGL(double r=0.9, double g=0.9, double b=0.9, double a=1)
+static void InitGL(float r=0.9f, float g=0.9f, float b=0.9f, float a=1)
 {
 	//Assuming COLLADA wants behavior more like this.
 	//Technically profile_COMMON should use technical shaders.
@@ -85,12 +92,12 @@ static void ResizeGLScreen(int width, int height)
 
 //GLUT can now emulate a wheel by draggin the middle
 //button along the vertical dimension.
-static float MouseWheelSpeed = 0.02/1.5f;
+static float MouseWheelSpeed = 0.02f/1.5f;
 static float MouseRotateSpeed = 0.5f;
 static float MouseTranslateSpeed = 0.0025f;
 static float KeyboardRotateSpeed = 5;
 static float KeyboardTranslateSpeed = 10;
-static void AdjustUISpeed(double x)
+static void AdjustUISpeed(float x)
 {
 	if(x>1&&MouseRotateSpeed>=1.25
 	 ||x<1&&MouseRotateSpeed<=0.25) return;
@@ -101,12 +108,21 @@ static void AdjustUISpeed(double x)
 	MouseRotateSpeed*=rx; MouseTranslateSpeed*=rx; MouseWheelSpeed*=x;
 }
 
+static bool mouseSwap = false;
 static int Xpos = 0, Ypos = 0;
 static int Xsize = 640, Ysize = 480;
 static void ProcessInput(unsigned char ASCII)
 {			   
 	switch(ASCII)
 	{
+	case 'z': case 'Z':
+
+		mouseSwap = !mouseSwap;
+		daeEH::Warning<<"[Z] swapped left and right buttons.";
+		glutDetachMenu(mouseSwap?2:0);
+		glutAttachMenu(mouseSwap?0:2);
+		break;
+
 	case '\t':
 
 		RT::Main.SetNextCamera();
@@ -302,11 +318,27 @@ static void glutSpecialFunc_callback(int key, int, int)
 static int lastx = 0;
 static int lasty = 0;
 static int mouseWheel = 0;
-static bool mouseDown[3] = {};
+static bool mouseDown[4] = {};
 static void toggleMouse(unsigned int button, bool state)
 {
-	if(button<3) mouseDown[button] = state; 
-	else assert(0); //FreeGLUT?
+	if(button>2) //FreeGLUT?
+	{
+		//WHEEL_DELTA on Windows is 120.
+		short delta = 4==button?120:-120;
+		if(mouseDown[2]) delta/=12;
+		RT::Main.ZoomIn(-delta*MouseWheelSpeed);
+	}
+	else 
+	{
+		//This is in case input devices have one
+		//button only or any other creative uses.
+		if(mouseSwap)
+		if(button==0) button = 2; else 
+		if(button==2) button = 0;
+
+		mouseDown[button] = state; 
+	}
+	
 }
 static void moveMouseTo(int x, int y)
 {	
@@ -343,7 +375,7 @@ static void glutKeyboardFunc_callback(unsigned char ASCII, int, int)
 }
 static void glutMouseFunc_callback(int button, int state, int x, int y)
 {
-	toggleMouse(button,state==GLUT_DOWN); assert(button<3); //Wheel support?
+	toggleMouse(button,state==GLUT_DOWN); assert((state&~1)==0);
 }
 static void glutMotionFunc_callback(int x, int y)
 {
@@ -357,9 +389,18 @@ static bool CreateGLUTWindow(int LArgC, char **LArgV, const char *title, int wid
 	int cx = (glutGet(GLUT_SCREEN_WIDTH)-width)/2;
 	int cy = (glutGet(GLUT_SCREEN_HEIGHT)-height)/2;
 	glutInitWindowPosition(cx,cy);
-
+	glutInitWindowSize(width,height);
+	
+	float r = 0.9f; //FreeGLUT background color hack...
 	glutCreateWindow(title);
-	InitGL();
+	{
+		//FreeGLUT's windows pops up immediately, and so
+		//fill its background so it's less distracting.
+		glClearColor(r,r,r,1);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		glutSwapBuffers();
+	}
+	InitGL(r,r,r,1);
 
 	glutIdleFunc(glutDisplayFunc_callback);
 	glutDisplayFunc(glutDisplayFunc_callback);
@@ -367,7 +408,11 @@ static bool CreateGLUTWindow(int LArgC, char **LArgV, const char *title, int wid
 	glutSpecialFunc(glutSpecialFunc_callback); 
 	glutMotionFunc(glutMotionFunc_callback); glutPassiveMotionFunc(glutMotionFunc_callback);
 	glutMouseFunc(glutMouseFunc_callback);
-	glutReshapeFunc(glutReshapeFunc_callback); glutReshapeWindow(width,height); return true;
+	glutReshapeFunc(glutReshapeFunc_callback); //glutReshapeWindow(width,height);
+	
+	glutShowWindow(); //FreeGLUT is very ugly.
+
+	return true;
 }
 #endif //GLUT_API_VERSION
 //The old Windows_wgl.inl defines these
@@ -379,11 +424,10 @@ CreateGLUTWindow
 nullptr
 #endif
 ;
-static void (__stdcall*COLLADA_viewer_main_loop)() = 
 #ifdef GLUT_API_VERSION
-glutMainLoop
-#else
-nullptr
+static void (GLUTAPIENTRY *COLLADA_viewer_main_loop)() = glutMainLoop;
+#elif defined(_WIN32)
+static void (*COLLADA_viewer_main_loop)() = nullptr
 #endif
 ;
 
@@ -496,6 +540,15 @@ static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 		{
 			//Let console print any errors.
 			//exit(0); //!!!!!!!!!!
+		}
+		else //This should be a subroutine.
+		{
+			//EXPERIMENTAL
+			//Negotiating with FreeGLUT to add menus on click independent
+			//of dragging.
+			#if 0 && defined(FREEGLUT)
+			EnableMenu(); //viewer_menu.hpp
+			#endif
 		}
 	}
 	daeEH::Verbose<<"LOAD TIME OF "<<RT::Main.URL;
@@ -691,6 +744,7 @@ static struct TestPlatform : daePlatform //SINGLETON
 			{
 				//passing "file:\\" as a base URI might work.
 				//But just manually concatenating.
+				COLLADA_SUPPRESS_C(4996)
 				char cat[4*MAX_PATH+8]; strcpy(cat,base);
 				memcpy(cat+strlen(base),d,sizeof(cat)-strlen(base));
 				cat[sizeof(cat)-1] = '\0';

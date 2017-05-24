@@ -62,8 +62,8 @@
     <ClCompile>
       <AdditionalOptions> %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..;..\..\..\dom\include;..\..\..\fx\include;..\..\..\rt\include;..\..\..\rt\external-libs\devil\win32\include;..\..\..\rt\external-libs\bullet\include;$(CG_INC_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..;..\..\..\dom\include;..\..\..\fx\include;..\..\..\rt\include;$(CG_INC_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
@@ -74,13 +74,13 @@
       <StringPooling>true</StringPooling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(IntDir)viewer_base.lite.obj;libcolladadomRT-d.lib;libcolladadomFX-d.lib;libcolladadom25-sd.lib;cg.lib;cgGL.lib;glut32.lib;opengl32.lib;glu32.lib;wsock32.lib;winmm.lib;DevIL.lib;libbulletmath_d.lib;libbulletcollision_d.lib;libbulletdynamics_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(IntDir)viewer_base.lite.obj;libcolladadomRT-d.lib;libcolladadomFX-d.lib;libcolladadom25-sd.lib;cg.lib;cgGL.lib;opengl32.lib;wsock32.lib;winmm.lib;DevIL.lib;libbulletmath_d.lib;libbulletcollision_d.lib;libbulletdynamics_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)ColladaDOM-3-reference-d.exe</OutputFile>
       <AdditionalLibraryDirectories>..\..\..\bin\Win32;..\..\..\rt\external-libs\devIL\win32\lib;$(CG_LIB_PATH);..\..\..\rt\external-libs\bullet\lib\vc8;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>MSVCRT; LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
@@ -94,8 +94,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <AdditionalOptions>/wd4819 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>..\..\..;..\..\..\fx\include;..\..\..\rt\include;..\..\..\rt\external-libs\devil\win32\include;..\..\..\rt\external-libs\bullet\include;$(CG_INC_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_DEPRECATE;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..;..\..\..\fx\include;..\..\..\rt\include;..\..\..\viewer\external-libs\freeglut\include;$(CG_INC_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>
@@ -105,7 +105,7 @@
       <PrecompiledHeaderFile>viewer_base.pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libcolladadomRT.lib;libcolladadomFX.lib;libcolladadom25-s.lib;cg.lib;cgGL.lib;glut32.lib;opengl32.lib;glu32.lib;wsock32.lib;winmm.lib;DevIL.lib;libbulletmath.lib;libbulletcollision.lib;libbulletdynamics.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libcolladadomRT.lib;libcolladadomFX.lib;libcolladadom25-s.lib;cg.lib;cgGL.lib;glut32.lib;opengl32.lib;wsock32.lib;winmm.lib;DevIL.lib;libbulletmath.lib;libbulletcollision.lib;libbulletdynamics.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(OutDir)ColladaDOM-3-reference.exe</OutputFile>
       <AdditionalLibraryDirectories>..\..\..\bin\Win32;..\..\..\rt\external-libs\devIL\win32\lib;$(CG_LIB_PATH);..\..\..\rt\external-libs\bullet\lib\vc8;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -117,7 +117,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -159,9 +159,11 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\viewer_base.inl" />
     <ClInclude Include="..\..\src\viewer_base.pch.h" />
+    <ClInclude Include="..\..\src\viewer_menu.hpp" />
     <ClInclude Include="..\vc8-PS3\PS3_BrowserUI.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\fx\projects\vc10-Win\fx.vcxproj">
@@ -175,6 +177,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\vc10-Win\Windows_wgl.inl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="viewer.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="GLUT_ICON.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

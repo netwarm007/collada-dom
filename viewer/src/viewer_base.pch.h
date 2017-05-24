@@ -20,3 +20,4 @@
 #endif
 
 #include "CrtRender.h"
+#define FREEGLUT_STATIC
