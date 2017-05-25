@@ -16,7 +16,7 @@
 	  
 //2017 adds poorly worded NO_GLUT macro
 #ifndef NO_GLUT
-#if 1
+#if 1 //EXPERIMENTAL
 #include <gl/glut.h>   
 #else
 #include "../../../viewer\external-libs/freeglut/include/GL/glut.h"

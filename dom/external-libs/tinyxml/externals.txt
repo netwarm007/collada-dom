@@ -1,0 +1,5 @@
+http://www.grinninglizard.com/tinyxml/index.html
+
+There was not an authoritative Subversion compatible source to link to svn:externals at the time the externals were taken out of this repository.
+
+This is a legacy plugin. The LibXML plugin is recommended between the two of them.

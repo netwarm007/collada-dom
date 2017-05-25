@@ -131,7 +131,7 @@
       <PreprocessorDefinitions>EXPORTING_COLLADA_DOM;BUILDING_IN_LIBXML;BUILDING_IN_TINYXML;COLLADA_DOM_UNORDERED_SET;COLLADA_DOM_UNORDERED_MAP;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableLanguageExtensions>true</DisableLanguageExtensions>
       <ShowIncludes>false</ShowIncludes>
-      <AdditionalIncludeDirectories>C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\tinyxml-sources;C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\libxml2-new-sources\include;C:\Users\Michael\COLLADA-DOM (Official)\dom\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;..\..\external-libs\tinyxml\trunk;..\..\external-libs\libxml2\trunk\include</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <StringPooling>true</StringPooling>
       <PrecompiledHeaderFile>ColladaDOM.inl</PrecompiledHeaderFile>
@@ -146,7 +146,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <AdditionalDependencies>C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\libxml2-new-sources\lib\libxml2.lib;C:\Users\Michael\Collada-DOM (Official)\dom\external-libs\tinyxml-sources\Debugtinyxml\tinyxml.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>../../external-libs/libxml2/trunk/lib/libxml2.lib;../../external-libs/tinyxml/trunk/lib/tinyxml.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <OutputFile>$(OutDir)libcolladadom25-sd$(TargetExt)</OutputFile>
     </Link>
@@ -161,6 +161,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
+      <AdditionalIncludeDirectories>..\..\include;..\..\external-libs\tinyxml\trunk;..\..\external-libs\libxml2\trunk\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -168,6 +169,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <OutputFile>$(OutDir)libcolladadom25-s$(TargetExt)</OutputFile>
+      <AdditionalDependencies>../../external-libs/libxml2/trunk/lib/libxml2.lib;../../external-libs/tinyxml/trunk/lib/tinyxml.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -62,7 +62,7 @@
     <ClCompile>
       <AdditionalOptions>/wd4819 %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../../..;../../include;..\..\..\dom\include;..\..\..\fx\include;$(CG_INC_PATH);..\..\external-libs\bullet\include;..\..\external-libs\devil\win32\include;..\..\..\dom\external-libs\boost;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../..;../../include;..\..\..\dom\include;..\..\..\fx\include;$(CG_INC_PATH);..\..\external-libs\bullet\trunk\src;..\..\external-libs\devil\DevIL Windows SDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;PRECOMPILING_COLLADA_RT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -81,7 +81,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <AdditionalOptions>/wd4819 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>../../../dom/include;../../include;..\..\..\fx\include;$(CG_INC_PATH);..\..\external-libs\bullet\include;..\..\external-libs\devil\win32\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../../dom/include;../../include;..\..\..\fx\include;$(CG_INC_PATH);..\..\external-libs\bullet\trunk\src;..\..\external-libs\devil\DevIL Windows SDK\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;;PRECOMPILING_COLLADA_RT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
