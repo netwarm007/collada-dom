@@ -110,23 +110,24 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	 */
 	inline int isAtomicType()const{ return daeAtomicType::EXTENSION!=getAtomicType(); }
 			
-COLLADA_(public) //SCHEDULED FOR REMOVAL?
+COLLADA_(public) //UNUSED (non COLLADA applications can have at it.)
 
-	//This may or may not be useful in practice (as it turns out.)
-	//If not it's because a mature application would not typically
-	//simply dereference a SIDREF for its value and COLLADA really
-	//doesn't use SIDREF addressing for anything except animations.
-	//The fact that it has very many addressing modes is a problem.
-	//(Note that this class is not limited to SIDREF nor COLLADA.)
+	//Reminder: @c daeRef::get() was overloaded for getting values.
+	//It seemed useful at first, but in practice the values should
+	//be animated, and they are ultimately bound to be cast anyway.
+	//BUT the functionality was removed because to be useful there
+	//has to be a default value provided to "get" which must match
+	//the overloaded template parameters that is extraneous to the
+	//regular element/object getting API.
 
 	template<typename daeT>
-	/** Implements @c getScalar(). */
+	/**UNUSED Implements @c getScalar(). */
 	inline daeT &_got()const
 	{
 		return ((daeT*)&typeInstance)[rangeMin];
 	}
 	template<typename daeT, typename T>
-	/** Implements @c getVector(). */
+	/**UNUSED Implements @c getValue(). */
 	inline void _copy(daeOffset o, T *q)const
 	{
 		for(const daeT*p=&_got<daeT>();o>0;o--) *q++ = (T)*p++;
@@ -135,13 +136,14 @@ COLLADA_(public) //SCHEDULED FOR REMOVAL?
 	#error This could support cross-module types by not using daeAtomicType.
 	#endif
 	template<typename T> COLLADA_NOINLINE
-	/**
+	/**UNUSED
+	 * Previously "getVector."
 	 * This operation is provided because the COLLADA user manual seems
 	 * to suggest that values are to be "cast" or "directly cast" given
 	 * an initial value.
 	 * @see daeRef::get<scalar_type>() and daeRef::get<scalar_type,N>().
 	 */
-	inline daeOffset getVector(daeOffset N, T *vN, T def=T())const
+	inline daeOffset getValue(daeOffset N, T *vN, T def=T())const
 	{
 		daeOffset selected = N>1?rangeMax-rangeMin+1:1;
 		daeOffset o = std::min(N,selected);
@@ -385,7 +387,7 @@ COLLADA_(public) //LEGACY QUERY API
 	{
 		typedef typename T::__COLLADA__T *type;		
 
-		static type cast(const daeRefRequest &req, type def)
+		static type cast(const daeRefRequest &req, type def=nullptr)
 		{
 			//There are other ways to do this, but this is the safest
 			//way, and eventually it will be desirable to extract the
@@ -426,7 +428,7 @@ COLLADA_(public) //LEGACY QUERY API
 		
 		static type &cast(const daeRefRequest &req, type &out)
 		{
-			req.getVector<Scalar>(1,&out,out); return out;
+			req.getValue<Scalar>(1,&out,out); return out;
 		}
 	};
 
@@ -448,25 +450,20 @@ COLLADA_(public) //LEGACY QUERY API
 	 * returned. The pointer is backed by a smart-ref until @a req is
 	 * destructed.
 	 */	
-	typename get_return<T>::type get
-	(//const T //Disable type deduction to enable get() and force <T>.
-	typename get_return<T>::type def=T(), const daeRefRequest &req=daeName())const
+	typename get_return<T>::type get(const daeRefRequest &req=daeName())const
 	{
-		get(const_cast<daeRefRequest&>(req)); return get_return<T>::cast(req,def);
-	}	
-	template<typename T, int N, class S> //T can only be scalar types
-	/**
-	 * @warning This form is not strictly type safe. It's designed with
-	 * typical numerical vector classes in mind.
-	 * @tparam N is required.
-	 * @tparam S is a type so that @c sizeof(S)==sizeof(T)*N holds true.	 
-	 * @see daeRefRequest::getVector().
-	 */
-	inline S &get(S &out, T def=T(), const daeRefRequest &req=daeName())const
+		get(const_cast<daeRefRequest&>(req)); return get_return<T>::cast(req);
+	}		
+	/*REFERENCE Previously get() had a symmetric default argument too.
+	//This form is removed to dispense with the default argument need.
+	//This is EXPERIMENTAL, considered for 2.5 but did not make it in.
+	template<typename T, int N, class S> //T can only be scalar types.
+	inline S &get(S &out, T def, const daeRefRequest &req=daeName())const
 	{
 		get(const_cast<daeRefRequest&>(req)); 
-		req.getVector<T>(N,(T*)&out,def); return out; daeCTC<sizeof(S)==sizeof(T)*N>();
-	}
+		req.getValue<T>(N,(T*)&out,def); return out; daeCTC<sizeof(S)==sizeof(T)*N>();
+	}*/
+
 
 	/**LEGACY SUPPORT 
 	 * @warning Relies on @c daeDOM::getRefResolvers().

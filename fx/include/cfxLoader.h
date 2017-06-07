@@ -23,8 +23,21 @@ COLLADA_(public)
 	
 	daeArray<daeName,4> platform_Filter;
 
-	CGcontext Cg; Loader():Cg(nullptr){}
+	CGcontext Cg; Loader():Cg(){}
 
+	/**
+	 * @c Load() calls this to let the client
+	 * hook up world matrices and lights data.
+	 * @see @c COLLADA::RT::Frame_FX.
+	 */
+	virtual void Load_ClientData(FX::NewParam*) = 0;
+	/**INTERNAL
+	 */
+	inline void Copy_ClientData(FX::NewParam *np, FX::Data* &cp)
+	{
+		np->Apply(); Load_ClientData(np); cp = np->ClientData;
+	}
+	
 	struct Load;
 	/**LEGACY-SUPPORT
 	 * @return Returns @c nullptr if the profile is not

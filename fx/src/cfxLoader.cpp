@@ -25,10 +25,14 @@ COLLADA_(namespace)
 //<-----------'
 
 template<class S, class T>
-inline void MakeData(S* &o, const T &e, FX::NewParamable *p, xs::ID a1, typename S::arg2 a2=nullptr)
+inline void MakeData(S* &o, const T &e, FX::Paramable *p, xs::ID a1, typename S::arg2 a2=nullptr)
 {
 	FX::DataMaker<S> dm = {p,a1,a2,o,e->content}; FX::_if_YY(MakeData05,MakeData08)(dm);
 }
+
+typedef ColladaYY::const_profile_CG CG;
+typedef ColladaYY::const_profile_GLSL GLSL;
+typedef ColladaYY::const_profile_COMMON COMMON;
 
 struct FX::Loader::Load
 {
@@ -40,21 +44,53 @@ struct FX::Loader::Load
 	FX::Loader &loading; const daeDocument *doc;
 	Load(FX::Loader &l, const daeDocument *doc):loading(l),doc(doc){}
 
+	template<class T> struct _less
+	{
+		bool operator()(T const *a, T const *b)const{ return *a<*b; } 
+	};
+	
+	bool filter(daeName platform, xs::ID id)
+	{
+		if(platform!=nullptr) //Profile_COMMON
+		{
+			if(loading.platform_Filter.empty())
+			{	
+				#ifndef SN_TARGET_PS3
+				if("PS3"==platform) //default behavior
+				{			
+					daeEH::Warning<<"Filtered out PlayStation 3 effect "<<id;
+					return true;
+				}
+				#endif
+			}
+			else if(nullptr==loading.platform_Filter.find(platform))
+			{
+				daeEH::Warning<<"Filtered out "<<platform<<" effect "<<id;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	#if YY==5
 	#ifdef NDEBUG
 	#error init_from is an array.
 	#endif
-	FX::Surface *new_Surface(const void *ID, FX::Surface *parent)
+	FX::Surface *new_Surface_05(const void *ID, FX::Surface *parent)
 	{
 		//Don't want to trigger a missing texture error if setting
 		//via a <setparam>.		
-		ColladaYY::const_image yy; doc->idLookup(ID,yy);
+		Collada05::const_image yy; doc->idLookup(ID,yy);
 		GLuint texId = ID==nullptr?0:FX::Loader::GetID_TexId(yy);		
 		return new FX::Surface(texId,parent);
 	}
+	#endif
 
 	template<class T> 
-	void newparam(const T &newparam, FX::NewParamable *c)
+	void newparam(const T &newparam, FX::Paramable *c)
 	{		  
+		if(newparam.empty()) return;
+
 		for(size_t i=0;i<newparam.size();i++)
 		{
 			const T::XSD::type &newparam_i = *newparam[i];
@@ -63,45 +99,66 @@ struct FX::Loader::Load
 			if(!newparam_i.surface.empty())
 			{
 				c->Surfaces.push_back(std::make_pair(newparam_i.sid.data(),
-				new_Surface(newparam_i.surface->init_from->value->*xs::ID(),nullptr)));
+				new_Surface_05(newparam_i.surface->init_from->value->*xs::ID(),nullptr)));
 			}
 			else //15.0.1 samplers will push their <instance_image> onto c->Params.
 			#endif
 			{
 				FX::NewParam *p;
 				FX::MakeData(p,&newparam_i,c,newparam_i.sid,newparam_i.semantic->value->*"");
-				Load_annotate(newparam_i.annotate,p);
+				_try_annotate(newparam_i/*.annotate*/,p);
+				//The annotations need to inform the semantic information.
+				p->_InitSemantic_etc();
 
 				c->Params.push_back(p);
+
+				//This is a client hook for connecting the shared parameters
+				//to client side states. Transform and lighting for instance.
+				loading.Load_ClientData(p);
 			}
 		}
+
+		//Sort into blocks of arrays. They really ought to be so sorted to begin
+		//with, but it's not a constraint of COLLADA.
+		std::sort(c->Params.begin(),c->Params.end(),_less<FX::Param>());
 	}
+	
+	template<class newparam>
+	static void _try_annotate(const newparam &np, FX::Annotatable *c)
+	{
+		Load_annotate(np.annotate,c);
+	}
+	template<>
+	static void _try_annotate(const DAEP::Schematic<COMMON::newparam>::type&,FX::Annotatable*)
+	{ /*NOP*/ }
 	template<class T> 
-	FX::Param *_try_connect_param(T&,FX::NewParamable*){ return nullptr; }
+	FX::Param *_try_connect_param(T&,FX::Paramable*){ return nullptr; }
 	#if YY==5 //1.5.0 appears to limit <connect_param> to IK (kinematics.)
 	template<> 
-	FX::Param *_try_connect_param(const Collada05_XSD::cg_setparam &e, FX::NewParamable *c)
+	FX::Param *_try_connect_param(const Collada05_XSD::cg_setparam &e, FX::Paramable *c)
 	{
 		return e.connect_param.empty()?nullptr
-		:new FX::ConnectParam(e.ref,c,e.connect_param->ref,c->FindEffect());
+		#ifdef NDEBUG
+		#error If ref is a <surface> the SetParam_To is not used but its constructor adds it.
+		#endif
+		:new FX::SetParam_To(e.ref,c,e.connect_param->ref);
 	}
 	#else //8
 	template<class T> 
-	bool _try_sampler_image(T&,FX::NewParamable*){ return false; }
+	bool _try_sampler_image(T&,FX::Paramable*){ return false; }
 	template<> 
-	bool _try_sampler_image(const Collada08_XSD::instance_effect_type::local__setparam &e, FX::NewParamable *c)
+	bool _try_sampler_image(const Collada08_XSD::instance_effect_type::local__setparam &e, FX::Paramable *c)
 	{
 		if(e.sampler_image.empty()) return false;
 
-		FX::Surface *parent = c->Parent_NewParamable->FindSurface(e.ref);
-		assert(parent!=nullptr);
+		FX::Surface *parent = c->Parent_Paramable->FindSurface(e.ref);		
 		Collada08::const_image yy = xs::anyURI(e.sampler_image->url).get<Collada08::image>();		
 		c->Surfaces.push_back(std::make_pair(e.ref.data(),
 		new FX::Surface(FX::Loader::GetID_TexId(yy),parent))); return true;
 	}
 	#endif
 	template<class T> 
-	void setparam(const T &setparam, FX::NewParamable *c)
+	void setparam(const T &setparam, FX::Paramable *c)
 	{		  
 		for(size_t i=0;i<setparam.size();i++)
 		{
@@ -113,13 +170,13 @@ struct FX::Loader::Load
 			#if YY==5
 			if(!setparam_i.surface.empty())			
 			{
-				//What is the parent for? Mipmaps??	
 				FX::Surface *parent = 
-				c->Parent_NewParamable->FindSurface(setparam_i.ref);
-				assert(parent!=nullptr);
+				c->Parent_Paramable->FindSurface(setparam_i.ref);
+				//FxComposer files use <extra><technique profile="NVIDIA_FXCOMPOSER">.
+				//assert(parent!=nullptr);
 
 				c->Surfaces.push_back(std::make_pair(setparam_i.ref.data(),
-				new_Surface(setparam_i.surface->init_from->value->*xs::ID(""),parent)));
+				new_Surface_05(setparam_i.surface->init_from->value->*xs::ID(""),parent)));
 			}
 			else
 			#else
@@ -141,113 +198,100 @@ struct FX::Loader::Load
 			}
 		}
 	}
-	//<profile_CG> and <profile_GLSL> are virtually identical.
-	template<class T> void profile_(T,FX::Effect*);
+
+	//Profile_COMMON support
+	template<class phong_base>
+	void phong_or_blinn(phong_base &phong, FX::Technique *c)
+	{	
+		lambert(phong,c); 
+		FX::Profile_COMMON.Load.Specular|=
+		color_or_texture(phong.specular,FX::Profile_COMMON.Specular,c);			
+		float_or_param(phong.shininess,FX::Profile_COMMON.Shininess,c);
+	}	
+	template<class lambert_base> 
+	void lambert(lambert_base &lambert, FX::Technique *c)
+	{	
+		constant(lambert,c); 
+		FX::Profile_COMMON.Load.Diffuse|=
+		color_or_texture(lambert.diffuse,FX::Profile_COMMON.Diffuse,c);
+		FX::Profile_COMMON.Load.Ambient|=
+		color_or_texture(lambert.ambient,FX::Profile_COMMON.Ambient,c);
+	}
+	template<class constant_base>
+	void constant(constant_base &constant, FX::Technique *c)
+	{
+		FX::Profile_COMMON.Load.Emission|=
+		color_or_texture(constant.emission,FX::Profile_COMMON.Emission,c);			
+		FX::Profile_COMMON.Load.Transparent|=
+		color_or_texture(constant.transparent,FX::Profile_COMMON.Transparent,c);					
+		float_or_param(constant.transparency,FX::Profile_COMMON.Transparency,c);			
+		//color_or_texture(constant.reflective,FX::Profile_COMMON.Reflective,c);	
+		//float_or_param(constant.reflectivity,FX::Profile_COMMON.Reflectivity,c);			
+		//float_or_param(constant.index_of_refraction,FX::Profile_COMMON.RefractiveIndex,c);
+	}
+	void float_or_param(const ColladaYY_XSD::
+	_if_YY(common_float_or_param_type,fx_common_float_or_param_type) *in, 
+	FX::Profile_COMMON::Float &o, FX::Technique *c)
+	{
+		if(in!=nullptr) if(!in->param.empty())
+		{
+			c->Params.push_back(new FX::SetParam_To(&o,c,in->param->ref));
+		}
+		else if(!in->float__alias.empty())
+		{
+			struct SetFloat:FX::SetParam,FX::DataFloat
+			{}*p = new SetFloat; 
+			p->SetParamToSet(&o);
+			p->Value = in->float__alias->value; c->Params.push_back(p);
+		}
+	}
 	template<class T> 
-	void _profile_shaders(typename T::technique::pass,FX::Pass*,FX::Effect*,xs::string);	
+	int color_or_texture(T &child, FX::Profile_COMMON::Color_or_Texture &o, FX::Technique *c)
+	{	
+		if(child.empty()) return 0; 
+	
+		const typename T::XSD::type &in = *child;				
+		
+		if(!in.texture.empty())
+		{	
+			c->Params.push_back(new FX::SetParam_To(&o.Texture,c,in.texture->texture));
+			return 1;
+		}
+		else if(!in.param.empty())
+		{
+			c->Params.push_back(new FX::SetParam_To(&o.Color,c,in.param->ref));
+		}
+		else if(!in.color.empty())
+		{
+			struct SetColor:FX::SetParam,FX::DataFloat4
+			{}*p = new SetColor; 
+			p->SetParamToSet(&o.Color); p->Value.a = 1;
+			in.color->value->get4at(0,p->Value.r,p->Value.g,p->Value.b,p->Value.a);
+			c->Params.push_back(p);
+		}
+		return 0;
+	}
+
+	//T is CG GLSL or COMMON (etc.)
+	template<class T> void profile_(T,FX::Effect*);	
+	template<class T> 
+	bool _profile_shaders(typename T::technique::pass,FX::Pass*,FX::Effect*,xs::string);	
 };
 typedef DAEP::Schematic<ColladaYY::annotate>::content annotate;
 static void Load_annotate(const annotate &annotate, FX::Annotatable *c)
 {
-	for(size_t i=0;i<annotate.size();i++)
+	if(!annotate.empty())
 	{
-		ColladaYY::const_annotate annotate_i = annotate[i];
-		FX::Annotate *p;
-		FX::MakeData(p,annotate_i,nullptr,annotate_i->name);
-		c->Annotations.push_back(p);
-	}
-}
-FX::Effect *FX::Loader::Load(ColladaYY::const_effect effect)
-{
-	if(effect==nullptr) return nullptr;
-
-	struct Load Load(*this,dae(effect)->getDocument());
-	//TODO: Implement GLSL etc.
-	//Is Apply() deferring set up?
-	FX::Effect *out = nullptr;
-	if(Cg!=nullptr)
-	for(size_t i=0;i<effect->profile_CG.size();i++)
-	{
-		daeName platform = effect->profile_CG[i]->platform;
-		if(!platform_Filter.empty())
-		{			
-			if(nullptr==platform_Filter.find(platform))
-			{
-				daeEH::Warning<<"Omitting Cg effect profile for platform "<<platform;
-				continue;
-			}
-		}
-		else if("PS3"==platform) //default behavior
+		for(size_t i=0;i<annotate.size();i++)
 		{
-			#ifndef SN_TARGET_PS3
-			continue;
-			#endif
+			ColladaYY::const_annotate annotate_i = annotate[i];
+			FX::Annotate *p;
+			FX::MakeData(p,annotate_i,nullptr,annotate_i->name);
+			c->Annotations.push_back(p);
 		}
-		if(out==nullptr)
-		out = new FX::Effect(effect->id,Cg);
-		Load.profile_<ColladaYY::const_profile_CG>(effect->profile_CG[i],out);
+		//Sort according to SAS priorities. E.g. View or World.
+		std::sort(c->Annotations.begin(),c->Annotations.end(),FX::Loader::Load::_less<FX::Annotate>());
 	}
-	#ifdef NDEBUG
-	#error This compiles, but won't link without FX::Shader.
-	#error What is the "pipeline_settings" model?
-	for(size_t i=0;i<effect->profile_GLSL.size();i++)
-	{
-		if(out==nullptr)
-		out = new FX::Effect(effect->id);
-		Load.profile_<ColladaYY::const_profile_GLSL>(effect->profile_GLSL[i],out);
-	}
-	#endif
-	if(out!=nullptr)
-	{
-		Load_annotate(effect->annotate,out);
-		Load.newparam(effect->newparam,out);	
-
-		out->Apply();
-	}
-	return out;
-}
-FX::Material *FX::Loader::Load(ColladaYY::const_material material, FX::Effect *e, const daeDocument *e_doc)
-{
-	if(e==nullptr||material==nullptr||e->Techniques.empty())
-	return nullptr;
-	
-	ColladaYY::const_instance_effect instance_effect = material->instance_effect;
-
-	#ifdef NDEBUG
-	#error The caller needs to be able to override these
-	#endif
-	size_t i = 0;
-	if(!instance_effect->technique_hint.empty())
-	{
-		ColladaYY::const_technique_hint hint = instance_effect->technique_hint;
-		if(!hint->platform->empty()&&!platform_Filter.empty())
-		if(nullptr==platform_Filter.find(hint->platform))
-		{
-			daeEH::Warning<<"Omitting <instance_effect> for platform hint "<<hint->platform;
-			return nullptr;
-		}
-		xs::ID ref = instance_effect->technique_hint->ref;
-		while(i<e->Techniques.size()&&ref!=e->Techniques[i]->Sid)
-		i++;
-	}
-	FX::Material *out = new FX::Material(e->Techniques[i],material->id);
-
-	struct Load Load(*this,e_doc); 
-	Load.setparam(instance_effect->setparam,out);	
-
-	FX::Technique *p = out->FindTechnique();
-	if(p->Cg!=nullptr) 
-	for(size_t i=0;i<p->Passes.size();i++)
-	for(size_t j=0;j<p->Passes[i]->Shaders.size();j++)
-	if(nullptr==p->Passes[i]->Shaders[j]->Cg_Program)
-	{
-		daeEH::Warning<<"Cg shader is unusable. Avoiding cgGL API crash by not using Cg for "<<material->id;
-		delete out; return nullptr;	
-	}
-
-	daeEH::Verbose<<"Created material "<<material->id<<" effect "<<instance_effect->url;
-
-	return out;
 }
 
 //HIDEOUS //HIDEOUS //HIDEOUS //HIDEOUS //HIDEOUS
@@ -255,8 +299,8 @@ FX::Material *FX::Loader::Load(ColladaYY::const_material material, FX::Effect *e
 struct FX::Loader::Load::Loading
 {
 	FX::Data *_param;		
-	FX::NewParamable *params; 
-	Loading(FX::NewParamable *p):params(p)
+	FX::Paramable *params; 
+	Loading(FX::Paramable *p):params(p)
 	{}
 		
 	//Value uses this to eliminate code for single
@@ -319,7 +363,9 @@ struct FX::Loader::Load::Loading
 		return;
 		else if(!x->param->empty()) //ATTRIBUTE
 		{
-			//TODO? <animation> isn't facilitated.
+			//Assuming Pass->Apply() was called.
+			//TODO? <material> isn't facilitated.
+			//TODO? <animation> isn't facilitated
 			if(N==0||complex)
 			_param = params->FindSettingParam(x->param);
 			if(_param!=nullptr)
@@ -333,9 +379,8 @@ struct FX::Loader::Load::Loading
 	{
 		if(!x->param.empty()) //ELEMENT
 		{
-			//NOTE: Samplers are not <animation> friendly.
-			FX::NewParamable *_;
-			if(params->FindConnectingParam(x->param->value,*o,_))
+			//NOTE: Samplers are not <animation> friendly.			
+			if(params->FindNewParam(x->param->value,*o))
 			return;
 		}
 		char i[] = {'$','0'+char(x->index),'\0'};
@@ -362,7 +407,9 @@ struct FX::Loader::Load::Loading
 	}
 	void SetStateAssignment(FX::Param **s, CGstateassignment Cg)
 	{
-		cgSetSamplerStateAssignment(Cg,(*s)->Cg);
+		FX::Sampler &hack = 
+		((FX::DataSampler2D*)((*s)->SetData))->Value;
+		cgSetSamplerStateAssignment(Cg,hack.Cg);
 	}
 	template<class T, class X>
 	void Setting(CGstateassignment sa, X &x)
@@ -394,7 +441,14 @@ struct FX::Loader::Load::Loading_gl_pipeline_setting : public Load::Loading
 	CGcontext Cg; CGpass Cg_Pass;
 
 	Loading_gl_pipeline_setting(CGcontext Cg, FX::Pass *pass)
-	:Loading(pass->Technique),Cg(Cg),Cg_Pass(pass->Cg){}
+	:Loading(pass->Technique),Cg(Cg),Cg_Pass(pass->Cg)
+	{
+		//This is setting the <newparam> data up for this technique
+		//so the <param> refs can access it. This work is incomplete
+		//because <instance_effect> is supposed to be able to set the
+		//<param> references and <animation> could modify them as well.
+		pass->Technique->Apply();
+	}
 
 	//0 is not accepted for the non-array states.
 	inline CGstateassignment
@@ -406,10 +460,13 @@ struct FX::Loader::Load::Loading_gl_pipeline_setting : public Load::Loading
 	}
 
 	//This is for use with daeContents::for_each_child().
-	template<class yy> void operator()(const yy &c)
+	void operator()(const const_daeChildRef &maybe__gl_pipeline_setting)
 	{
-		const const_daeChildRef &maybe__gl_pipeline_setting = c;
-		
+		_for_each_yy<YY>(maybe__gl_pipeline_setting);
+	}
+	template<int>
+	void _for_each_yy(const const_daeChildRef &maybe__gl_pipeline_setting)
+	{
 		//This ensures genus cannot be mistaken.		
 		if(1==maybe__gl_pipeline_setting.name())
 		return;
@@ -552,16 +609,96 @@ struct FX::Loader::Load::Loading_gl_pipeline_setting : public Load::Loading
 	}
 };
 
-template<class T>
-void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
+template<> //Reminder: COMMON depends on ColladaYY.
+inline void FX::Loader::Load::profile_<COMMON>(COMMON profile_, FX::Effect *e)
 {	
-	_profile_ = profile_; //Save for '08 shaders?
+	//This is because RT monitors <newparam> values
+	//as it's loading an effect. The profile_COMMON 
+	//effects don't have any <newparam> to speak of.
+	//It's also initializing the pseudo-params with
+	//data that is not available at program startup.
+	FX::Profile_COMMON.Init_ClientData(loading);
 
 	Load &Load = *this;
-	FX::NewParamable *c = e;
+	FX::Paramable *c = e;
 	if(!profile_->newparam.empty())
 	{
-		c = new FX::NewParamable(e);
+		c = new FX::Paramable(e);
+		e->Profiles.push_back(c);
+		Load.newparam(profile_->newparam,c);		
+	}
+
+	//create and populate a FX::Technique for every technique in the cg profile	
+	for(size_t i=0;i<profile_->technique.size();i++)
+	{	
+		COMMON::technique technique = profile_->technique[i];
+		daeEH::Verbose<<"Technique is "<<technique->sid;
+
+		//create a FX::Technique for every technique inside the cg profile
+		FX::Technique *tech = new FX::Technique(c,technique->sid);	
+		#if YY==5
+		Load.newparam(technique->newparam,tech);		
+		//Load.setparam(technique->setparam,tech);
+		#endif
+		//Load_annotate(technique->annotate,tech);		
+
+		bool blinn = false;
+
+		if(!technique->constant.empty())
+		{
+			FX::Profile_COMMON.Load.Constant = 1;
+			Load.constant(*technique->constant,tech);
+		}
+		else if(!technique->lambert.empty())
+		{
+			FX::Profile_COMMON.Load.Lambert = 1;
+			Load.lambert(*technique->lambert,tech);
+		}
+		else if(!technique->phong.empty())
+		{
+			FX::Profile_COMMON.Load.Phong = 1;
+			Load.phong_or_blinn(*technique->phong,tech);
+		}
+		else if(!technique->blinn.empty())
+		{
+			FX::Profile_COMMON.Load.Blinn = 1;
+			blinn = true;
+			Load.phong_or_blinn(*technique->blinn,tech);
+		}
+		else 
+		{
+			delete tech; continue;
+		}
+
+		//This is miscellaneous COMMON implementation data.
+		struct SetApply:FX::SetParam,FX::DataProfile_COMMON
+		{}*p = new SetApply; 
+		p->Value.Technique = tech; 
+		p->Value.Blinn.Value = blinn;
+		p->SetParamToSet(&FX::Profile_COMMON.Application);
+		tech->Params.push_back(p);
+
+		e->Techniques.push_back(tech);		
+	}	
+}
+template<class T>
+inline void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
+{	
+	if(filter(profile_->platform,e->Id)) 
+	return;
+
+	//Reminder: Cg must go first for this to work.		
+	CGcontext Cg = nullptr;
+	if(DAEP::Schematic<T>::genus==DAEP::Schematic<CG>::genus)
+	Cg = loading.Cg;
+		
+	_profile_ = profile_; //Save for '08 shaders?	
+
+	Load &Load = *this;
+	FX::Paramable *c = e;
+	if(!profile_->newparam.empty())
+	{
+		c = new FX::Paramable(e);
 		e->Profiles.push_back(c);
 		Load.newparam(profile_->newparam,c);		
 	}
@@ -583,7 +720,7 @@ void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 		if(technique->pass.empty()) continue;
 
 		//create a FX::Technique for every technique inside the cg profile
-		FX::Technique *tech = new FX::Technique(c,technique->sid);	
+		FX::Technique *tech = new FX::Technique(c,technique->sid,Cg);	
 		#if YY==5
 		Load.newparam(technique->newparam,tech);		
 		Load.setparam(technique->setparam,tech);
@@ -635,19 +772,26 @@ void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 			
 			//TEMPLATE-META-PROGRAMMING
 			//GLES doesn't have shaders.
-			Load._profile_shaders<T>(pass,p,e,script); 
-			
-			tech->Passes.push_back(p);
+			if(!Load._profile_shaders<T>(pass,p,e,script))
+			{
+				delete p; goto nonviable_pass;				
+			}
+			else tech->Passes.push_back(p);
 		}
-		e->Techniques.push_back(tech);		
+		if(tech->Passes.empty()) nonviable_pass:
+		{
+			delete tech;
+			daeEH::Error<<"Nonviable or missing pass. Omitting technique "<<tech->Sid;
+		}
+		else e->Techniques.push_back(tech);		
 	}	
 }
 template<> 
-void FX::Loader::Load::_profile_shaders<ColladaYY::const_profile_GLES>
+bool FX::Loader::Load::_profile_shaders<ColladaYY::const_profile_GLES>
 (ColladaYY::const_profile_GLES::technique::pass,FX::Pass*,FX::Effect*,xs::string)
-{ /*NOP*/ }
+{ /*NOP*/ return true; }
 template<class T> 
-void FX::Loader::Load::_profile_shaders
+bool FX::Loader::Load::_profile_shaders
 (typename T::technique::pass pass, FX::Pass *p, FX::Effect *e, xs::string script)
 {
 	#if YY==5
@@ -656,7 +800,7 @@ void FX::Loader::Load::_profile_shaders
 	#else
 	typedef typename T::technique::pass::program Lprogram;
 	Lprogram program = pass->program;
-	if(program==nullptr) return;
+	if(program==nullptr) return false;
 	Loading_script script_08(_profile_);
 	#endif
 	for(size_t i=0;i<program->shader.size();i++)
@@ -684,7 +828,29 @@ void FX::Loader::Load::_profile_shaders
 		shader->compiler_options->value->*"",shader->name->value->*"",script);
 		Load_annotate(shader->annotate,sh);
 		#endif
+		if(0==sh->Stage)
+		{
+			delete sh; continue;
+		}
 
+		//UNUSED
+		//After Link() these may as well be deleted.
+		p->Shaders.push_back(sh);	
+	}
+	//UNUSED
+	//After Link() these may as well be deleted.
+	//Sort according to vertex shader < geometry < fragment shader.
+	std::sort(p->Shaders.begin(),p->Shaders.end(),_less<FX::Shader>());
+	if(p->Shaders.size()<2||p->Shaders[0]->Stage==GL_GEOMETRY_SHADER)	
+	return false;
+
+	//Stage 2 (GLSL needs to glLinkProgram().)
+	p->Link(); //GL.UseProgram(p->GLSL);	
+	p->World = 0; //Initializing.
+	for(size_t i=0;i<program->shader.size();i++)
+	{
+		Lprogram::shader shader = program->shader[i];
+							 
 		//load the shader's parameters
 		#if YY==8
 		#define bind bind_uniform
@@ -693,17 +859,46 @@ void FX::Loader::Load::_profile_shaders
 		{
 			Lprogram::shader::bind bind = shader->bind[i];
 
-			union{ FX::BindParam *b; FX::BindParam_To *b2; };
-
+			FX::ShaderParam *sp = p->FindShaderParam(bind->symbol);
+			if(sp==nullptr)
+			{
+				daeEH::Warning<<"Could not locate shader variable "<<bind->symbol;
+				continue;
+			}
+			if(sp->Param_To!=nullptr||sp->SetData!=nullptr)
+			{
+				daeEH::Warning<<"Shader program reloads uniform "<<bind->symbol<<"\n"
+				"(GLSL loads uniforms as a unified shader-program.)";
+				continue;
+			}
 			if(!bind->param.empty())
-			b2 = new FX::BindParam_To(bind->symbol,sh,bind->param->ref,e);
-			else FX::MakeData(b,bind,e,bind->symbol,sh);
+			{
+				sp->SetParam_To(p,bind->param->ref);
+				//HACK: Ensure there are not unbound pointers so that it can
+				//point to a convenient NewParam type (not just to a Param.)
+				if(sp->Param_To->IsNewParam()
+				&&((FX::NewParam*)sp->Param_To)->IsWorld())
+				{
+					p->World++;
 
-			sh->Params.push_back(b);
+					//WORLD etc. go to the front of the line.
+					intptr_t at = sp-&p->ShaderParams.front();
+					if(at>=p->World)
+					{	
+						FX::ShaderParam cp = *sp;
+						p->ShaderParams.erase(p->ShaderParams.begin()+at);
+						p->ShaderParams.insert(p->ShaderParams.begin(),cp);
+					}
+				}
+			}
+			else FX::MakeData(sp,bind,p->Technique,bind->symbol);
 		}
-		#undef bind
-		p->Shaders.push_back(sh);		
-	}
+		#undef bind		
+	}	
+		
+	//Do various cleanup tasks that don't require template specialization
+	//and are not interesting to this file's algorithm.
+	p->Finalize(); return true;
 }
 
 struct FX::Loader::Load::Loading_script : daeName
@@ -721,9 +916,13 @@ COLLADA_(public) //Previously FX::Technique
 	Loading_script(xs::const_any &_08)
 	:SIDREF("",_08),profile(_08->getNCName())
 	,sizeof_profile_script()
-	{}
-	template<class T> Loading_script(T &profile_content)
 	{
+		EXPERIMENTAL_Cg_to_GLSL_order();
+	}
+	template<class T> Loading_script(T &profile_content)
+	{	
+		profile = profile_content->getElement()->getNCName();
+		EXPERIMENTAL_Cg_to_GLSL_order();
 		profile_content->for_each_child(*this);
 		sizeof_profile_script = size();
 	}
@@ -733,6 +932,24 @@ COLLADA_(public) //Previously FX::Technique
 		script.back() = '\0';
 		technique_content->for_each_child(*this); return string;
 	}	
+
+	/**
+	 * This is part of an effort to unify the different profiles.
+	 * Switching from Cg to GLSL but still relying on Cg to load
+	 * the program has a number of quirks; one being that matrix
+	 * uniforms are not mat4 but are vec4[4] for example. So the
+	 * glUniformMatrix API will not work with them, and a manual
+	 * transpose would be required (whether there's a difference 
+	 * is probably important) to get back to the RT's historical
+	 * layout. Injecting this #pragma into shaders will create a
+	 * probably eventually.
+	 */ 
+	void EXPERIMENTAL_Cg_to_GLSL_order()
+	{
+		char test[] = "#pragma pack_matrix(column_major)\n";
+		if(profile=="profile_CG")		
+		script.assign(test,test+sizeof(test)-1);
+	}
 
 	/**C++98/03 SUPPORT
 	 * This is used to fill out @c code in strict order.
@@ -804,6 +1021,98 @@ COLLADA_(public) //Previously FX::Technique
 		script.push_back('\0'); string = &script[0]; 
 	}
 };
+
+//FX::Loader //FX::Loader //FX::Loader //FX::Loader //FX::Loader
+
+FX::Effect *FX::Loader::Load(ColladaYY::const_effect effect)
+{
+	if(effect==nullptr) return nullptr;
+
+	struct Load Load(*this,dae(effect)->getDocument());
+	
+	//SCHEDULED FOR REMOVAL
+	//Need to establish if the effect is using Cg so its top-level
+	//<newparam> samplers will be Cg API friendly.	
+	CGcontext using_Cg = nullptr; if(Cg!=nullptr) 
+	for(size_t i=0;i<effect->profile_CG.size();i++)
+	if(!Load.filter(effect->profile_CG[i]->platform,effect->id))
+	{
+		using_Cg = Cg; break;
+	}		
+	FX::Effect *out = new FX::Effect(effect->id,using_Cg);		
+	Load_annotate(effect->annotate,out);
+	Load.newparam(effect->newparam,out);		
+
+	//WHAT IS THE DEFAULT TECHNIQUE? <xs:sequence> IS USED?
+	//el.addCM<XS::Element>(cm,4,1,-1).setChild(toc->profile_GLSL,"profile_GLSL");
+	//el.addCM<XS::Element>(cm,4,1,-1).setChild(toc->profile_COMMON,"profile_COMMON");
+	//el.addCM<XS::Element>(cm,4,1,-1).setChild(toc->profile_CG,"profile_CG");
+	//el.addCM<XS::Element>(cm,4,1,-1).setChild(toc->profile_GLES,"profile_GLES");
+		
+	//GLSL (Not fully implemented.)
+	#ifdef NDEBUG
+	#error What is the "pipeline_settings" model?
+	for(size_t i=0;i<effect->profile_GLSL.size();i++)
+	Load.profile_<GLSL>(effect->profile_GLSL[i],out);	
+	#endif	
+
+	//Should profile_COMMON be slotted first or last?
+	for(size_t i=0;i<effect->profile_COMMON.size();i++)	
+	Load.profile_<COMMON>(effect->profile_COMMON[i],out);	
+
+	//CG (Historically samples/ used CG.)
+	if(Cg!=nullptr) 
+	for(size_t i=0;i<effect->profile_CG.size();i++)
+	Load.profile_<CG>(effect->profile_CG[i],out);	
+	
+	if(!out->Techniques.empty()) return out; delete out; return nullptr;
+}
+FX::Material *FX::Loader::Load(ColladaYY::const_material material, FX::Effect *e, const daeDocument *e_doc)
+{
+	if(e==nullptr||material==nullptr||e->Techniques.empty())
+	return nullptr;
+	
+	ColladaYY::const_instance_effect instance_effect = material->instance_effect;
+
+	#ifdef NDEBUG
+	#error The caller needs to be able to override these
+	#endif
+	size_t i,j;
+	for(i=j=0;i<instance_effect->technique_hint.size();i++)
+	{
+		ColladaYY::const_technique_hint hint = instance_effect->technique_hint[i];
+		if(!hint->platform->empty()&&!platform_Filter.empty())
+		if(nullptr==platform_Filter.find(hint->platform))
+		{
+			daeEH::Warning<<"Omitting <instance_effect> for platform hint "<<hint->platform;
+			return nullptr;
+		}
+		xs::ID ref = instance_effect->technique_hint->ref;
+		for(j=0;j<e->Techniques.size();j++)
+		if(ref==e->Techniques[j]->Sid)
+		goto have_hint;
+	}
+	j = 0; have_hint:
+	FX::Material *out = new FX::Material(e->Techniques[j],material->id);
+
+	struct Load Load(*this,e_doc); 
+	Load.setparam(instance_effect->setparam,out);	
+
+	FX::Technique *p = out->FindTechnique();
+	if(p->IsProfile_CG()) 
+	for(size_t i=0;i<p->Passes.size();i++)
+	for(size_t j=0;j<p->Passes[i]->Shaders.size();j++)
+	//if(nullptr==p->Passes[i]->Shaders[j]->Cg)
+	if(-1==p->Passes[i]->Shaders[j]->GLSL)
+	{
+		daeEH::Warning<<"Cg shader is unusable. Avoiding cgGL API crash by not using Cg for "<<material->id;
+		delete out; return nullptr;	
+	}
+
+	daeEH::Verbose<<"Created material "<<material->id<<" effect "<<instance_effect->url;
+
+	return out;
+}
 
 //-------.
 	}//<-'

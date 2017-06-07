@@ -93,7 +93,7 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\cfxAnnotate.cpp" />
+    <ClCompile Include="..\..\src\cfxCOMMON.cpp" />
     <ClCompile Include="..\..\src\cfxData.cpp" />
     <ClCompile Include="..\..\src\cfxEffect.cpp" />
     <ClCompile Include="..\..\src\cfxLoader.cpp" />

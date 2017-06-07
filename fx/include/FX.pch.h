@@ -91,28 +91,73 @@ COLLADA_(namespace)
 	//EXPERIMENTAL (OpenGL is such a PITA.)
 	extern struct GL
 	{
-		template<class F, F def()> struct Ext
+		template<class R, class F, F def()> struct Ext
 		{
 			F ptr;
-			Ext():ptr(def()){}
+			Ext():ptr(def()){}			
+			R operator()(){ return ptr!=nullptr?ptr():(R)0; }
 			template<class S>
-			void operator()(S x){ if(ptr!=nullptr) ptr(x); }
+			R operator()(S s){ return ptr!=nullptr?ptr(s):(R)0; }
 			template<class S, class T>
-			void operator()(S x, T y){ if(ptr!=nullptr) ptr(x,y); }			
+			R operator()(S s, T t){ return ptr!=nullptr?ptr(s,t):(R)0; }
+			template<class S, class T, class U>
+			R operator()(S s, T t, U u){ return ptr!=nullptr?ptr(s,t,u):(R)0; }
+			template<class S, class T, class U, class V>
+			R operator()(S s, T t, U u, V v){ return ptr!=nullptr?ptr(s,t,u,v):(R)0; }
+			template<class S, class T, class U, class V, class W>
+			R operator()(S s, T t, U u, V v, W w){ return ptr!=nullptr?ptr(s,t,u,v,w):(R)0; }
+			template<class S,class T,class U,class V,class W,class X,class Y>
+			R operator()(S s,T t,U u,V v,W w, X x,Y y){ return ptr!=nullptr?ptr(s,t,u,v,w,x,y):(R)0; }
 		};		
 		#ifdef GL_GLEXT_PROTOTYPES		
-		#define __(x,y) \
-		static y _##x(){ return gl##x; }
+		#define __(s,t) \
+		static t _##s(){ return gl##s; }
 		#elif defined(_WIN32)
-		#define __(x,y) \
-		static y _##x(){ return (y)wglGetProcAddress("gl"#x); } 
+		#define __(s,t) \
+		static t _##s(){ return (t)wglGetProcAddress("gl"#s); } 
 		#else
 		//#error Is your system unrepresented?
 		#endif		
-		#define _(x,y,z) __(y,z) Ext<z,_##y> y;
+		#define _(s,t,u) __(t,u) Ext<s,u,_##t> t;
 		_(void,ActiveTexture,PFNGLACTIVETEXTUREPROC)
 		_(void,ClientActiveTexture,PFNGLCLIENTACTIVETEXTUREPROC)
 		_(void,GenerateMipmap,PFNGLGENERATEMIPMAPPROC)
+		_(void,DebugMessageCallbackARB,PFNGLDEBUGMESSAGECALLBACKARBPROC)
+		//GLSL
+		_(void,AttachShader,PFNGLATTACHSHADERPROC)
+		_(void,BindAttribLocation,PFNGLBINDATTRIBLOCATIONPROC)
+		_(void,CompileShader,PFNGLCOMPILESHADERPROC)
+		_(GLuint,CreateProgram,PFNGLCREATEPROGRAMPROC)
+		_(GLuint,CreateShader,PFNGLCREATESHADERPROC)
+		_(void,DeleteShader,PFNGLDELETESHADERPROC)
+		_(void,DeleteProgram,PFNGLDELETEPROGRAMPROC)
+		_(void,GetActiveUniform,PFNGLGETACTIVEUNIFORMPROC)
+		_(void,GetAttachedShaders,PFNGLGETATTACHEDSHADERSPROC)
+		_(void,GetShaderiv,PFNGLGETSHADERIVPROC)
+		_(void,GetShaderInfoLog,PFNGLGETSHADERINFOLOGPROC)
+		_(void,GetProgramiv,PFNGLGETPROGRAMIVPROC)
+		_(GLint,GetUniformLocation,PFNGLGETUNIFORMLOCATIONPROC)
+		_(void,LinkProgram,PFNGLLINKPROGRAMPROC)
+		_(void,ShaderSource,PFNGLSHADERSOURCEPROC)
+		_(void,UseProgram,PFNGLUSEPROGRAMPROC)
+		//GLSL uniform (cfxData.cpp)		
+		_(void,Uniform1i,PFNGLUNIFORM1IPROC)
+		_(void,Uniform1f,PFNGLUNIFORM1FPROC)		
+		_(void,Uniform2f,PFNGLUNIFORM2FPROC)
+		_(void,Uniform3f,PFNGLUNIFORM3FPROC)
+		_(void,Uniform4f,PFNGLUNIFORM4FPROC)		
+		//Cg cannot use these.
+		_(void,UniformMatrix2fv,PFNGLUNIFORMMATRIX2FVPROC)		
+		_(void,UniformMatrix3fv,PFNGLUNIFORMMATRIX3FVPROC)		
+		_(void,UniformMatrix4fv,PFNGLUNIFORMMATRIX4FVPROC)
+		//Cg uses these instead.
+		_(void,Uniform2fv,PFNGLUNIFORM2FVPROC)		
+		_(void,Uniform3fv,PFNGLUNIFORM3FVPROC)		
+		_(void,Uniform4fv,PFNGLUNIFORM4FVPROC)		
+		//RT client-data support.		
+		_(void,Uniform1d,PFNGLUNIFORM1DPROC)
+		_(void,UniformMatrix4dv,PFNGLUNIFORMMATRIX4DVPROC)
+		_(void,Uniform4dv,PFNGLUNIFORM4DVPROC)		
 		#ifdef COLLADA_GL_INCLUDE
 		#include COLLADA_GL_INCLUDE
 		#endif
@@ -124,7 +169,7 @@ COLLADA_(namespace)
 		static void MultMatrix(const float m[16]){ glMultMatrixf(m); }
 		static void MultMatrix(const double m[16]){ glMultMatrixd(m); }
 
-	}GL; //See CrtRender.cpp
+	}GL;
 }
 
 #endif //__COLLADA_FX__PCH_H__

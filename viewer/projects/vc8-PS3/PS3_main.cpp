@@ -149,7 +149,7 @@ bool COLLADA_Viewer::onInit(int argc, char **ppArgv)
 	psglLoadShaderLibrary("/app_home/shaders.bin");
 
 	//Initialize the renderer
-	RT::Main.Init();
+	RT::Main.Init(RestoreGL);
 	RT::Main.UseVBOs = true;
 	RT::Main.ShowHiearchy = true;
 	InitGL(0,0,1,0.5f);
@@ -255,7 +255,7 @@ bool COLLADA_Viewer::onUpdate()
 		buttonTime = curTime;
 		if(mpPad->getRawBool(FWInput::Channel_Button_Select))
 		{
-			RT::Main.SetNextCamera();
+			ProcessInput('\t'); //RT::Main.SetNextCamera();
 			return result;
 		}
 		else if(mpPad->getRawBool(FWInput::Channel_Button_L3))
@@ -264,11 +264,11 @@ bool COLLADA_Viewer::onUpdate()
 		}
 		else if(mpPad->getRawBool(FWInput::Channel_Button_R3))
 		{
-			togglewireframe = !togglewireframe;
+			ProcessInput('Q'); //togglewireframe = !togglewireframe;
 		}
 		else if(mpPad->getRawBool(FWInput::Channel_Button_Square))
 		{
-			togglelighting = !togglelighting;
+			ProcessInput('L'); //togglelighting = !togglelighting;
 		}
 		else if(mpPad->getRawBool(FWInput::Channel_Button_Cross))
 		{
@@ -318,11 +318,6 @@ bool COLLADA_Viewer::onUpdate()
 	RT::Main.ZoomIn(-0.005f);	
 	else if(mpPad->getRawBool(FWInput::Channel_Button_L1))
 	RT::Main.ZoomIn(0.005f);
-
-	if(togglewireframe)
-	glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);	
-	else
-	glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
 
 	if(togglelighting)
 	glEnable(GL_LIGHTING);	

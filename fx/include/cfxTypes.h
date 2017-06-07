@@ -38,12 +38,12 @@ COLLADA_(namespace)
 	class Effect;
 	class Loader;
 	class Material;
-	class GlSamplerSetting; //UNUSED?
 	class Param;
 	class Paramable;
 	class NewParam;
-	class NewParamable;
+	class Paramable;
 	class Pass;
+	class ShaderParam;
 	class Sampler;
 	class SetParam;
 	class Shader;
@@ -259,31 +259,40 @@ struct Float4 : Float3
 	};
 	class Sampler
 	{
-	COLLADA_(public)
+	COLLADA_(public)		
 
 		Sampler():Source(),Params()
-		,Surface(),GenerateMipmaps(true)
+		,GenerateMipmaps(true),Cg()
 		{}
-	  
+		~Sampler()
+		{
+			//Samplers are unnamed, unassociated parameters. 
+			//They are required to house sampler attributes.
+			if(Cg!=nullptr) cgDestroyParameter(Cg);
+		}
+
 		/**
-		 * Previously "getTextureId."
-		 * @see cfxData.cpp
+		 * These locate (what should be) the correct texture
+		 * after calling @c FX::Material::Apply().
+		 * @return Returns @a if_Missing there is no surface.
+		 * The "missing" texture is returned if a surface is
+		 * missing its texture or if the default overload is
+		 * used.
+		 * @note This functionality is exposed so the RT can
+		 * select a default texture to use in its lo-fi mode.
 		 */
-		void Apply(FX::Param *param);
-
-	COLLADA_(public)
-
-		xs::ID Source;	
-
-		/**HACK
-		 * This is identical to the FX::Param value.
-		 * It's just easier to set up this way.
+		GLuint FindTexID(),FindTexID(GLuint if_Missing);
+	  
+	COLLADA_(public)	
+		/**
+		 * Data doesn't generally require this any longer.
+		 * Still @c cgCreateSamplerStateAssignment() does.
 		 */
 		CGparameter Cg;
 
-		FX::NewParamable *Params;
+		xs::ID Source;
 
-		FX::Surface *Surface;
+		FX::Paramable *Params;
 
 		bool GenerateMipmaps;
 	};

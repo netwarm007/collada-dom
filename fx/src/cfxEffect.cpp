@@ -17,80 +17,85 @@ COLLADA_(namespace)
 	{//-.
 //<-----'
 
-FX::Effect::Effect(xs::ID id, CGcontext ctxt)
-:NewParamable(nullptr),Id(id),Cg_Context(ctxt)
+FX::Effect::Effect(xs::ID id, CGcontext Cg_Context)
+:Paramable(nullptr),Id(id),Cg_Context(Cg_Context),Cg()
 {
-	if(ctxt!=nullptr)
+	if(Cg_Context!=nullptr)
 	{
 		//create the new effect and set its name
-		Cg = cgCreateEffect(ctxt,nullptr,nullptr);
+		Cg = cgCreateEffect(Cg_Context,nullptr,nullptr);
 		cgSetEffectName(Cg,Id);
-		assert(Cg!=nullptr);
 	}
-	else assert(0);
 }
 FX::Effect::~Effect()
 {
-	//#ifndef SN_TARGET_PS3 //???
-	cgDestroyEffect(Cg);
-	//#endif
+	if(Cg!=nullptr) cgDestroyEffect(Cg);
 
 	for(size_t i=0;i<Profiles.size();i++)	
 	delete Profiles[i];
 	for(size_t i=0;i<Techniques.size();i++)	
 	delete Techniques[i];
 }
-void FX::Effect::Apply()
+
+FX::Technique::Technique(FX::Paramable *parent, xs::ID  sid, void *profile_CG)
+:Paramable(parent),Sid(sid),Generate(),Cg()
 {
-	//THIS CAN'T WORK.
-	#ifdef NDEBUG 
-	#error <instance_effect> must instantiate these things, top-down.
-	#endif
-	Annotatable::Apply(this); NewParamable::Apply();
-
-	for(size_t i=0;i<Profiles.size();i++)	
-	Profiles[i]->Apply();
-
-	//////moving technique earlier so the connection can happen before the set because 
-	//////propagation of parameter value is not quite implemented properly yet.
-	for(size_t i=0;i<Techniques.size();i++)	
-	{
-		Techniques[i]->Apply();
-							 
-		//i think there should be a better place for this, but until i know what that is...
-		if(!cgValidateTechnique(Techniques[i]->Cg))
-		{
-			daeEH::Error<<"INVALID TECHNIQUE"; //breakpoint
-		}
-		else daeEH::Verbose<<"VALID TECHNIQUE";
-	}
-}
-
-FX::Technique::Technique(FX::NewParamable *parent, xs::ID  sid)
-:NewParamable(parent),Sid(sid),Generate()
-{
-	Cg = cgCreateTechnique(parent->FindEffect()->Cg,Sid);
+	//Reminder: The effect may use Cg, yet this technique may not.
+	if(profile_CG!=nullptr) Cg = cgCreateTechnique(parent->FindEffect()->Cg,Sid);
 }
 FX::Technique::~Technique()
 {
-	for(size_t i=0;i<Passes.size();i++)
-	delete Passes[i];	
-}
-void FX::Technique::Apply()
-{
-	Annotatable::Apply(this); NewParamable::Apply();
-
-	for(size_t i=0;i<Passes.size();i++)
-	Passes[i]->Apply();
+	for(size_t i=0;i<Passes.size();i++) delete Passes[i];	
 }
 	
+//extern FX::Pass Profile_COMMON;
+
 void FX::Material::SetPassState(int pass)
 {
-	cgSetPassState(((FX::Technique*)Parent_NewParamable)->Passes[pass]->Cg);
+	FX::Technique *p = FindTechnique();
+	if(!p->IsProfile_COMMON())
+	{
+		FX::Pass &q = *p->Passes[pass];
+		
+		if(p->IsProfile_CG())
+		{
+			//SCHEDULED FOR REMOVAL
+			//Requires glPushAttrib!!!
+			cgSetPassState(q.Cg);
+		}
+		else GL.UseProgram(q.GLSL);
+
+		for(size_t i=0;i<q.ShaderParams.size();i++)
+		q.ShaderParams[i].Apply();
+	}
+	else Profile_COMMON.SetPassState();
+}
+void FX::Material::SetWorld(int pass)
+{
+	FX::Technique *p = FindTechnique();
+	if(!p->IsProfile_COMMON())	
+	{
+		FX::Pass &q = *p->Passes[pass];
+		for(int i=0;i<q.World;i++)	
+		q.ShaderParams[i].Apply();	
+	}
+	else FX::Profile_COMMON.SetWorld();
 }
 void FX::Material::ResetPassState(int pass)
 {
-	cgResetPassState(((FX::Technique*)Parent_NewParamable)->Passes[pass]->Cg);
+	FX::Technique *p = FindTechnique();
+	if(!p->IsProfile_COMMON())
+	{
+		//SCHEDULED FOR REMOVAL
+		if(p->IsProfile_CG())
+		{
+			//SCHEDULED FOR REMOVAL
+			//Requires glPopAttrib!!!
+			cgResetPassState(p->Passes[pass]->Cg);
+		}
+		else GL.UseProgram(0);
+	}
+	else Profile_COMMON.ResetPassState();
 }
 
 //-------.

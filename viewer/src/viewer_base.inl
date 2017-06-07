@@ -17,9 +17,6 @@
 #include "CrtScene.h"
 #include "CrtEffect.h"
 
-//EXPERIMENTAL
-#include "viewer_menu.hpp"
-
 using namespace COLLADA;
 
 //demo.dae floods the console.
@@ -28,10 +25,10 @@ enum{ Silence_console_if_DEBUG=0 };
 //SCHEDULED FOR REMOVAL
 COLLADA_(namespace)
 {
-	//There's really no reason to 
-	//define this here versus the
-	//RT static library. It's not
-	//like there is any advantage.
+	//One advantage to linking these
+	//here (if there is any other) is
+	//it forces RT and FX to be rebuilt.
+	struct GL GL; 
 	namespace RT
 	{
 		::COLLADA::RT::Frame Main;
@@ -46,9 +43,6 @@ static void COLLADA_viewer_GLUT_atexit()
 	#endif
 }
 
-//!!!GAC for demo of how to hookup the UI to a param
-static CGparameter amplitudeGlobalParameter = 0;
-
 static bool fullscreen = false;
 static bool togglewireframe = false;
 static bool togglelighting = true;
@@ -62,27 +56,43 @@ static void DrawGLScene()
 
 	RT::Main.Refresh();
 } 
-//GL Setup (for some reason PS3_main uses 0,0,1,0.5)
-static void InitGL(float r=0.9f, float g=0.9f, float b=0.9f, float a=1)
+static void RestoreGL()
 {
+	//Reminder: The fallback renderer will use these.
 	//Assuming COLLADA wants behavior more like this.
 	//Technically profile_COMMON should use technical shaders.
-	//
 	//glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL,GL_SINGLE_COLOR);
 	glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL,GL_SEPARATE_SPECULAR_COLOR);	
-	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,GL_TRUE);
+	//THIS WOULD BE NICE, BUT IT GETS THE NORMALS WRONG WHEN
+	//THEY ARE MIRRORED BY NEGATIVE SCALES. INSTEAD OF CHECKING 
+	//IF IT'S A FRONT/BACK FACE IT USES THE DETERMINANT OF THE NORMAL
+	//MATRIX TO SELECT A FRONT FACE UNRELATED TO WINDING.
+	//(Profile_COMMON does it right in per-pixel rendering mode.)
+	if(0) glLightModeli(GL_LIGHT_MODEL_TWO_SIDE,GL_TRUE);
+	//"The initial ambient scene intensity is (0.2, 0.2, 0.2, 1.0)."
+	const GLclampf black[4] = {0,0,0,1};
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT,black);
 
 	glShadeModel(GL_SMOOTH);
-	glClearColor(r,g,b,a); glClearDepth(1);	
+	//glClearColor(r,g,b,a); glClearDepth(1);	
 	glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); //LEQUAL?
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT,GL_NICEST);
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_NORMALIZE); //"inverse transpose" needs post-normalization.
+}
+//GL Setup (for some reason PS3_main uses 0,0,1,0.5)
+static void InitGL(float r=0.9f, float g=0.9f, float b=0.9f, float a=1)
+{
+	//SCHEDULED FOR REMOVAL
+	//These states are clobbered by Cg.
+	RestoreGL();
+
+	glClearColor(r,g,b,a); glClearDepth(1);		
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT,GL_NICEST);
 
 	//Sometimes models present incorrectly because back-faces obscure them.
 	assert(1==togglecullingface);
-	glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //1
+	glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //1	
 }
 //Resize And Initialize The GL Window
 static void ResizeGLScreen(int width, int height)
@@ -136,10 +146,26 @@ static void ProcessInput(unsigned char ASCII)
 
 	case 'l': case 'L':
 		
-		if(togglelighting=!togglelighting)
-		glEnable(GL_LIGHTING);		
-		else
-		glDisable(GL_LIGHTING);		
+		if(!RT::Main.ShowCOLLADA_FX)
+		{
+			if(togglelighting=!togglelighting)
+			{
+				glEnable(GL_LIGHTING);		
+				RT::Main.ShowCOLLADA_FX = true;				
+				daeEH::Verbose<<"[L]ighting disabled. FX enabled.";
+			}
+			else 
+			{
+				glDisable(GL_LIGHTING);		
+				daeEH::Verbose<<"[L]ighting disabled.";
+			}
+		}
+		else 
+		{
+			RT::Main.ShowCOLLADA_FX = false;
+			RestoreGL();
+			daeEH::Verbose<<"[L]egacy OpenGL mode enabled. FX disabled.";
+		}
 		break;
 
 	case 'm': case 'M':
@@ -215,28 +241,6 @@ static void ProcessInput(unsigned char ASCII)
 
 		RT::Main.Walk(0,RT::Main.Delta*KeyboardTranslateSpeed,0);
 		break;
-
-	case 'e': case 'E':
-
-		if(amplitudeGlobalParameter)
-		{
-			float value;
-			cgGetParameterValuefc(amplitudeGlobalParameter,1,&value);
-			value+=0.1f;
-			cgSetParameter1f(amplitudeGlobalParameter,value);			
-		}
-		break;
-	
-	case 'r': case 'R':
-
-		if(amplitudeGlobalParameter)
-		{
-			float value;
-			cgGetParameterValuefc(amplitudeGlobalParameter,1,&value);
-			value-=0.1f;
-			cgSetParameter1f(amplitudeGlobalParameter,value);
-		}
-		break;		
 		
 	case 'f': case 'F':
 
@@ -383,6 +387,12 @@ static void glutMotionFunc_callback(int x, int y)
 }
 static bool CreateGLUTWindow(int LArgC, char **LArgV, const char *title, int width, int height)
 {
+	#if defined(FREEGLUT) && defined(_DEBUG)
+	//fghIsLegacyContextRequested wants OpenGL>2.1??
+	glutInitContextVersion(3,0); //First version after 2.1.
+	glutInitContextFlags(GLUT_DEBUG);
+	#endif
+
 	glutInit(&LArgC,LArgV);
 	glutInitDisplayMode(GLUT_DOUBLE|GLUT_DEPTH|GLUT_RGB);	
 	
@@ -431,52 +441,76 @@ static void (*COLLADA_viewer_main_loop)() = nullptr
 #endif
 ;
 
+//DUNNO WHY THIS CODE IS BEING KEPT AROUND.
 //This was separately implemented by the Windows/Linux/OSX branches 
 //It gets amplitudeGlobalParameter. Not clear it does anything else
 static void InitSceneEffects()
 {
 	//This block of code shows how to enumerate all the effects, get their parameters and then
 	//get their UI information.
-	const RT::DBase *scene = RT::Main.Data;
+	const RT::DBase *scene = RT::Main.DB;
 	if(scene==nullptr) return;
 
 	//Get the scene and setup to iterate over all the effects stored in the FX::Loader
 	for(size_t i=0;i<scene->Effects.size();i++)
 	{
-		FX::Effect *fx = scene->Effects[i]->COLLADA_FX;
+		FX::Effect *fx = scene->Effects[i]->FX;
 		if(fx==nullptr) continue;
 
-		//This is the effect name you would use in a UI
-		daeEH::Verbose<<"Effect name "<<scene->Effects[i]->Id;
-		for(CGparameter p=cgGetFirstEffectParameter(fx->Cg);p!=nullptr;p=cgGetNextParameter(p))
+		//DUNNO WHY THIS CODE IS BEING KEPT AROUND.
+		//Really all techniques should be listed, but it could get very redundant?
+		FX::Technique *Cg = nullptr;
+		for(size_t i=0;i<fx->Techniques.size();i++)
+		if(fx->Techniques[i]->IsProfile_CG())
 		{
+			Cg = fx->Techniques[i]; break;
+		}
+		if(Cg==nullptr) continue;
+
+		//This is the effect name you would use in a UI
+		daeEH::Verbose<<"Cg effect name (id) "<<scene->Effects[i]->Id;
+
+		FX::Paramable *pass[3] = { fx };
+		if(fx!=Cg->Parent_Paramable)
+		{
+			pass[1] = Cg->Parent_Paramable;
+			pass[2] = Cg;
+		}
+		else pass[1] = Cg;
+
+		for(int i=0;i<3&&pass[i]!=nullptr;i++)		
+		for(size_t j=0;j<pass[i]->Params.size();j++)
+		{
+			FX::NewParam *p = (FX::NewParam*)pass[i]->Params[i];
+			//YUCK
+			if(!p->IsNewParam()||p->Annotations.empty())
+			continue; 
+
 			//This is the parameter name you would use in the UI
-			daeName name = cgGetParameterName(p);
+			daeName name = p->Name; 
 			//This is for the example of how to tweek a parameter (doesn't work yet)
-			if(name=="Amplitude")
+			//if(name=="Amplitude")
 			{
 				//Capture the parameter and save it in a global, in a GUI you would
 				//save this handle in the widget so it would know what to tweek.
-				amplitudeGlobalParameter = p;
+				//amplitudeGlobalParameter = p;
 			}
-
-			//(Cg doesn't have an API for multivalue annotation. CgFX doesn't seem to allow it.)			
-			CGannotation q; int one = 1;
 
 			#if 0			
 			//This is here for debugging, it iterates over all the annotations and prints them out
 			//so you can see what's in them.  Normally this code will be turned off.
 			daeEH::Verbose<<"Parameter name "<<name;
-			for(q=cgGetFirstParameterAnnotation(p);q!=nullptr;q=cgGetNextAnnotation(q))
+			for(size_t i=0;i<p->Annotations.size();i++)
 			{				
-				daeEH::Verbose<<"Annotation: "<<cgGetAnnotationName(q);
-				switch(cgGetAnnotationType(anno))
+				FX::Annotate *q = p->Annotations[i];
+				daeEH::Verbose<<"Annotation: "<<q->Name;
+				switch(q->GetType())
 				{
 				case: CG_STRING
-				daeEH::Verbose<<"value: "<<cgGetStringAnnotationValue(q);
+				daeEH::Verbose<<"value: "<<q->Value<RT::Name>();
 				break;				
 				case CG_FLOAT:
-				daeEH::Verbose<<"value: "<<cgGetFloatAnnotationValues(q,&one)[0]; 
+				daeEH::Verbose<<"value: "<<q->Value<RT::Float>(); 
 				break;
 				default: assert(0); //daeEH::Verbose<<"";
 				}
@@ -486,26 +520,14 @@ static void InitSceneEffects()
 			//This code currently only collects the annotation values for defining sliders and color pickers.
 			//UIName is the name to attach to the widget
 			//UIWidget is the widget type			
-			daeName UIName,UIWidget;
-			//UIMin is the minimum value for a slider widget
-			//UIMax is the maximum value for a slider widget
-			//UIStep is the step (minimum change) for a slider widget
-			float UIMin = -99999.0f, UIMax = 99999.0f, UIStep = 0;
-			//Iterate over all the annotations
-			for(q=cgGetFirstParameterAnnotation(p);q!=nullptr;q=cgGetNextAnnotation(q))
-			{
-				daeName label = cgGetAnnotationName(q);
-				if("UIWidget"==label)
-				UIWidget = cgGetStringAnnotationValue(q);
-				if("UIName"==label)
-				UIName = cgGetStringAnnotationValue(q);				
-				if("UIMin"==label)
-				UIMin = cgGetFloatAnnotationValues(q,&one)[0];				
-				if("UIMax"==label)
-				UIMax = cgGetFloatAnnotationValues(q,&one)[0];				
-				if("UIStep"==label)
-				UIStep = cgGetFloatAnnotationValues(q,&one)[0];				
-			}			
+			RT::Name UIName,UIWidget;
+			RT::Float UIMin = -99999, UIMax = 99999, UIStep = 0;						
+			p->Annotate("UIWidget",UIWidget);
+			p->Annotate("UIName",UIWidget);
+			p->Annotate("UIMin",UIName);
+			p->Annotate("UIMax",UIMin);
+			p->Annotate("UIStep",UIMax);
+			p->Annotate("UIWidget",UIStep);			
 			//Replace daeEH::Verbose with the code that generates the UI, remember the UI needs			
 			if("Slider"==UIWidget)
 			daeEH::Verbose<<"Parameter "<<name<<" needs a slider named "<<UIName<<" going from "<<UIMin<<" to "<<UIMax<<" with step "<<UIStep;
@@ -522,8 +544,10 @@ static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 	if(!CreateGLWindow(argc,argv,"ColladaDOM 3 Reference Viewer",Xsize,Ysize))
 	return 0;	
 
-	RT::Main.Init();
-					
+	//cgSetPassState messes up the global state.
+	//This is also initialzing the RT component.
+	RT::Main.Init(RestoreGL);
+
 	//Set the default screen size
 	RT::Main.Width = Xsize; RT::Main.Height = Ysize;
 											   
@@ -540,15 +564,6 @@ static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 		{
 			//Let console print any errors.
 			//exit(0); //!!!!!!!!!!
-		}
-		else //This should be a subroutine.
-		{
-			//EXPERIMENTAL
-			//Negotiating with FreeGLUT to add menus on click independent
-			//of dragging.
-			#if 0 && defined(FREEGLUT)
-			EnableMenu(); //viewer_menu.hpp
-			#endif
 		}
 	}
 	daeEH::Verbose<<"LOAD TIME OF "<<RT::Main.URL;
@@ -771,7 +786,7 @@ static struct TestPlatform : daePlatform //SINGLETON
 		extern daeMeta *InitSchemas(int);
 		daeMeta *meta = InitSchemas(Peek_xmlns(req.localURI)=="http://www.collada.org/2005/11/COLLADASchema"?5:8);
 		req.fulfillRequestI(meta,I,doc);
-		if(doc==DAE_OK) URI = &doc->getDocURI(); else assert(0); return doc; 
+		if(doc==DAE_OK) URI = &doc->getDocURI(); return doc; 
 	}
 	virtual daeIO *openIO(daeIOPlugin &I, daeIOPlugin &O)
 	{
@@ -798,7 +813,7 @@ static struct TestPlatform : daePlatform //SINGLETON
 		char buf[4096]; s.read(buf,4096);
 		out.assign(buf,4096);
 		out.erase(0,out.find("xmlns=\"")+7); //GOOD ENOUGH?
-		out.erase(out.find('"'),-1); 		
+		out.erase(std::min(out.find('"'),out.size()),-1); 		
 		return out; //NO need to normalize. Not a URI per se.
 	}
 

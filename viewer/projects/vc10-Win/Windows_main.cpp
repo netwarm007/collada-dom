@@ -20,6 +20,7 @@
 #include <gl/glut.h>   
 #else
 #include "../../../viewer\external-libs/freeglut/include/GL/glut.h"
+#include "../../../viewer\external-libs/freeglut/include/GL/freeglut_ext.h"
 #endif
 #ifndef FREEGLUT
 #pragma comment(lib,"glut32.lib")
@@ -44,12 +45,15 @@ BOOL WINAPI Windows_CONSOLE_HandlerRoutine(DWORD dwCtrlType)
 {
 	switch(dwCtrlType)
 	{
+	//Reminder: Ctrl+C can't copy because there's not a selection.
 	case CTRL_C_EVENT:
+	case CTRL_BREAK_EVENT: //return 0; //Terminates after breaking.
 	case CTRL_CLOSE_EVENT:
 	case CTRL_SHUTDOWN_EVENT:
 
 		//HACK: This is happening on another thread that is causing an
 		//assert() to be fired on shutdown that locks the debugger/IDE.
+		//The assert is because atexit() is never called on the thread.
 		SendMessage(Window,WM_DESTROY,0,0);
 		return 1;
 	}

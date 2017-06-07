@@ -14,7 +14,6 @@
     <ClInclude Include="..\..\src\viewer_base.inl" />
     <ClInclude Include="..\..\src\viewer_base.pch.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="..\..\src\viewer_menu.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\vc10-Win\Windows_wgl.inl" />

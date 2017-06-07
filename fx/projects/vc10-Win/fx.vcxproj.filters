@@ -11,9 +11,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\cfxAnnotate.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\cfxData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -31,6 +28,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\CfxPCH.cpp" />
     <ClCompile Include="..\..\src\cfxLoader08.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cfxCOMMON.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

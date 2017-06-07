@@ -159,7 +159,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\viewer_base.inl" />
     <ClInclude Include="..\..\src\viewer_base.pch.h" />
-    <ClInclude Include="..\..\src\viewer_menu.hpp" />
     <ClInclude Include="..\vc8-PS3\PS3_BrowserUI.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>

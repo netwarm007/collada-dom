@@ -13,10 +13,10 @@
 //are made available for use by COLLADA_DOM_INCLUDE.
 //
 //These macros are meta to the C Preprocessor.
-#define COLLADA_STRINGIZE2(x) #x
-#define COLLADA_STRINGIZE(x) COLLADA_STRINGIZE2(x)
 #define COLLADA_TOKENIZE2(x,y) x##y
 #define COLLADA_TOKENIZE(x,y) COLLADA_TOKENIZE2(x,y)
+#define COLLADA_STRINGIZE2(...) #__VA_ARGS__
+#define COLLADA_STRINGIZE(...) COLLADA_STRINGIZE2(__VA_ARGS__)
 //
 //////This injects a configuration file. It's mainly
 	//of use when dependent libraries must all agree.

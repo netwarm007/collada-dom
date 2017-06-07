@@ -15,67 +15,6 @@ COLLADA_(namespace)
 	namespace FX
 	{//-.
 //<-----'
-		
-void FX::Sampler::Apply(FX::Param *param)
-{
-	//Why was this this way? How did the <instance_effect>
-	//assign the surface?
-	//if(Surface!=nullptr)
-	//return;	
-
-	if(Surface==nullptr) //Using 1.4.1 pathway?
-	{
-		//look up source for the matching Surface
-		Surface = Params->FindSurface(Source);
-		if(Surface==nullptr)
-		{
-			daeEH::Error<<"Failed to get effect surface by name "<<Source;
-			return;
-		}
-
-		//THIS LOOKS LIKE A BAD DESIGN PATTERN.
-		//THIS LOOKS LIKE A BAD DESIGN PATTERN.
-		//THIS LOOKS LIKE A BAD DESIGN PATTERN.
-		Surface->Referencing_Samplers.push_back(param);
-	}	
-
-	//Assuming <newparam> has not been set up.
-	if(0==Surface->TexId)
-	return;
-			  
-	//daeEH::Verbose<<"Setting sampler state.";
-	//this works on the currently bound texture object
-	//not important which texture unit is used, we just need to use one to
-	//allow cgSetSamplerState() to work properly. 
-
-	#ifdef NDEBUG
-	#error See if the state is remembered. (It probably is.)
-	#endif
-	//THIS IS BEING REPEATED EVERY DRAW.
-	//daeEH::Verbose<<"Binding texture "<<Surface->TexId;
-	glBindTexture(GL_TEXTURE_2D,Surface->TexId);
-
-	//calling this before generate mipmaps is better cause then the call
-	//to generate mipmaps already has the space set up for it to use
-	cgSetSamplerState(param->Cg);
-
-	//REMINDER: CrtTexture.cpp MAY'VE DONE THIS ALREADY.
-	if(GenerateMipmaps)
-	{
-		//NEW: Ensure the mipmaps are not regenerated unnecessarily.
-		//(Especially every time the sampler is bound.)
-		GLint test = 1;
-		glGetTexLevelParameteriv(GL_TEXTURE_2D,1,GL_TEXTURE_WIDTH,&test);
-		if(0==test)
-		{
-			#ifdef SN_TARGET_PS3
-			glGenerateMipmapOES(GL_TEXTURE_2D);
-			#else 
-			GL.GenerateMipmap(GL_TEXTURE_2D); //glGenerateMipmap
-			#endif
-		}
-	}
-}
 
 template<class S, int YY, CGtype, class>
 struct cfxData_copier
@@ -146,15 +85,15 @@ struct cfxData_copier<FX::Sampler,5,E,T>
 	}
 	void _set(const char *cc, unsigned to)
 	{
-		cgSetIntStateAssignment(_new_CGstateassignment(cc),to);
+		if(Cg!=nullptr) cgSetIntStateAssignment(_new_CGstateassignment(cc),to);
 	}
 	void _set(const char *cc, float to)
 	{
-		cgSetFloatStateAssignment(_new_CGstateassignment(cc),to);
+		if(Cg!=nullptr) cgSetFloatStateAssignment(_new_CGstateassignment(cc),to);
 	}
 	void _set(const char *cc, float *to)
 	{
-		cgSetFloatArrayStateAssignment(_new_CGstateassignment(cc),to);
+		if(Cg!=nullptr) cgSetFloatArrayStateAssignment(_new_CGstateassignment(cc),to);
 	}		
 	CGstateassignment _new_CGstateassignment(const char *cc)
 	{
@@ -168,34 +107,36 @@ struct cfxData_copier<FX::Sampler,5,E,T>
 	template<int> void _wrap_N(){ _wrap("WrapS",e->wrap_s); }
 	template<> void _wrap_N<2>(){ _wrap("WrapT",e->wrap_t); _wrap_N<1>(); }
 	template<> void _wrap_N<3>(){ _wrap("WrapR",e->wrap_p); _wrap_N<2>(); }			
+	//SCHEDULED FOR REMOVAL
+	void _Cg_common_constructor(FX::Paramable *p, xs::ID sid)
+	{
+		//Data doesn't normally need Cg handles any longer
+		//except the Cg API uses handles to build samplers.
+		#ifdef NDEBUG
+		#error Non-CG samplers don't require CG handles.
+		//NOTE: At the <effect> level the samplers are shared.
+		//NOTE: FX::Effect::Profiles don't know their profile.
+		#endif
+		FX::Effect *pe = p->FindEffect(); Cg = pe->Cg_Context;
+		if(Cg==nullptr) return;		
+		#ifdef NDEBUG
+		#error Cg.DLL is crashing. Can the same name be reused? What are the implications?
+		#endif
+		//CRASHING
+		//This is crashing in cgCreateSamplerStateAssignment???
+		//Data.Cg = cgCreateParameter(Cg,E!=CG_UNKNOWN_TYPE?E:CG_SAMPLERRECT);
+		Data.Cg = cgCreateEffectParameter(pe->Cg,sid,E!=CG_UNKNOWN_TYPE?E:CG_SAMPLERRECT);
+	}
 	FX::Sampler &Data; CGcontext Cg; T &e; 
 	cfxData_copier(FX::Sampler &s, T &e)
 	:Data(s),e(e){}
 	COLLADA_NOINLINE
-	cfxData_copier(FX::Sampler &s, T &e, FX::NewParamable *p, xs::ID sid)
+	cfxData_copier(FX::Sampler &s, T &e, FX::Paramable *p, xs::ID sid)
 	:Data(s),e(e)
 	{ 	
 		if(e->source.empty()) return;
 
-		FX::Effect *pe = p->FindEffect();
-		Cg = pe->Cg_Context; 
-
-		//HACK: This is done here for samplers so to not
-		//have to generate a lot of hot air data objects.
-		if("setparam"==dae(e)->getParent()->getNCName())
-		{
-			Data.Cg = cgGetNamedEffectParameter(pe->Cg,sid);
-			if(Data.Cg==nullptr)
-			{
-				assert(pe->Cg!=nullptr);
-				return;
-			}
-		}
-		else if(E==CG_UNKNOWN_TYPE) //CG_SAMPLERDEPTH
-		{
-			Data.Cg = cgCreateEffectParameter(pe->Cg,sid,CG_SAMPLERRECT);
-		}
-		else Data.Cg = cgCreateEffectParameter(pe->Cg,sid,E);
+		_Cg_common_constructor(p,sid);
 
 		s.Params = p; s.Source = e->source->value;
 		
@@ -281,30 +222,12 @@ struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 	}
 
 	COLLADA_NOINLINE
-	cfxData_copier(FX::Sampler &s, T &e, FX::NewParamable *p, xs::ID sid)
+	cfxData_copier(FX::Sampler &s, T &e, FX::Paramable *p, xs::ID sid)
 	:cfxData_copier<FX::Sampler,5,E,T>(s,e)
-	{ 	
-		FX::Effect *pe = p->FindEffect();
-		Cg = pe->Cg_Context; 
+	{ 						
+		_Cg_common_constructor(p,sid);
 
-		//HACK: This is done here for samplers so to not
-		//have to generate a lot of hot air data objects.
-		if("setparam"==dae(e)->getParent()->getNCName())
-		{
-			Data.Cg = cgGetNamedEffectParameter(pe->Cg,sid);
-			if(Data.Cg==nullptr)
-			{
-				assert(pe->Cg!=nullptr);
-				return;
-			}
-		}
-		else if(E==CG_UNKNOWN_TYPE) //CG_SAMPLERDEPTH
-		{
-			Data.Cg = cgCreateEffectParameter(pe->Cg,sid,CG_SAMPLERRECT);
-		}
-		else Data.Cg = cgCreateEffectParameter(pe->Cg,sid,E);
-
-		s.Params = p; 
+		Data.Params = p; Data.Source = sid;
 		
 	////These values are accessed in <xs:sequence> order.
 
@@ -326,10 +249,10 @@ struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 		_set("MagFilter",_magfilter_GLenum(e->magfilter->value));
 
 		//Only the depth texture (sampler) is unmipmapped.
-		_mipmap_etc_if<E!=CG_UNKNOWN_TYPE>(); //CG_SAMPLERDEPTH
+		_mipmap_etc_if<E!=CG_UNKNOWN_TYPE>(p); //CG_SAMPLERDEPTH
 	}	
-	template<bool> void _mipmap_etc_if(){}
-	template<> void _mipmap_etc_if<true>()
+	template<bool> void _mipmap_etc_if(FX::Paramable *p){}
+	template<> void _mipmap_etc_if<true>(FX::Paramable *p)
 	{	
 		if(!e->mipfilter.empty()) 
 		_set("MipFilter",_mipfilter_GLenum(e->mipfilter->value));
@@ -351,7 +274,8 @@ struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 		{
 			xs::anyURI URI = e->instance_image->url;
 			Collada08::const_image yy = URI.get<Collada08::image>();		
-			Data.Surface = new FX::Surface(FX::Loader::GetID_TexId(yy));
+			FX::Surface *ii = new FX::Surface(FX::Loader::GetID_TexId(yy));
+			p->Surfaces.push_back(std::make_pair(Data.Source,ii));
 		}
 	}
 };
@@ -361,7 +285,7 @@ template<int YY> struct cfxData_MakeData
 	//h is the header size.
 	char* &o; int h; 
 	//These are for samplers.
-	FX::NewParamable *p; xs::ID sid;
+	FX::Paramable *p; xs::ID sid;
 		
 	template<CGtype E, class S_Value, class T> 
 	inline void _copy(S_Value &d, const T &e)
@@ -492,193 +416,237 @@ template<class T>
 template<int YY> 
 void FX::DataMaker<T>::MakeData()
 {
-	cfxData_MakeData<YY> md = {(char*&)o,sizeof(T),p,sid}; 
+	T *io = o; //FX::ShaderParam.
+	int os = Emplace(io)?0:sizeof(T);
+	cfxData_MakeData<YY> md = {(char*&)o,os,p,sid}; 
 	o = nullptr;
 	c.for_each_child(md);
 	if(o==nullptr)
-	md.FailData(); o->Data = (FX::Data*)(o+1);
-
-	//HACk: Tell T::T to not override T::Cg.
-	switch(o->Data->GetType()) 
-	{
-	case CG_SAMPLER1D: case CG_SAMPLERCUBE:
-	case CG_SAMPLER2D: case CG_SAMPLERRECT:
-	case CG_SAMPLER3D: case CG_UNKNOWN_TYPE: //CG_SAMPLERDEPTH
-	{
-		FX::Sampler &v = ((FX::DataSampler2D*)o->Data)->Value;				
-		if(v.Surface!=nullptr) //Follow-up on <instance_image>?
-		{
-			p->Surfaces.push_back(std::make_pair(sid,v.Surface));
-			v.Surface->Referencing_Samplers.push_back((FX::Param*)o);
-		}
-		//Casting because FX::Annotate::Cg is different type.
-		//Sampler annotations don't exist.
-		(CGparameter&)o->Cg = v.Cg; break;
-	}
-	default: o->Cg = nullptr;
-	}
-	o->Name = sid; new(o) T(this);
+	md.FailData();
+	MakeData2(io,sid); assert(sid[-1]=='#');
+}
+template<class T>
+void DataMaker<T>::MakeData2(T*, xs::ID sid)
+{
+	o->SetData = &o->OwnData(); o->Name = sid-1; new(o) T(this);
+}
+void DataMaker<FX::Annotate>::MakeData2(FX::Annotate*, xs::ID sid)
+{
+	o->Name = sid-1; new(o) FX::Annotate(this);
+}
+void DataMaker<FX::ShaderParam>::MakeData2(FX::ShaderParam *io, xs::ID)
+{
+	io->SetData = (FX::Data*)o;
 }
 extern void FX::MakeData05(DataMaker<FX::Annotate> &dm){ dm.MakeData<5>(); }
 extern void FX::MakeData05(DataMaker<FX::NewParam> &dm){ dm.MakeData<5>(); }
 extern void FX::MakeData05(DataMaker<FX::SetParam> &dm){ dm.MakeData<5>(); }
-extern void FX::MakeData05(DataMaker<FX::BindParam> &dm){ dm.MakeData<5>(); }
+extern void FX::MakeData05(DataMaker<FX::ShaderParam> &dm){ dm.MakeData<5>(); }
 extern void FX::MakeData08(DataMaker<FX::Annotate> &dm){ dm.MakeData<8>(); }
 extern void FX::MakeData08(DataMaker<FX::NewParam> &dm){ dm.MakeData<8>(); }
 extern void FX::MakeData08(DataMaker<FX::SetParam> &dm){ dm.MakeData<8>(); }
-extern void FX::MakeData08(DataMaker<FX::BindParam> &dm){ dm.MakeData<8>(); }
+extern void FX::MakeData08(DataMaker<FX::ShaderParam> &dm){ dm.MakeData<8>(); }
 
-void FX::Data::Apply(FX::Param*)
+template<> void FX::DataString::Load(FX::ShaderParam &r)
 {
-	daeEH::Error<<"Attempted to apply Data of a type which is unsupported for parameters.";	
-} 
-template<> void FX::DataString::Apply(FX::Param *param) //BOOL
-{
-	cgSetStringParameterValue(param->Cg,Value);	
+	//Reminder: A "(null)" DataString is used to fill bad 
+	//data pointers. 
+	//assert(0);
+
+	//I think this had a use, but I can't remember what.
+	//If so, is there a corresponding GLSL functionality?
+	//Reminder: The use may be a GLES (pre-shader) thing??	
+	//cgSetStringParameterValue(r.Cg,Value);	
 }
-template<> void FX::DataBool::Apply(FX::Param *param) //BOOL
+template<> void FX::DataBool::Load(FX::ShaderParam &r) //BOOL
 {
-	cgSetParameter1f(param->Cg,(float)Value);	
+	GL.Uniform1f(r.GLSL,(float)Value);	
 }
-template<> void FX::DataBool1::Apply(FX::Param *param)
+template<> void FX::DataBool1::Load(FX::ShaderParam &r)
 {
-	cgSetParameter1f(param->Cg,(float)Value.b0);
+	GL.Uniform1f(r.GLSL,(float)Value.b0);
 }
-template<> void FX::DataBool2::Apply(FX::Param *param)
+template<> void FX::DataBool2::Load(FX::ShaderParam &r)
 {
-	cgSetParameter2f(param->Cg,(float)Value.b0,(float)Value.b1);
+	GL.Uniform2f(r.GLSL,(float)Value.b0,(float)Value.b1);
 }
-template<> void FX::DataBool3::Apply(FX::Param *param)
+template<> void FX::DataBool3::Load(FX::ShaderParam &r)
 {
-	cgSetParameter3f(param->Cg,(float)Value.b0,(float)Value.b1,(float)Value.b2);
+	GL.Uniform3f(r.GLSL,(float)Value.b0,(float)Value.b1,(float)Value.b2);
 }
-template<> void FX::DataBool4::Apply(FX::Param *param)
+template<> void FX::DataBool4::Load(FX::ShaderParam &r)
 {
-	cgSetParameter4f(param->Cg,(float)Value.b0,(float)Value.b1,(float)Value.b2,(float)Value.b3);
+	GL.Uniform4f(r.GLSL,(float)Value.b0,(float)Value.b1,(float)Value.b2,(float)Value.b3);
 }
-template<> void FX::DataInt::Apply(FX::Param *param) //INT
+template<> void FX::DataInt::Load(FX::ShaderParam &r) //INT
 {
-	cgSetParameter1f(param->Cg,(float)Value);
+	GL.Uniform1f(r.GLSL,(float)Value);
 }
-template<> void FX::DataInt1::Apply(FX::Param *param)
+template<> void FX::DataInt1::Load(FX::ShaderParam &r)
 {
-	cgSetParameter1f(param->Cg,(float)Value.i0);
+	GL.Uniform1f(r.GLSL,(float)Value.i0);
 }
-template<> void FX::DataInt2::Apply(FX::Param *param)
+template<> void FX::DataInt2::Load(FX::ShaderParam &r)
 {
-	cgSetParameter2f(param->Cg,(float)Value.i0,(float)Value.i1);
+	GL.Uniform2f(r.GLSL,(float)Value.i0,(float)Value.i1);
 }
-template<> void FX::DataInt3::Apply(FX::Param *param)
+template<> void FX::DataInt3::Load(FX::ShaderParam &r)
 {
-	cgSetParameter3f(param->Cg,(float)Value.i0,(float)Value.i1,(float)Value.i2);
+	GL.Uniform3f(r.GLSL,(float)Value.i0,(float)Value.i1,(float)Value.i2);
 }
-template<> void FX::DataInt4::Apply(FX::Param *param)
+template<> void FX::DataInt4::Load(FX::ShaderParam &r)
 {
-	cgSetParameter4f(param->Cg,(float)Value.i0,(float)Value.i1,(float)Value.i2,(float)Value.i3);
+	GL.Uniform4f(r.GLSL,(float)Value.i0,(float)Value.i1,(float)Value.i2,(float)Value.i3);
 }
-template<> void FX::DataFloat::Apply(FX::Param *param) //FLOAT
+template<> void FX::DataFloat::Load(FX::ShaderParam &r) //FLOAT
 {
-	cgSetParameter1f(param->Cg,Value);
+	GL.Uniform1f(r.GLSL,Value);
 }
-template<> void FX::DataFloat1::Apply(FX::Param *param)
+template<> void FX::DataFloat1::Load(FX::ShaderParam &r)
 {
-	cgSetParameter1f(param->Cg,Value.f0);
+	GL.Uniform1f(r.GLSL,Value.f0);
 }
-template<> void FX::DataFloat2::Apply(FX::Param *param)
+template<> void FX::DataFloat2::Load(FX::ShaderParam &r)
 {
-	cgSetParameter2f(param->Cg,Value.f0,Value.f1);
+	GL.Uniform2f(r.GLSL,Value.f0,Value.f1);
 }
-template<> void FX::DataFloat3::Apply(FX::Param *param)
+template<> void FX::DataFloat3::Load(FX::ShaderParam &r)
 {
-	cgSetParameter3f(param->Cg,Value.f0,Value.f1,Value.f2);
+	GL.Uniform3f(r.GLSL,Value.f0,Value.f1,Value.f2);
 }
-template<> void FX::DataFloat4::Apply(FX::Param *param)
+template<> void FX::DataFloat4::Load(FX::ShaderParam &r)
 {
-	cgSetParameter4f(param->Cg,Value.f0,Value.f1,Value.f2,Value.f3);
+	if(r.Type==GL_FLOAT_VEC3)
+	GL.Uniform3f(r.GLSL,Value.f0,Value.f1,Value.f2);
+	else
+	GL.Uniform4f(r.GLSL,Value.f0,Value.f1,Value.f2,Value.f3);
 }
-template<> void FX::DataFloat2x2::Apply(FX::Param *param)
+template<> void FX::DataFloat2x2::Load(FX::ShaderParam &r)
 {
-	//using column major matrix setting because i think that is what is used by COLLADA
-	cgSetMatrixParameterfc(param->Cg,&Value.f00);
+	//The Cg type is vec2[2].
+	//See Loading_script::EXPERIMENTAL_Cg_to_GLSL_order().
+	if(r.Type==GL_FLOAT_MAT2)
+	GL.UniformMatrix2fv(r.GLSL,1,GL_FALSE,&Value.f00);
+	else //Assuming Cg float2[2].
+	GL.Uniform2fv(r.GLSL,2,&Value.f00);
 }
-template<> void FX::DataFloat3x3::Apply(FX::Param *param)
+template<> void FX::DataFloat3x3::Load(FX::ShaderParam &r)
 {
-	//using column major matrix setting because i think that is what is used by COLLADA
-	cgSetMatrixParameterfc(param->Cg,&Value.f00);
+	//The Cg type is vec3[3].
+	//See Loading_script::EXPERIMENTAL_Cg_to_GLSL_order().
+	if(r.Type==GL_FLOAT_MAT3)
+	GL.UniformMatrix3fv(r.GLSL,1,GL_FALSE,&Value.f00);
+	else //Assuming Cg float3[3].
+	GL.Uniform3fv(r.GLSL,3,&Value.f00);
 }
-template<> void FX::DataFloat4x4::Apply(FX::Param *param)
+template<> void FX::DataFloat4x4::Load(FX::ShaderParam &r)
 {
-	//using column major matrix setting because i think that is what is used by COLLADA
-	cgSetMatrixParameterfc(param->Cg,&Value.f00);
+	//The Cg type is vec4[4].
+	//See Loading_script::EXPERIMENTAL_Cg_to_GLSL_order().
+	if(r.Type==GL_FLOAT_MAT4)
+	GL.UniformMatrix4fv(r.GLSL,1,GL_FALSE,&Value.f00);
+	else //Assuming Cg float4[4].
+	GL.Uniform4fv(r.GLSL,4,&Value.f00);
 }			  
+template<> void FX::DataType<double>::Load(FX::ShaderParam &r)
+{
+	//client data type//
+	GL.Uniform1d(r.GLSL,Value);
+}
+template<> void FX::DataType<RT::Matrix>::Load(FX::ShaderParam &r)
+{	
+	//client data type//
+	#if 1==COLLADA_DOM_PRECISION
+	//The Cg type is vec4[4].
+	//See Loading_script::EXPERIMENTAL_Cg_to_GLSL_order().
+	if(r.Type==GL_FLOAT_MAT4)
+	GL.UniformMatrix4fv(r.GLSL,1,GL_FALSE,Value);
+	else //Assuming Cg float4[4].
+	GL.Uniform4fv(r.GLSL,4,Value);
+	#else
+	//This probably demands a temporary buffer.
+	assert(0); 
+	//GL.UniformMatrix4dv(r.GLSL,1,GL_FALSE,Value);
+	GL.Uniform4dv(r.GLSL,4,Value);
+	#endif
+}	
 #define _(x) \
-template<> void FX::DataSampler##x::Apply(FX::Param *param)\
+template<> void FX::DataSampler##x::Load(FX::ShaderParam &r)\
 {\
-	((FX::DataSampler2D*)this)->DataSampler2D::Apply(param);\
+	((FX::DataSampler2D*)this)->DataSampler2D::Load(r);\
 }
 _(1D)/*_(2D)*/_(3D)_(CUBE)_(RECT)_(DEPTH) //SAMPLER
 #undef _
-template<> void FX::DataSampler2D::Apply(FX::Param *param) //SAMPLER
-{				 
-	#ifdef NDEBUG
-	#error Apply_TexId smells bad.
-	#endif
-	//call the sampler apply to 
-	//1) initialize texture id by resolving source
-	//2) have its states and stuff applied
-	Value.Apply(param);
-	//set the parameter for this sampler's texture id
-	//using managed textures replaces the need to call enabletextureparameter
-	if(Value.Surface!=nullptr)
-	cgGLSetTextureParameter(param->Cg,Value.Surface->TexId);
-}					
+template<> void FX::DataSampler2D::Load(FX::ShaderParam &r) //SAMPLER
+{
+	int TexId = Value.FindTexID();
+			
+	if(Value.Cg!=nullptr)
+	{
+		//Not sure what this does. THe Cg stuff.
+		cgGLSetTextureParameter(Value.Cg,TexId);		
+	}
+	//Reminder: GL_SAMPLER_2D is replaced with GL_TEXTURE0+i.
+	GL.ActiveTexture(r.Type);
+	//glEnable(GL_TEXTURE_2D);
+	GL.Uniform1i(r.GLSL,r.Type-GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D,TexId);
+	if(Value.Cg!=nullptr)
+	{
+		cgSetSamplerState(Value.Cg);	
+	}
 
-//Cg ANNOTATION SUPPORT IS APPARENTLY POOR. //ANNOTATION //ANNOTATION //ANNOTATION
+	//LEGACY.
+	//REMINDER: CrtTexture.cpp MAY'VE DONE THIS ALREADY.
+	//calling this before generate mipmaps is better cause then the call
+	//to generate mipmaps already has the space set up for it to use
+	if(Value.GenerateMipmaps)
+	{
+		//NEW: Ensure the mipmaps are not regenerated unnecessarily.
+		//(Especially every time the sampler is bound.)
+		GLint test = 1;
+		glGetTexLevelParameteriv(GL_TEXTURE_2D,1,GL_TEXTURE_WIDTH,&test);
+		if(0==test)
+		{
+			#ifdef SN_TARGET_PS3
+			glGenerateMipmapOES(GL_TEXTURE_2D);
+			#else 
+			GL.GenerateMipmap(GL_TEXTURE_2D); //glGenerateMipmap
+			#endif
+		}
+	}
+}
+GLuint FX::Sampler::FindTexID(GLuint missing)
+{
+	FX::Surface *surf = Params->FindSurface(Source);
+	if(surf==nullptr) return missing;
+	
+	//This inherits from previously defined surfaces.
+	//Should this be done? Should samplers do so too?
+	//NOTE: This is done when the surface is created
+	//but it can be completed by an <instance_effect>.			
+	surf->Refresh();
+	
+	assert(0!=surf->TexId); return surf->TexId;
+}
+GLuint FX::Sampler::FindTexID()
+{
+	GLuint out = FindTexID(0); if(out!=0) return out;
 
-void FX::Data::Apply(FX::Annotate*)
-{
-	daeEH::Error<<"Attempted to apply Value of a type which is unsupported for annotations.";	
+	//Can't spout off a warning at 60 frames per second.
+	Collada05::const_image dummy;
+	static bool nonce = false;
+	if(nonce==false)
+	{
+		nonce = true;
+		#ifdef NDEBUG
+		#error Do this in an <instance_effect> validation step.
+		#endif		
+		daeEH::Warning<<"Could not locate <surface> or <instance_image> for "<<Source<<"\n"
+		"(This warning is issued once per run only because it's generated in real-time.)";
+	}
+	static int missing = FX::Loader::GetID_TexId(dummy); return missing;
 }
-template<> void FX::DataString::Apply(FX::Annotate *annotate)
-{
-	cgSetStringAnnotation(annotate->Cg,Value);	
-}
-template<> void FX::DataBool::Apply(FX::Annotate *annotate)
-{
-	cgSetBoolAnnotation(annotate->Cg,Value);	
-}
-template<> void FX::DataBool1::Apply(FX::Annotate *annotate)
-{
-	cgSetBoolAnnotation(annotate->Cg,Value.b0);
-}
-template<> void FX::DataInt::Apply(FX::Annotate *annotate)
-{
-	cgSetIntAnnotation(annotate->Cg,Value);
-}
-template<> void FX::DataInt1::Apply(FX::Annotate *annotate)
-{
-	cgSetIntAnnotation(annotate->Cg,Value.i0);
-}
-template<> void FX::DataFloat::Apply(FX::Annotate *annotate)
-{
-	cgSetFloatAnnotation(annotate->Cg,Value);
-}
-template<> void FX::DataFloat1::Apply(FX::Annotate *annotate)
-{
-	cgSetFloatAnnotation(annotate->Cg,Value.f0);
-}
-#define _(x,y) \
-template<> void FX::Data##x::Apply(FX::Annotate*)\
-{\
-	daeEH::Verbose<<"API to support annotations of type "<<"CG_"#y<<" not implemented yet.";\
-}
-_(Bool2,BOOL2)_(Bool3,BOOL3)_(Bool4,BOOL4)
-_(Int2,INT2)_(Int3,INT3)_(Int4,INT4)
-_(Float2,FLOAT2)_(Float3,FLOAT3)_(Float4,FLOAT4)
-_(Float2x2,FLOAT2x2)_(Float3x3,FLOAT3x3)_(Float4x4,FLOAT4x4)
-_(Sampler1D,SAMPLE1D)_(Sampler2D,SAMPLER2D)_(Sampler3D,SAMPLER3D)
-_(SamplerCUBE,SAMPLERCUBE)_(SamplerRECT,SAMPLERRECT)_(SamplerDEPTH,SAMPLERDEPTH)
-#undef _
 
 //-------.
 	}//<-'
