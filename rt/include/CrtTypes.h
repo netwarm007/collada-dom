@@ -8,16 +8,27 @@
 #ifndef __COLLADA_RT__TYPES_H__
 #define __COLLADA_RT__TYPES_H__
 
+//This is the precompiled header, but not
+//really, as this isn't how it's included.
 #include "RT.pch.h"
+
+//GCC precompiled headers cannot remember
+//#pragma diagnostics; so bring them back.
+#ifdef PRECOMPILING_COLLADA_RT
+#include "../../dom/include/WARNING.HPP"
+#endif
+
+//Remove me. Don't wan to rebuild PCH.
+#include <float.h> 
 
 //SCHEDULED FOR REMOVAL
 #define COLLADA_DOM_LITE
 //RT::RigidBody
-#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(float_array))
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema)(float_array)
 //RT::Geometry_Semantics
-#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(physics_material))
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema)(physics_material)
 //RT::RigidConstraint
-#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(rigid_constraint))
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema)(rigid_constraint)
 #undef COLLADA_DOM_LITE
 
 COLLADA_(namespace)
@@ -39,6 +50,7 @@ COLLADA_(namespace)
 		struct const_effect;\
 		struct const_geometry;\
 		struct const_image;\
+		struct const_instance_rigid_body;\
 		struct const_light;\
 		struct const_material;\
 		struct const_node;\
@@ -72,12 +84,14 @@ COLLADA_(namespace)
 	class Image;
 	class Light;
 	class Material;	
+	typedef daeName Name;
 	class Node;		
 	class Physics;
 	class PhysicsModel;
 	struct RangeFinder;
 	struct RigidBody;
 	class Spline;
+	class Spline_Point;
 	class Stack_Data;
 	struct Target;		
 	//SCHEDULED FOR REMOVAL?
@@ -99,7 +113,7 @@ COLLADA_(namespace)
 		static const int X_UP=0,Y_UP=1,Z_UP=2;
 		int value;
 		operator int&()const{ return (int&)value; }				
-		Up(int cp=(int)Y_UP):value(cp){}
+		Up(int cp=Y_UP):value(cp){}
 	};
 	typedef std::pair<RT::Up,RT::Float> Up_Meter;
 	const RT::Up_Meter &GetUp_Meter(size_t);

@@ -135,26 +135,6 @@ COLLADA_(public)
 		return getDocType()==daeDocType::ARCHIVE&&_archive!=(void*)this; 
 	}
 
-	//using daeObject::a;
-	template<class T> T *a(){ return daeObject::a<T>(); }
-	/**CONST-FORM Following style of daeElement::a(). */
-	template<class T> const T *a()const
-	{
-		return const_cast<daeDoc*>(this)->a<T>();
-	}
-	/** Pass-Through; Follows style of daeElement::a(). */
-	template<> daeDoc *a<daeDoc>(){ return this; }
-	/** Follows style of daeElement::a(): @c This->a<daeDocument>(). */
-	template<> daeDocument *a<daeDocument>()
-	{
-		return this!=nullptr&&isDocument()?(daeDocument*)this:nullptr;
-	}
-	/** Follows style of daeElement::a(): @c This->a<daeArchive>(). */
-	template<> daeArchive *a<daeArchive>()
-	{
-		return this!=nullptr&&isArchive()?(daeArchive*)this:nullptr;
-	}
-		
 	/**NOT-THREAD-SAFE
 	 * Closes the doc, unloading all memory used by the document-or-archive.
 	 * With the exception of @c daeDOM, @c daePlatform::closeURI() can veto
@@ -176,7 +156,7 @@ COLLADA_(public)
 	inline bool isClosed()const
 	{
 		union{ void *p; daeDoc *P; }; //daeArchive is derived from daeDoc.
-		for(p=_archive;p!=P->_archive;p=P->_archive); return !P->_isDOM();
+		for(p=_archive;p!=P->_archive;)p=P->_archive; return !P->_isDOM(); //-Wempty-body
 	}
 
 	/**LEGACY-SUPPORT
@@ -225,18 +205,26 @@ COLLADA_(public)
 	 * "getDocument" is interchangeable with @c daeElement's.
 	 * @c this can be @c nullptr. (It's often convenient to blindly convert doc-to-document.)
 	 */
-	inline daeDocumentRef getDocument(){ return _getDocument(); }
+	inline daeDocumentRef getDocument()
+	{
+		return _getDocument(); 
+	}
 	/**CONST-PROPOGATING-FORM
 	 * Gets the links' real document. 	 
 	 * "getDocument" is interchangeable with @c daeElement's.
 	 * @c this can be @c nullptr. (It's a common scenario, and the algorithm is there.)
 	 */
-	inline const_daeDocumentRef getDocument()const{ return _getDocument(); }
+	inline const_daeDocumentRef getDocument()const
+	{
+		return _getDocument(); 
+	}
 	/** Implements @c getDocument(). */
 	inline daeDocument *_getDocument()const
 	{
 		const daeDoc *p = this; if(p!=nullptr) while(p->_link!=nullptr) p = p->_link;
-		return const_cast<daeDoc*>(p)->a<daeDocument>();		
+		//GCC/C++ want a defined outside the class body, so it can't be instantiated.
+		//return const_cast<daeDoc*>(p)->a<daeDocument>();
+		return p!=nullptr&&p->isDocument()?(daeDocument*)p:nullptr;
 	}
 
 	/**LEGACY, CIRCULAR-DEPENDENCY
@@ -261,24 +249,34 @@ COLLADA_(public) //DAEP::Object methods
 	/**PURE-OVERRIDE */
 	virtual DAEP::Model &__DAEP__Object__v1__model()const;
 
-COLLADA_(public)
+COLLADA_(public) //Just a little more typesafe.
 	/**
 	 * These concern @c _doOperation().
+	 * They were @c enum types with specialized structures
+	 * but GCC/C++ can't reasonably do explicit-specialization.
 	 */
-	enum _op{ _no_op=0, _close_op, _setURI_op };
+	struct _no_op
+	{
+		enum{ value=0 }; typedef void type;
+	};
+	/** The bool is set to true if closeURI returns DAE_OK. */
+	struct _close_op
+	{
+		enum{ value=1 }; typedef bool type;
+	};
+	/** This is the same string that is passed to setURI. */
+	struct _setURI_op
+	{
+		enum{ value=2 }; typedef const daeStringCP type;
+	};
+
 	/**WORKAROUND
 	 * @c close() uses this to permit reentry by daePlatform::closeURI().
 	 * @c daeURI_base::setURI() uses it to resolve the URIs of documents.
 	 */
-	int _operation_thread_id; _op _current_operation;	
+	int _current_operation,_operation_thread_id;
 
-	//Just a little more typesafe.
-	template<_op> struct _op_arg0;
-	/** The bool is set to true if closeURI returns DAE_OK. */
-	template<> struct _op_arg0<_close_op>{ typedef bool type; };
-	/** This is the same string that is passed to setURI. */
-	template<> struct _op_arg0<_setURI_op>{ typedef const daeStringCP type; };
-	template<_op op>
+	template<class op>
 	/** 
 	 * An "operation" here means that an API needs to be recursive on
 	 * the object, and must return @c DAE_NOT_NOW when an other thread
@@ -289,18 +287,48 @@ COLLADA_(public)
 	 * @param DOM is the doc's DOM. 
 	 * @return Returned code is tailored to @a op, and is very sensitive.
 	 */
-	daeOK _doOperation(const const_daeDOMRef &DOM, typename _op_arg0<op>::type *arg0)
+	daeOK _doOperation(const const_daeDOMRef &DOM, typename op::type *arg0=nullptr)
 	{
-		return _doOperation(op,DOM,arg0);
+		return _doOperation(op::value,DOM,arg0);
 	}
 
 COLLADA_(private) 
 
 	/** Implements the safer template form. */
-	daeOK _doOperation(_op op, const const_daeDOMRef &DOM, const void *arg0=nullptr);
+	daeOK _doOperation(int op, const const_daeDOMRef &DOM, const void *arg0=nullptr);
 
 #endif //BUILDING_COLLADA_DOM
+
+COLLADA_(public) //daeSafeCast() SHORTHANDS (Continued after class.)
+	/**
+	 * Follows style of daeElement::a().
+	 */
+	template<class T> inline T *a()
+	{
+		return daeObject::a<T>();
+	}
+	/**CONST-FORM Following style of daeElement::a(). */
+	template<class T> inline const T *a()const
+	{
+		return const_cast<daeDoc*>(this)->a<T>();
+	}
+	/***GCC/C++ WANT THE FOLLOWING SPECIALIZATION IN THE NAMESPACE****/
 };
+/** Pass-Through; Follows style of daeElement::a(). */
+template<> inline daeDoc *daeDoc::a<daeDoc>()
+{
+	return this;
+}
+/** Follows style of daeElement::a(): @c This->a<daeDocument>(). */
+template<> inline daeDocument *daeDoc::a<daeDocument>()
+{
+	return this!=nullptr&&isDocument()?(daeDocument*)this:nullptr;
+}
+/** Follows style of daeElement::a(): @c This->a<daeArchive>(). */
+template<> inline daeArchive *daeDoc::a<daeArchive>()
+{
+	return this!=nullptr&&isArchive()?(daeArchive*)this:nullptr;
+}
 
 extern bool daeDocument_typeLookup_called;
 /**
@@ -354,6 +382,9 @@ COLLADA_(private) //INTERNALS
 
 #if defined(BUILDING_COLLADA_DOM) || defined(__INTELLISENSE__)
 
+		//GCC (template parameter lists.)
+		template<class,class> friend class DAEP::Elemental;
+
 		struct _PseudoElement 
 		:
 		public daeElemental<_PseudoElement>, public DAEP::Schema<2>
@@ -368,20 +399,20 @@ COLLADA_(private) //INTERNALS
 
 			typedef struct:Elemental,Schema
 			{	COLLADA_WORD_ALIGN
-				COLLADA_DOM_N(0,0)
-			DAEP::Value<0,dae_Array<>> _N; enum{ _No=0 };
+				COLLADA_DOM_Z(0,0)
+			DAEP::Value<0,dae_Array<>> _Z; enum{ _No=0 };
 			DAEP::Value<1,daeContents> content; typedef void notestart;
 			}_;
 
 		COLLADA_(public) //Content
 
 			COLLADA_WORD_ALIGN
-			COLLADA_DOM_N(0,0) 
+			COLLADA_DOM_Z(0,0) 
 			/**NO-NAMES
 			 * These elements are invalid according to the schema. They may be user-defined 
 			 * additions and substitutes.
 			 */
-			DAEP::Child<1,daeElement/*xsAny*/,_,(_::_)&_::_N> unnamed;
+			DAEP::Child<1,daeElement/*xsAny*/,_,(_::_)&_::_Z> unnamed;
 			/**
 			 * Children, mixed-text, comments & processing-instructions.
 			 */
@@ -390,7 +421,7 @@ COLLADA_(private) //INTERNALS
 		struct _Pseudo
 		{
 			daeFeature features[2];
-			char model[sizeof(daeModel)];
+			char model[sizeof(_PseudoElement)];
 			char meta[sizeof(daeMeta)+sizeof(_PseudoElement)];			
 			daeElement *element()const{ return operator->()->_prototype; }
 			daeMetaElement *operator->()const{ return (daeMetaElement*)meta; }			
@@ -519,10 +550,10 @@ COLLADA_(public) //LEGACY: old "database" APIs
 	 */
 	inline daeSmartRef<T> &idLookup(const S &id, daeSmartRef<T> &match, enum dae_clear clear=dae_clear)const
 	{
-		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 		
+		(void)static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast
 		if(clear!=dae_default) match = nullptr;
 		_idLookup(daeBoundaryStringRef(*this,id),(daeElementRef&)match); 		
-		if(nullptr==dae(match)->a<T>()) match = nullptr; return match;
+		if(nullptr==dae(match)->template a<T>()) match = nullptr; return match;
 	}
 	template<class S, class T> //S is DAEP::Element or daeElement based
 	/**WARNING, LEGACY

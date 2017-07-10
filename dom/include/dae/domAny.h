@@ -62,8 +62,8 @@ COLLADA_(public) //Parameters
 	typedef struct:Elemental,Schema
 	{	DAEP::Value<0,xsAnySimpleType>
 	_0; COLLADA_WORD_ALIGN
-		COLLADA_DOM_N(0,0)
-	DAEP::Value<1,dae_Array<>> _N; enum{ _No=1 };
+		COLLADA_DOM_Z(0,0)
+	DAEP::Value<1,dae_Array<>> _Z; enum{ _No=1 };
 	DAEP::Value<2,daeContents> content; typedef void notestart;
 	}_;
 						
@@ -78,13 +78,13 @@ COLLADA_(public) //Content
 	DAEP::Value<0,xsAnySimpleType,_,(_::_)&_::_0> value;
 
 	COLLADA_WORD_ALIGN
-	COLLADA_DOM_N(0,0) 
+	COLLADA_DOM_Z(0,0) 
 	/**NO-NAMES
 	 * These elements are invalid according to the schema. They may be user-defined 
 	 * additions and substitutes.
 	 * @note This name uses the 2.4 convention because @c domAny is a legacy object.
 	 */
-	DAEP::Child<1,xsAny,_,(_::_)&_::_N> elemAny_et_cetera__unnamed;
+	DAEP::Child<1,xsAny,_,(_::_)&_::_Z> elemAny_et_cetera__unnamed;
 	/**
 	 * Children, mixed-text, comments & processing-instructions.
 	 */
@@ -211,15 +211,17 @@ COLLADA_(private)
 	COLLADA_DOM_SNIPPET( return _master.model; )
 };
 
-template<>
-/** 
- * Gets a @c domAny model for the purpose of making a new domAny/model.
- * @remarks This was added so @c DAEP::Schematic<domAny> can be of use.
- */
-inline DAEP::Model &DAEP::Elemental<domAny>::__DAEP__Object__v1__model()const
+namespace DAEP //GCC refuses to disable this (erroneous) warning
 {
-	//Reminder: This lets "math:math" default to domAny.
-	return domAny::_master_model();
+	template<>
+	/**
+	 * Gets a @c domAny model for the purpose of making a new domAny/model.
+	 * @remarks This was added so @c DAEP::Schematic<domAny> can be of use.
+	 */
+	inline DAEP::Model &DAEP::Elemental<domAny>::__DAEP__Object__v1__model()const
+	{
+		return domAny::_master_model();
+	}
 }
 
 //---.

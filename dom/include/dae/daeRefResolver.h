@@ -11,6 +11,7 @@
 
 #include "daeSmartRef.h"
 #include "daeStringRef.h"
+#include "daeErrorHandler.h"
 
 COLLADA_(namespace)
 {//-.
@@ -103,7 +104,7 @@ COLLADA_(public) //THIS CLASS IS STRUCT-LIKE
 	 */
 	inline int getAtomicType()const
 	{
-		return &typeInstance==nullptr?0:type->writer->per<daeAtom>().getAtomicType();
+		return &typeInstance==nullptr?0:type->writer->where<daeAtom>().getAtomicType();
 	}
 	/**
 	 * @return Returns @c daeAtomicType::EXTENSION!=getAtomicType().
@@ -176,7 +177,7 @@ COLLADA_(public) //UNUSED (non COLLADA applications can have at it.)
 					double d = strtod(p,&e);
 					if(i>=rangeMin&&e>p) 
 					vN[o++] = (T)d;
-					p = e; while(isspace(*p)) p++;
+					p = e; while(COLLADA_isspace(*p)) p++;
 					if(p==e) break;
 				}
 			}
@@ -228,13 +229,13 @@ COLLADA_(public) //NON-COMPARISON OPERATORS
 	/** @c daeURI::operator+() does this. */
 	inline daeString operator+(size_t i)const
 	{
-		//To not assert(), use "view+i."
+		//To not assert(), use view+i or end().
 		assert(i<extent); return view+i; 
 	}
 	/** Implements operator[] like behavior, etc. */
-	inline daeStringCP operator[](size_t i)const
+	inline const daeStringCP &operator[](size_t i)const
 	{
-		//To not assert(), use "view[i]."
+		//To not assert(), use view[i] or *end().
 		assert(i<extent); return view[i]; 
 	}	
 
@@ -355,10 +356,12 @@ COLLADA_(protected) //RESERVED INTERFACE
 	//The virtual table reserves these.
 	//If added, @c daeObject::_getVersion() must be checked.
 	//(The working assumption is that these methods can be renamed without breaking the system.)
+	/*
 	virtual daeError __daeRef__reserved_vtable_entry_0(){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeError __daeRef__reserved_vtable_entry_1(){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeError __daeRef__reserved_vtable_entry_2(){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeError __daeRef__reserved_vtable_entry_3(){ return DAE_ERR_NOT_IMPLEMENTED; }
+	*/
 
 COLLADA_(public) //LEGACY QUERY API
 
@@ -550,17 +553,21 @@ COLLADA_(protected) //daeRefView support
 	static inline void _getT(T &str, daeString pos, daeUShort len)
 	{
 		if(clear) str.clear(); _getT2(str,pos,len);
-	}template<> 
+	}
+	//Reminder: GCC/C++ can't reasonably do explicit-specialization.
+	template<enum dae_clear clear>
 	/**TEMPLATE-SPECIALIZATION @c daeRefView cannot be appended to. */
-	static inline void _getT<dae_clear>(daeRefView &str, daeString pos, daeUShort len)
+	static inline void _getT(daeRefView &str, daeString pos, daeUShort len)
 	{
-		str.view = pos; str.extent = len-1;
-	}template<> 
+		str.view = pos; str.extent = len-1; daeCTC<clear>();
+	}
+	template<enum dae_clear clear>
 	/**TEMPLATE-SPECIALIZATION @c daeRefView_0 cannot be appended to. */
-	static inline void _getT<dae_clear>(daeRefView_0 &str, daeString pos, daeUShort len)
+	static inline void _getT(daeRefView_0 &str, daeString pos, daeUShort len)
 	{
-		str.view = pos; str.extent = len-1;
-	}template<class T> 
+		str.view = pos; str.extent = len-1; daeCTC<clear>();
+	}
+	template<class T>
 	////////////////////////////////////////////////////////////////
 	//There is a problem here. daeURI_base uses these to capture a//
 	//string-span in an array-like container. Which arrays include//
@@ -865,7 +872,7 @@ COLLADA_(public) //Accessors & Mutators
 
 //NOTICE THE TEMPLATE ARGUMENTS ARE REVERSE OF daeArray/daeAlloc.
 template<int size_on_stack=0, class T=daeContainedObject>
-/**
+/**VARIABLE-LENGTH
  * This is a simple object for the legacy resolver caches to use.
  * At first it was going to expose @c daeObject::_reparent(), but
  * it turned out that this wasn't flexible enough, and so it's now
@@ -874,10 +881,8 @@ template<int size_on_stack=0, class T=daeContainedObject>
  */
 class daeContainerObject 
 :
-//BECAUSE daeContainedObject PREVIOUSLY APPEARS IN ANY?-DECLARATIONS
-//MSVC2013 REFUSES TO USE IT AS A BASE CLASS. PROBABLY THIS IS A BUG.
-//IF THIS ISN'T PORTABLE, THERE'LL BE A COUPLE CIRCULAR-DEPENDENCIES.
-public daeContainedObject_MSVC2013
+//See daeURI_size or daeContents_size's explanation of this.
+public COLLADA::NCOMPLETE<size_on_stack>::daeContainedObject
 {
 COLLADA_(protected)
 
@@ -930,7 +935,7 @@ COLLADA_(public)
 	 */	
 	inline void contain(T *o)
 	{
-		daeContainedObject *upcast = (T*)o;
+		daeContainedObject *upcast = (T*)o; (void)upcast;
 		Vanilla *v = _plain_vanilla_this();
 		if(o->_container==v) return;
 		if(o->_container!=nullptr) o->_self_remove();
@@ -957,7 +962,6 @@ COLLADA_(public)
 		_contained.clear();
 	}
 };
-typedef daeContainedObject daeContainedObject_MSVC2013;
 /**ABSTRACT-BASE CLASS
  * This is a simple object for the legacy resolver caches to use.
  * At first it was going to expose @c daeObject::_reparent(), but
@@ -1056,12 +1060,6 @@ COLLADA_(protected) //Various
  */
 class daeRefResolver : public daeContainedObject
 {	
-COLLADA_(public)
-	/**YUCK, WORKAROUND, OBSOLETE?
-	 * @see daePlatonic::_atomize().
-	 */
-	using daeContainedObject::__COLLADA__atomize;
-
 COLLADA_(private) //Virtual method
 
 	friend class daeRefResolverList;

@@ -50,7 +50,7 @@ inline daeError XS::All::__place(A a, daeCM_Placement<C> &p, B b, daeOrdinal o)c
 	//Instead, assume that insertion_point is always desired.
 	//(Which is as a courtesy if DAE_ORDER_IS_NOT_PRESERVED.)
 	o-=el->getSubtrahend();
-	C::iterator it = p.content._fuzzy_lower_bound(o);	
+	typename C::iterator it = p.content._fuzzy_lower_bound(o);
 	if(it->_ordinal_magic()>=o) 
 	return DAE_ERR_NAME_CLASH;
 
@@ -58,10 +58,15 @@ inline daeError XS::All::__place(A a, daeCM_Placement<C> &p, B b, daeOrdinal o)c
 	p.content.cursor() = it;
 	p.ordinal = o; 
 
-	if(__placed_between<A,B>::value)
+	//This was a template constant bug GCC/C++ is a PITA.
+	//if(__placed_between<A,B>::value)
+	if(__placed_between(a,b)) 
 	{
+		//HACK (daeOrdinal&) is to make void* compile.
+		//In the void* case this block is unreachable.
+
 		//Here the insertion order happens to be in order.
-		if((daeOrdinal)a>o&&o<(daeOrdinal)b)
+		if((daeOrdinal&)a>o&&o<(daeOrdinal&)b)
 		return DAE_OK;
 		//Here A and B are constraining the order, but it's
 		//not in fact in order.
@@ -83,8 +88,11 @@ inline daeError daeCM::__placeT(A a, daeCM_Placement<C> &p, B b, daeOrdinal o)co
 	}
 	else //optimizing: Close window around [a,b].
 	{
-		if(oMN<(daeOrdinal)b) oMN = (daeOrdinal)b;
-		if((daeOrdinal)a<o) o-=(o-(daeOrdinal)a)/oM*oM;
+		//HACK (daeOrdinal&) is to make void* compile.
+		//In the void* case this block is unreachable.
+
+		if(oMN<(daeOrdinal&)b) oMN = (daeOrdinal&)b;
+		if((daeOrdinal&)a<o) o-=(o-(daeOrdinal&)a)/oM*oM;
 	}
 	return e;
 }
@@ -120,7 +128,7 @@ inline daeError XS::Choice::__placeOccurrence2(A a, daeCM_Placement<> &p, B b, d
 	//UNREACHABLE
 	for(;i<named.size();i++) claimed1: //ENTRYPOINT IS claimed1: AND claimed2:
 	{
-		_(,==claimed) claimed2:
+		_(,==(_CM_index)claimed) claimed2:
 		{		
 			text = p.content._rewind_ordinal(it,o);
 			
@@ -130,7 +138,7 @@ inline daeError XS::Choice::__placeOccurrence2(A a, daeCM_Placement<> &p, B b, d
 	//UNREACHABLE
 	for(;i<named.size();i++) //ENTRYPOINT IS rewound:
 	{
-		_(,==claimed) rewound:
+		_(,==(_CM_index)claimed) rewound:
 		#undef _
 		{
 			if(__tryCM(text,it,choices[i],claimed,a,p,b,o)>=DAE_OK) return DAE_OK; //Promoted/placed?		
@@ -154,7 +162,7 @@ inline daeError XS::Choice::__placeOccurrence(A a, daeCM_Placement<C> &p, B b, d
 	_DeepCM_string &named = _deepCM[p.name];	
 	//FYI: _fuzzy_lower_bound() is a linear search algorithm.
 	//Here _maxOrdinals is modifying it to accept anything in its range.
-	C::const_iterator it = p.content._fuzzy_lower_bound(o,_maxOrdinals);
+	typename C::const_iterator it = p.content._fuzzy_lower_bound(o,_maxOrdinals);
 	daeOrdinal oCur; 
 	if(it==p.content.end()||(oCur=o-it->_ordinal())>=_maxOrdinals)
 	return _CM[named[0]]->__placeXS<1>(a,p,b,o);
@@ -202,14 +210,14 @@ inline daeError daeElementCM::__place(daeCM_Placement<C> &p, daeOrdinal o)const
 	//cases, and the caller must produce a count to add the index anyway.
 	if(p.count>=/*_maxOccurs*/_substitute_maxOccurs) 
 	{
-		C::const_iterator iit = p.content.begin();
-		C::const_iterator it = p.content._fuzzy_lower_bound(o);
+		typename C::const_iterator iit = p.content.begin();
+		typename C::const_iterator it = p.content._fuzzy_lower_bound(o);
 		
 		if(o==it->_ordinal()) //Count is nonzero? 
 		{
 			if(_maxOccurs>1) //Count is potentially more than one?
 			{
-				C::const_iterator rit;
+				typename C::const_iterator rit;
 				daeCounter span,text = 0;
 				for(rit=it-1;;) //Count backward.
 				{
@@ -330,6 +338,7 @@ void daeCM::_prepareContentModel2() //RECURSIVE
 	}
 	switch(_xs)
 	{
+	default: break; //-Wswitch
 	case XS::ANY: ((XS::Any*)this)->_substitute_maxOccurs = _maxOccurs; break;
 	case XS::CHOICE: ((XS::Choice*)this)->__preparePromotionStrategy(); break;
 	}
@@ -366,7 +375,7 @@ inline bool daeCM::__subsetofXS(const daeCM &b)const
 	if(b.getXS()==XS::ANY) return true;	
 	if(_xs==XS::ELEMENT) return __subsetofT<XS::Element>(b,0,0);
 	int lo = _meta->getTOC().front().getChildID().getName();
-	int hi = lo+_meta->getTOC().size();
+	int hi = lo+(int)_meta->getTOC().size();
 	if(isParentCM()) return __subsetofT<daeParentCM>(b,lo,hi); 
 	if(_xs==XS::GROUP) return __subsetofT<XS::Group>(b,lo,hi); 
 	assert(_xs==XS::ANY);	
@@ -404,7 +413,7 @@ void XS::Choice::__preparePromotionStrategy()
 	//shared object (multiple metadata) scenario.
 	daeTOC &TOC = _meta->getTOC(); 
 	int lo = TOC.front().getChildID().getName();
-	int hi = lo+TOC.size(); 
+	int hi = lo+(int)TOC.size(); 
 	//+1 is letting daeMetaElementAttribute__prepare_migrate memmove.
 	daeArray<short,128> _; _.grow(std::max(TOC.size(),_CM.size())+1);
 	short *buf = _.data();
@@ -441,8 +450,8 @@ void XS::Choice::__preparePromotionStrategy()
 			{
 				_DeepCM_string &named = _deepCM[i];
 				for(size_t j=0;j<named.size();j++)			
-				if(to==named[j]) demotion_mask[i]|=1;
-				else if(fro==named[j]) demotion_mask[i]|=2;
+				if((int)to==named[j]) demotion_mask[i]|=1;
+				else if((int)fro==named[j]) demotion_mask[i]|=2;
 			};
 			for(int i=lo;i<hi;i++) switch(demotion_mask[i])
 			{
@@ -480,7 +489,7 @@ const daeContent *XS::Choice::_solve(_solution &s, const daeContent *it, size_t 
 	//HACK: demote implements removals, which do
 	//not require placements, and must signal so.
 	const bool demote = 
-	_proclaimCM[fro].find(to)!=_DeepCM_string::npos;
+	_proclaimCM[fro].find((short)to)!=_DeepCM_string::npos;
 
 	daeContent *ins;
 	const daeContent *const iit = it;
@@ -530,6 +539,8 @@ const daeContent *XS::Choice::_solve(_solution &s, const daeContent *it, size_t 
 		ins->_child.ID = ID;
 		ins->_child.ordinal = p.ordinal;
 		daeCTC<(sizeof(daeOrdinal)<=sizeof(void*))>();
+		//HACK: This time (daeOrdinal&) is saving
+		//this value for later...
 		(daeOrdinal&)ins->_child.ref = ito;
 	}	
 	if(!OK) ordered = true;
@@ -559,6 +570,9 @@ const daeContent *XS::Choice::_solve(_solution &s, const daeContent *it, size_t 
 		s.ordered_mapping = s.unordered_mapping+(ordered?0:iN+1);
 		for(size_t i=0,ID;i<iN;i++)
 		{
+			//HACK: This time (daeOrdinal&) is retrieving
+			//the earlier stored value. ID is repurposing
+			//unused memory also.
 			ID = p_content[i]._child.ID;
 			s.unordered_mapping[ID] = ins[i]._child.ordinal; 			
 			s.keys[ID] = (daeOrdinal&)ins[i]._child.ref+sub;
@@ -566,6 +580,7 @@ const daeContent *XS::Choice::_solve(_solution &s, const daeContent *it, size_t 
 	}	
 	else //The solution is that there's not one.
 	{
+		//HACK: Same (daeOrdinal&) story as the OK branch.
 		for(size_t i=0;i<iN;i++)
 		s.keys[p_content[i]._child.ID] = 
 		(daeOrdinal&)ins[i]._child.ref+sub; 
@@ -593,8 +608,8 @@ const daeContent *XS::Choice::_solve(_solution &s, const daeContent *it, size_t 
 		{
 			_DeepCM_string &named = _deepCM[i];
 			for(size_t j=0;j<named.size();j++)			
-			if(to==named[j]) s.ordered_places[i]|=1;
-			else if(fro==named[j]) s.ordered_places[i]|=2;
+			if((int)to==named[j]) s.ordered_places[i]|=1;
+			else if((int)fro==named[j]) s.ordered_places[i]|=2;
 		}assert(s.unordered_places!=s.ordered_places);
 		//If this holds then to and fro are subsets of one another.
 		bool all_0_or_3 = true; 
@@ -683,97 +698,103 @@ const daeContent *XS::Choice::_solve(_solution &s, const daeContent *it, size_t 
 	p_content.getAU()->setInternalCounter(0); return itt;
 } 
 
-template<class A, class B>
-inline daeOrdinal XS::Choice::_solution::place(A,int,B,daeOrdinal)const
+namespace XS //COLLADA_GCC(namespace XS{) //explicit-specialization crap.
 {
-	daeCTC<0>(); //TODO: not _placeElement() nor _placeElementBetween().
-}
-template<>
-inline daeOrdinal XS::Choice::_solution::place(void*, int name, void*, daeOrdinal)const
-{
-	return unordered_places[name];
-} 
-template<>
-inline daeOrdinal XS::Choice::_solution::place(daeOrdinal a, int name, daeOrdinal b, daeOrdinal o)const
-{
-	//Note, the below code assumes k starts here.
-	size_t k = keysN-1;
-
-	//This is the optimize default for back insertion.
-	if(keys[k]>=a) return ordered_places[name];
-
-	//This is indicating that there is no ordered solution. 
-	if(ordered_mapping==nullptr) return 0;
-
-  ////THIS IS A PROPOSED ROUTE, THAT IS POSSIBLE IN SOME CASES////
-
-	#ifdef _DEBUG 
-	//It must be proved there's a 1:1 name:ordinal relationship.
-	if(ordered_places==unordered_places)
+	template<class A, class B>
+	inline daeOrdinal XS::Choice::_solution::place(A,int,B,daeOrdinal)const
 	{
-		assert(0); //THIS IS NOT IMPLEMENTED
-		daeOrdinal p = ordered_places[name]; 	
-		//Return if no range tests are required.
-		if(p==0||a>keys[0]&&b<keys[k]) 
-		return p;
-		//Could be a binary-search, but will be small typically.
-		for(k=0;ordered_mapping[k]>p;k++);
-		//Past end?
-		if(k==keysN) return b>=keys[keysN-1]?0:p; 
-		//else
-		return keys[k]>=a||b>keys[k]?0:p;
+		daeCTC<0>(); //TODO: not _placeElement() nor _placeElementBetween().
+		return 0; //-Wreturn-type
 	}
-	#endif
-
-  ////THIS SIMULATES INSERTION INTO A MINIATURE CONTENTS-ARRAY////
-
-	//HERE b IS UNCHARACTERISTICALLY DONE FIRST, BECAUSE k==keysN-1.
-
-	if(b>=keys[0])
+	template<>
+	inline daeOrdinal XS::Choice::_solution::place(void*, int name, void*, daeOrdinal)const
 	{
-		//This is mainly to prevent underflow on the loop below.
-		//There's not a meaningful value for b if this doesn't hold.
-		k = 0; assert(b==keys[0]);
+		return unordered_places[name];
 	}
-	else while(b>keys[k]) k--; //Could be a binary-search, but will be small typically.
-	
-	if(b!=ordered_mapping[k])
+	template<>
+	inline daeOrdinal XS::Choice::_solution::place(daeOrdinal a, int name, daeOrdinal b, daeOrdinal o)const
 	{
-		/*A 0-terminator exists at [keysN-1+1]*/
-		//This is inexact, but works on the assumption that b belongs to existing content.
-		b = /*k==keysN-1?0:*/ordered_mapping[k+1];
-	}
-	else b = ordered_mapping[k];	
+		//Note, the below code assumes k starts here.
+		size_t k = keysN-1;
 
-	k = 0; while(keys[k]>a) k++; //Could be a binary-search, but will be small typically.	
-	
-	if(a!=ordered_mapping[k])
+		//This is the optimize default for back insertion.
+		if(keys[k]>=a) return ordered_places[name];
+
+		//This is indicating that there is no ordered solution.
+		if(ordered_mapping==nullptr) return 0;
+
+	  ////THIS IS A PROPOSED ROUTE, THAT IS POSSIBLE IN SOME CASES////
+
+		#ifdef _DEBUG
+		//It must be proved there's a 1:1 name:ordinal relationship.
+		if(ordered_places==unordered_places)
+		{
+			assert(0); //THIS IS NOT IMPLEMENTED
+			daeOrdinal p = ordered_places[name];
+			//Return if no range tests are required.
+			if(p==0||a>keys[0]&&b<keys[k])
+			return p;
+			//Could be a binary-search, but will be small typically.
+			for(k=0;ordered_mapping[k]>p;k++);
+			//Past end?
+			if(k==keysN) return b>=keys[keysN-1]?0:p;
+			//else
+			return keys[k]>=a||b>keys[k]?0:p;
+		}
+		#endif
+
+	  ////THIS SIMULATES INSERTION INTO A MINIATURE CONTENTS-ARRAY////
+
+		//HERE b IS UNCHARACTERISTICALLY DONE FIRST, BECAUSE k==keysN-1.
+
+		if(b>=keys[0])
+		{
+			//This is mainly to prevent underflow on the loop below.
+			//There's not a meaningful value for b if this doesn't hold.
+			k = 0; assert(b==keys[0]);
+		}
+		else while(b>keys[k]) k--; //Could be a binary-search, but will be small typically.
+
+		if(b!=ordered_mapping[k])
+		{
+			/*A 0-terminator exists at [keysN-1+1]*/
+			//This is inexact, but works on the assumption that b belongs to existing content.
+			b = /*k==keysN-1?0:*/ordered_mapping[k+1];
+		}
+		else b = ordered_mapping[k];
+
+		k = 0; while(keys[k]>a) k++; //Could be a binary-search, but will be small typically.
+
+		if(a!=ordered_mapping[k])
+		{
+			//This is inexact, but works on the assumption that a belongs to existing content.
+			a = k==0?daeOrdinals:ordered_mapping[k-1];
+		}
+		else a = ordered_mapping[k];
+
+		daeCM_Placement<_solution> p
+		(name,0,const_cast<_solution&>(*this));
+		if(DAE_OK==to->__placeXS<1>(a,p,b,o)) return p.ordinal; return 0;
+	}
+
+	template<class A, class B>
+	inline bool XS::Choice::_solution::requires_rearrange(A,B)const
 	{
-		//This is inexact, but works on the assumption that a belongs to existing content.
-		a = k==0?daeOrdinals:ordered_mapping[k-1];
+		daeCTC<0>(); //TODO: not _placeElement() nor _placeElementBetween().
+		return 0; //-Wreturn-type
 	}
-	else a = ordered_mapping[k];	
-			
-	daeCM_Placement<_solution> p
-	(name,0,const_cast<_solution&>(*this));
-	if(DAE_OK==to->__placeXS<1>(a,p,b,o)) return p.ordinal; return 0;
-} 
+	template<>
+	inline bool XS::Choice::_solution::requires_rearrange(void*,void*)const
+	{
+		return ordered_mapping!=unordered_mapping;
+	}
+	template<>
+	inline bool XS::Choice::_solution::requires_rearrange(daeOrdinal,daeOrdinal)const
+	{
+		assert(ordered_mapping!=nullptr); return false;
+	}
 
-template<class A, class B>
-inline bool XS::Choice::_solution::requires_rearrange(A,B)const
-{
-	daeCTC<0>(); //TODO: not _placeElement() nor _placeElementBetween().
-}
-template<>
-inline bool XS::Choice::_solution::requires_rearrange(void*,void*)const
-{
-	return ordered_mapping!=unordered_mapping; 
-}
-template<> 
-inline bool XS::Choice::_solution::requires_rearrange(daeOrdinal,daeOrdinal)const
-{
-	assert(ordered_mapping!=nullptr); return false;
-}
+} //COLLADA_GCC(})
 
 namespace //C++98/03 (C2918)
 {
@@ -850,7 +871,7 @@ daeError XS::Choice::__tryCM(daeContent *text, daeContent *it, size_t to, size_t
 	if(s.unordered_places==nullptr) //Demoting?
 	{	
 		//Should hold if __tryWithout() is calling.
-		assert(_proclaimCM[fro].find(to)!=_DeepCM_string::npos);
+		assert(_proclaimCM[fro].find((short)to)!=_DeepCM_string::npos);
 		//HACK? FROM THE LOOKS OF THINGS THIS IS HOW TO SEE
 		//THAT ONE OF THE NAMES DIDN'T BELONG IN THE SUBSET.
 		if(s.keys==s.unordered_mapping) return DAE_ERROR;
@@ -858,7 +879,7 @@ daeError XS::Choice::__tryCM(daeContent *text, daeContent *it, size_t to, size_t
 	else //Promoting
 	{
 		//Should hold if __placeOccurrence2() is calling.
-		assert(_proclaimCM[to].find(fro)!=_DeepCM_string::npos);
+		assert(_proclaimCM[to].find((short)fro)!=_DeepCM_string::npos);
 
 		daeOrdinal s_place = s.place(a,p.name,b,o+sub);
 
@@ -878,7 +899,7 @@ daeError XS::Choice::__tryCM(daeContent *text, daeContent *it, size_t to, size_t
 
 		daeOrdinal ito, p_sub, *p = s.ordered_mapping;
 
-		if(i==pred.itt-it) //Trivial?
+		if((daeOffset)i==pred.itt-it) //Trivial?
 		{
 			do it++->_child.ordinal = *p++-sub; 
 			while(--i>0); 
@@ -1038,6 +1059,8 @@ void XS::Choice::__tryWithout(daeContent *text, size_t fro, daeCM_Demotion<> &d,
 	case DAE_ORDER_IS_NOT_PRESERVED: 
 		
 		d.maybe_demote_ORDER_IS_NOT_PRESERVED = DAE_ORDER_IS_NOT_PRESERVED;
+
+	default: //-Wswitch
 
 	case DAE_OK: break; //falling through
 	}	

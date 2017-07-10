@@ -15,7 +15,47 @@ COLLADA_(namespace)
 {//-.
 //<-'
 
-template<class T=void>
+/**WORKAROUND
+ * This is to get around GCC/C++ explicit specialization
+ * strictures.
+ */
+struct daePlatonic_base
+{
+	enum Op //__Thunk__v1__method2 operations
+	{
+		/** __COLLADA__atomize */
+		atomize,
+		/** __COLLADA__locate */
+		locate,
+	};
+
+COLLADA_(protected)
+	/**
+	 * To be continued...
+	 */
+	template<class S> struct _unwrap;
+};
+template<class S>
+struct daePlatonic_base::_unwrap
+{
+	typedef S type,  *ptr; static S *s(ptr p){ return  p; }
+};
+template<class S>
+struct daePlatonic_base::_unwrap<S*>
+{
+	typedef S type, **ptr; static S *s(ptr p){ return *p; }
+};
+template<class S>
+struct daePlatonic_base::_unwrap<daeSmartRef<S>>
+{
+	typedef S type, **ptr; static S *s(ptr p){ return *p; }
+};
+template<class S>
+struct daePlatonic_base::_unwrap<daeSmartRef<const S>> //???
+{
+	typedef S type, **ptr; static S *s(ptr p){ return *p; }
+};
+template<class T>
 /**
  * This class bridges @c daeAllocThunk and @c daeFeature.
  * It's a marriage of convenience.
@@ -26,32 +66,13 @@ template<class T=void>
  * @c daePlatonic is named after this header, and not the
  * other way around. Its prominence is due to its @c enum.
  */
-class daePlatonic
+class daePlatonic : public daePlatonic_base
 {
 	friend class daeFeature;
 	/** Friend all so MSVC can compile sizeof. */
 	template<class,int> friend class daeAlloc;
 
 COLLADA_(public)
-
-	enum Op //__Thunk__v1__method2 operations
-	{
-		/** __COLLADA__atomize */		
-		atomize,
-		/** __COLLADA__locate */
-		locate, 
-	};
-
-COLLADA_(private)
-
-	template<class S> struct _unwrap
-	{ typedef S type,  *ptr; static S *S(ptr p){ return  p; } };
-	template<class S> struct _unwrap<S*>
-	{ typedef S type, **ptr; static S *S(ptr p){ return *p; } };
-	template<class S> struct _unwrap<daeSmartRef<S>>
-	{ typedef S type, **ptr; static S *S(ptr p){ return *p; } };
-	template<class S> struct _unwrap<daeSmartRef<const S>> //???
-	{ typedef S type, **ptr; static S *S(ptr p){ return *p; } };
 
 	const daeAllocThunk *thunk;
 	union{ void *feature; typename _unwrap<T>::ptr pointer; }; 
@@ -62,7 +83,7 @@ COLLADA_(private)
 	 * @param f can be @c nullptr because of @c _feature_test().
 	 */
 	daePlatonic(void *f, const daeAllocThunk *t)
-	:feature(f),thunk(t){}
+	:thunk(t),feature(f){}
 	/**
 	 * NEW: This makes it easy to perform feature tests, at
 	 * the expense of checking @c nullptr. No big deal really.
@@ -79,13 +100,13 @@ COLLADA_(private)
 		if(0!=thunk->_offset) //Indicates an array feature thunk.
 		{
 			//A custom-offset is needed, so this is an array.
-			pointer = (_unwrap<T>::ptr)((daeArray<T>*)feature)->data();
-			return ((daeArray<T>*)feature)->getCount();
+			pointer = (typename _unwrap<T>::ptr)((daeArray<T>*)feature)->data();
+			return (int)((daeArray<T>*)feature)->getCount();
 		}
 		return 1; //Indicates a standalone T.		
 	}
 	
-	template<class T, T> class PtoM{};
+	template<class TT, TT> class PtoM{};
 
 	/** 
 	 * @return Returns @c DAE_ERR_NOT_IMPLEMENTED where
@@ -95,13 +116,11 @@ COLLADA_(private)
 	 * @note Pass a @c nullptr to perform feature tests.
 	 * The ambiguity between arrays and non-arrays made
 	 * feature tests too much to set up/easy to mess up.
-	 */
-	template<int ENUM> daeError maybe();				
-	/**
+	 *
 	 * Classes must "typedef void __COLLADA__atomize" 
 	 * or define a "void __COLLADA__atomize()" method.
 	 */
-	template<> daeError maybe<atomize>()
+	daeError maybe_atomize()
 	{
 		//_atomize_recursive adds support for multidimensional
 		//arrays. 
@@ -110,20 +129,24 @@ COLLADA_(private)
 	}
 	template<typename S> daeError _atomize(...) //permitted by non-classes
 	{
-		//IF THIS IS BEING TRIGGERED AND S::__COLLADA__atomize() IS DEFINED 
-		//THEN TRY DOING "using BASE_CLASS::__COLLADA__atomize()" SO IT CAN
-		//BE PICKED UP AS void(S::*)() VERSUS void(BASE_CLASS::*)(). SORRY!
-		daeCTC<daeArrayAware<S>::is_plain>(); return DAE_ERR_NOT_IMPLEMENTED;
+		//MSVC had let the "using" keyword be used to inherit __COLLADA_atomize
+		//but GCC wanted to a full wrapper, which is too much work.
+		//This allows inheritance without any intervention.
+		//daeCTC<daeArrayAware<S>::is_plain>();
+		if(!daeArrayAware<S>::is_plain)
+		_atomize<S>(daeFig<daeArrayAware<S>::is_plain>()); return DAE_ERR_NOT_IMPLEMENTED;
 	}
 	template<typename S> daeError _atomize(typename S::__COLLADA__atomize *voidptr)
 	{
 		voidptr = (class undefined*)nullptr; return DAE_ERR_NOT_IMPLEMENTED;
 	}		
-	template<typename S> daeError _atomize(PtoM<void(S::*)(),&S::__COLLADA__atomize>*)
+	//This change lets __COLLADA__atomize be inherited and still be detectable.
+	//template<typename S> daeError _atomize(PtoM<void(S::*)(),&S::__COLLADA__atomize>*)
+	template<typename S> daeError _atomize(daeFig<0>)
 	{
 		int counter = _setup_pointer_and_get_counter_for_feature_operation();
 		for(S*s;counter-->0;)
-		if((s=_unwrap<T>::S(pointer+counter))!=nullptr) s->__COLLADA__atomize(); return DAE_OK;
+		if((s=_unwrap<T>::s(pointer+counter))!=nullptr) s->__COLLADA__atomize(); return DAE_OK;
 	}
 	template<class SS, int N> daeError _atomize_recursive(daeArray<SS,N>*)
 	{	
@@ -144,19 +167,17 @@ COLLADA_(private)
 	 * @remarks @c daeArray can't implement a branching @c __COLLADA__atomize() if
 	 * it doesn't return a @c daeError code. It's better/safer to implement it here.
 	 */
-	daeError _atomize_recursive(...){ return _atomize<_unwrap<T>::type>(nullptr); }	
+	daeError _atomize_recursive(...){ return _atomize<typename _unwrap<T>::type>(nullptr); }
 
 	/** 
 	 * Facilitates @c maybe<locate>().
 	 * @c locate does cross-module virtual-method-table 
 	 * ownership via @c daeArrayAware<T>::place() vis-a-vis __COLLADA__locate().
-	 */
-	template<int ENUM> daeError maybe(va_list);
-	/**
+	 *
 	 * Class T must define a "void __COLLADA__locate(const T&)"
 	 * or "void __COLLADA__locate(const T::__COLLADA__Object*, const T&)" method.
 	 */
-	template<> daeError maybe<locate>(va_list va)
+	daeError maybe_locate(va_list va)
 	{
 		return _locate<T>(va,nullptr); 
 	}
@@ -361,31 +382,29 @@ COLLADA_(public) //INVISIBLE (protecting "obj")
 	template<class LAZY>
 	/**
 	 * Gets the subordinated-flag's state.
-	 * @tparam LAZY is ignored by release-builds.
+	 * @param obj is ignored by release-builds.
 	 * @return Returns @c true if this feature is a sub-object.
 	 * That is, an object embedded directly in @a obj object.	 
 	 */
-	inline bool isEmbeddedObjectWRT(const LAZY &obj)const
+	inline bool isEmbeddedObjectWRT(const LAZY *obj)const
 	{
-		if(0==_flags.subobject) return false;
-		assert(getKnownObjectWRT(obj).__DAEP__Object__refs<-1000);
-		return true;
+		const LAZY &so = getWRT(obj);
+		assert(0==_flags.subobject||so.__DAEP__Object__refs<-1000);
+		return 1==_flags.subobject;
 	}
 
 	template<class LAZY>
 	/**RECURSIVE, SUBOPTIMAL
 	 * @return Returns @c true if [sub]subordinates have refs.
 	 */
-	inline bool hasEmbeddedRefsWRT(const LAZY &obj)const
+	inline bool hasEmbeddedRefsWRT(const LAZY *obj)const
 	{
-		const daeObject &so = getKnownObjectWRT(obj);
+		const LAZY &so = getKnownObjectWRT(obj);
 		assert(so.__DAEP__Object__refs<-1000);
 		if(so.__DAEP__Object__refs>-so.__DAEP__Object__refs_embedding_threshold)
 		return true;
-		const daeModel &model = so.__DAEP__Object__v1__model();		
-		if(!model->hasObjectsEmbedded())
-		return false;
-		return model.hasEmbeddedRefsWRT(so);
+		const COLLADA_INCOMPLETE(LAZY) daeModel &model = so.__DAEP__Object__v1__model();		
+		return model.hasEmbeddedRefsWRT(&so);
 	}
 
 #endif //BUILDING_COLLADA_DOM
@@ -573,7 +592,7 @@ COLLADA_(public) //PUBLIC ACCESSORS
 
 COLLADA_(protected)
 
-	friend daeModel;
+	friend class daeModel;
 	/**
 	 * This iterates over the features to combine the information from
 	 * @c addFeature() into the gestalt members of this data structure.
@@ -587,7 +606,6 @@ COLLADA_(protected)
 
 COLLADA_(protected) //INVISIBLE	
 
-	friend class daeModel; //hasEmbeddedRefsWRT()
 	/**ALIGNED
 	 * Bitmask corresponding to @c daeFeature::_flags.subobject
 	 * for the first 31 features. This establishes a firm limit.

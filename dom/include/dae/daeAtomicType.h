@@ -104,6 +104,8 @@ template<class=void>
  */
 struct daeTypist
 {
+COLLADA_(public) //primary functions
+
 	/**TRAITS
 	 * 0 is @c daeAtomicType::EXTENSION.
 	 * To not get into heavy "template-metaprogramming"
@@ -121,18 +123,40 @@ struct daeTypist
 	{
 		dst = src; 
 	}
+	template<class T> static daeOK encodeXML(std::istream &src, T &dst)
+	{
+		src >> dst; return DAE_OK;
+	}
+	template<class T> static daeOK decodeXML(std::ostream &dst, const T &src)
+	{
+		dst << src; return DAE_OK;
+	}
+	//GCC can't do this. Just checking on Win32.
+	//Maybe they can just be overloaded instead?
+	//This is ensuring daeOpaque isn't assigned.
+	#ifdef _MSC_VER
 	template<> static void assign(daeOpaque&,const daeOpaque&)
 	{
-		daeCTC<0>(); //daeType needs to support template args.
+		daeCTC<0>();
 	}
-
-	template<class T> static int compare(const T &a, const T &b)
+	template<> static daeOK encodeXML(std::istream &src, daeOpaque &dst)
 	{
-		return a<b?-1:a==b?0:+1; 
+		daeCTC<0>();
 	}
+	template<> static daeOK decodeXML(std::ostream &dst, const daeOpaque &src)
+	{
+		daeCTC<0>();
+	}
+	#endif
+
+	//This is ensuring daeOpaque isn't compared.
 	static int compare(const daeOpaque&, const daeOpaque&)
 	{
-		daeCTC<0>(); //daeType needs to support template args.
+		daeCTC<0>(); return 0; //Bogus.
+	}
+	template<class T> static int compare(const T &a, const T &b)
+	{
+		return a<b?-1:a==b?0:+1;
 	}
 	template<class T, int M, int N> 
 	//Muti-dimensional array compare support. e.g. list_of_hex_binary.
@@ -146,10 +170,15 @@ struct daeTypist
 		}
 		return (ptrdiff_t)a.size()-(ptrdiff_t)b.size(); daeCTC<M==N>(); 
 	}
+
+COLLADA_(public) //shaping functions
 	
-	template<class T> static void formatXML(std::ostream&,int=~0)
-	{}
-	template<> static void formatXML<double>(std::ostream &dst, int)
+	//GCC/C++ won't tolerate explicit specialization in classes.
+	template<class T> static void formatXML(std::ostream &dst, int fmtflags=~0)
+	{
+		_formatXML((T*)0,&dst,fmtflags); //Quick Fix for GCC/C++.
+	}
+	static void _formatXML(double*, std::ostream *dst, int)
 	{
 		//https://support.microsoft.com/en-us/kb/29557
 		//TODO: float_array has members for describing the magnitude etc.
@@ -161,32 +190,17 @@ struct daeTypist
 		//ADDING +1 OR +2 (WHICH EQUALS C++11'S max_digits10) INTRODUCES
 		//ROUNDING ERROR ON MSVC2015 THAT ACCUMULATES AND PRODUCES LARGE
 		//NUMBERS FILLING ALL PRECISION DIGITS IN EACH ONE IN A FEW RUNS.
-		dst.precision(std::numeric_limits<double>::digits10/*+1*/); //max_digits10
+		dst->precision(std::numeric_limits<double>::digits10/*+1*/); //max_digits10
 	}
-	template<class T> static void formatXML(std::istream&,int=~0)
-	{}
-	template<> static void formatXML<daeStringRef>(std::istream &src, int fmtflags)
+	template<class T> static void formatXML(std::istream &src, int fmtflags=~0)
 	{
-		if(fmtflags&src.skipws) src >> std::noskipws;
+		_formatXML((T*)0,&src,fmtflags); //Quick Fix for GCC/C++.
 	}
-
-	template<class T> static daeOK decodeXML(std::ostream &dst, const T &src)
+	static void _formatXML(daeStringRef*, std::istream *src, int fmtflags)
 	{
-		dst << src; return DAE_OK;
+		if(fmtflags&src->skipws) *src >> std::noskipws;
 	}
-	template<> static daeOK decodeXML(std::ostream &dst, const daeOpaque &src)
-	{
-		daeCTC<0>(); //daeType needs to support template args.
-	}
-
-	template<class T> static daeOK encodeXML(std::istream &src, T &dst)
-	{
-		src >> dst; return DAE_OK;
-	}
-	template<> static daeOK encodeXML(std::istream &src, daeOpaque &dst)
-	{
-		daeCTC<0>(); //daeType needs to support template args.
-	}
+	static void _formatXML(...){} //Quick Fix for GCC/C++.
 
 	/** 
 	 * supercharge() is used to imbue @a tmp with superpowers. 
@@ -222,8 +236,8 @@ struct daeTypist
 	 */
 	static void normalize(daeString &srcIn, daeString &srcEnd)
 	{
-		while(srcIn<srcEnd&&isspace(*srcIn)) srcIn++; 
-		while(srcEnd>srcIn&&isspace(srcEnd[-1])) srcEnd--;
+		while(srcIn<srcEnd&&COLLADA_isspace(*srcIn)) srcIn++; 
+		while(srcEnd>srcIn&&COLLADA_isspace(srcEnd[-1])) srcEnd--;
 	}
 };
 
@@ -301,7 +315,7 @@ COLLADA_(public) //ABSTRACT INTERFACE
 	 */
 	inline daeOK stringToMemory(daeString src, daeOpaque dst, /*template-parity*/...)
 	{
-		int srcLen = strlen(src); //Maybe return DAE_ERR_INVALID_CALL is too harsh?
+		size_t srcLen = strlen(src); //Maybe return DAE_ERR_INVALID_CALL is too harsh?
 		if(srcLen>127){ assert(srcLen<128); /*return DAE_ERR_INVALID_CALL;*/ }
 		return unserialize(src,src+srcLen,dst); 
 	}
@@ -348,7 +362,7 @@ COLLADA_(public) //ACCESSORS
 	 * @warning Originally the concept was for this to return
 	 * @c _daeAtomWriter->_atomType. While nice in theory, it's
 	 * surprisingly easy to write code that corrupts array values.
-	 * @see @c per<daeAtom>().
+	 * @see @c where<daeAtom>().
 	 * 
 	 */
 	int getAtomicType(){ return /*_daeAtomWriter->*/_atomType; }
@@ -361,24 +375,6 @@ COLLADA_(public) //ACCESSORS
 	 */
 	inline daeString getTypeID()const{ return _typeID; }	
 	
-	template<class> inline daeTypewriter &per();
-
-	template<template<class,int>class> inline daeTypewriter &per();
-
-	/**
-	 * Gets a @c daeTypewriter appropriate for atomic types.
-	 */
-	template<> inline daeTypewriter &per<daeAtom>(){ return *_daeAtomWriter; }
-	/**
-	 * Gets a @c daeTypewriter appropriate for @c daeArray containers.
-	 */
-	template<> inline daeTypewriter &per<daeArray>(){ return *_daeArrayWriter; }
-
-	/**OPERATOR
-	 * Converts to pointer to ease comparison to @c per<daeArray>().
-	 */
-	inline operator daeTypewriter*(){ return this; }
-
 COLLADA_(private) 
 
 	template<class,class> friend class daeType;
@@ -446,7 +442,37 @@ COLLADA_(public) //These have to be public.
 	* from @c ID(). IOW: They are not known until each/every run-time.
 	*/
 	template<class T> static daeString ID(){ return _ID(typeid(T).name()); }
+
+COLLADA_(public)
+	/**OPERATOR
+	 * Converts to pointer to ease comparison to @c per<daeArray>().
+	 */
+	inline operator daeTypewriter*(){ return this; }
+
+	/**CUTE
+	 * Gets a @c daeTypewriter appropriate for atomic types.	 
+	 * GCC/C++ require this to be defined outside of @c daeTypewriter.
+	 */
+	template<class daeAtom> inline daeTypewriter &where();
+	/**
+	 * Gets a @c daeTypewriter appropriate for @c daeArray containers.	 
+	 * GCC/C++ require this to be defined outside of @c daeTypewriter.
+	 */
+	template<template<class,int>class daeArray> inline daeTypewriter &where();	
 };
+template<> 
+/**CUTE, EXPLICIT-SPECIALIZATOIN
+ * Gets a @c daeTypewriter appropriate for atomic types.
+ * GCC/C++ require this to be defined outside of @c daeTypewriter.
+ */
+inline daeTypewriter &daeTypewriter::where<daeAtom>(){ return *_daeAtomWriter; }
+template<> 
+/**CUTE, EXPLICIT-SPECIALIZATOIN
+ * Gets a @c daeTypewriter appropriate for @c daeArray containers.
+ * @tparam class must be @c daeArray.
+ * GCC/C++ require this to be defined outside of @c daeTypewriter.
+ */
+inline daeTypewriter &daeTypewriter::where<daeArray>(){ return *_daeArrayWriter; }	
 
 template<int buffer_size>
 /**INTERNAL
@@ -488,8 +514,8 @@ private:
 	virtual int sync()
 	{
 		std::ptrdiff_t n = pptr()-pbase();
-		pbump(-n);
-		obuf.append_and_0_terminate(pbase(),n);
+		pbump((int)-n);
+		obuf.append_and_0_terminate(pbase(),(size_t)n);
 		return 0;
 	}
 };
@@ -550,7 +576,7 @@ public: //NOT GOOD //NOT GOOD //NOT GOOD //NOT GOOD //NOT GOOD
 	}
 };
 		
-template<class T, class Typist=daeTypist<T>> 
+template<class T, class /*Typist*/U=daeTypist<T>>
 /**
  * @c daeType implements an instance of @c daeTypewriter. It has
  * facilities for tandom "atom" & "array" typewriters. It's easy
@@ -562,13 +588,9 @@ template<class T, class Typist=daeTypist<T>>
  */
 class daeType
 {
-COLLADA_(public)
+COLLADA_(public) typedef U Typist;
 
-	typedef Typist Typist;
-
-	template<class> struct Typewriter{};
-
-	template<> struct Typewriter<daeAtom> : daeTypewriter, Typist
+	struct AtomWriter : daeTypewriter, Typist
 	{
 		virtual void copy(const daeOpaque src, daeOpaque dst)
 		{
@@ -583,7 +605,7 @@ COLLADA_(public)
 		virtual daeOK serialize(const daeOpaque src, daeArray<daeStringCP> &dstIn)	
 		{
 			daeOStringBuf<Typist::buffer_size> buf(dstIn); std::ostream dst(&buf);
-			Typist::formatXML<T>(dst);
+			Typist::template formatXML<T>(dst);
 			daeOK OK = Typist::decodeXML(dst,*(const T*)&src);
 			if(OK==DAE_OK&&dst.fail()) OK = DAE_ERROR; return OK;
 		}
@@ -593,31 +615,31 @@ COLLADA_(public)
 			Typist::normalize(srcIn,srcEnd);
 			daeIStringBuf buf(srcIn,srcEnd);
 			std::istream src(&buf);
-			Typist::formatXML<T>(src);
+			Typist::template formatXML<T>(src);
 			daeOK OK = Typist::encodeXML(src,*(T*)&dst);
 			if(OK==DAE_OK&&(!src.eof()||src.fail())) OK = DAE_ERROR; return OK;
 		}
 
 		template<class A>
-		Typewriter(const A &a)
+		AtomWriter(const A &a)
 		:daeTypewriter((T*)0,(Typist*)0),Typist(a){}
 		template<class A, class B>
-		Typewriter(const A &a, const B &b)
+		AtomWriter(const A &a, const B &b)
 		:daeTypewriter((T*)0,(Typist*)0),Typist(a,b){}
-		Typewriter():daeTypewriter((T*)0,(Typist*)0){}
+		AtomWriter():daeTypewriter((T*)0,(Typist*)0){}
 	};
 
-	template<> struct Typewriter<daeArray<T>> : daeTypewriter, Typist
+	struct ArrayWriter : daeTypewriter, Typist
 	{
 		typedef daeArray<T> Array;
 		
 		template<class A>
-		Typewriter(const A &a)
+		ArrayWriter(const A &a)
 		:daeTypewriter((Array*)0,(Typist*)0),Typist(a){}
 		template<class A, class B>
-		Typewriter(const A &a, const B &b)
+		ArrayWriter(const A &a, const B &b)
 		:daeTypewriter((Array*)0,(Typist*)0),Typist(a,b){}
-		Typewriter():daeTypewriter((Array*)0,(Typist*)0){}
+		ArrayWriter():daeTypewriter((Array*)0,(Typist*)0){}
 		
 		virtual void copy(const daeOpaque src, daeOpaque dst)
 		{
@@ -632,11 +654,11 @@ COLLADA_(public)
 
 			//This ALGORITHM is identical to daeTypist<void> except for
 			//Typist::compare() has replaced daeTypist<void>::compare().
-			int i,cmp,iN; for(i=0,iN=std::min(a.size(),b.size());i<iN;i++) 
+			int i,cmp,iN; for(i=0,iN=(int)std::min(a.size(),b.size());i<iN;i++) 
 			{
 				cmp = Typist::compare(a[i],b[i]); if(cmp!=0) return cmp;
 			}
-			return (ptrdiff_t)a.size()-(ptrdiff_t)b.size();
+			return (int)a.size()-(int)b.size();
 		}
 
 		virtual daeOK serialize(const daeOpaque srcIn, daeArray<daeStringCP> &dstIn)	
@@ -645,7 +667,7 @@ COLLADA_(public)
 			daeOStringBuf<4096> buf(dstIn); std::ostream dst(&buf);
 			daeOK OK; 
 			size_t i = 0, iN = src.size();
-			Typist::formatXML<T>(dst,~dst.skipws);
+			Typist::template formatXML<T>(dst,~dst.skipws);
 			if(iN!=0) for(;;)
 			{
 				OK = Typist::decodeXML(dst,src[i]);
@@ -664,10 +686,11 @@ COLLADA_(public)
 			//SEE unserialize() DOXYGENTATION NOTES ON REALLOCATIONS.
 			dst.clear(); 
 			daeIStringBuf buf(srcIn,srcEnd); std::istream src(&buf);
-			Typist::formatXML<T>(src,~src.skipws);
+			Typist::template formatXML<T>(src,~src.skipws);
 			//Passing tmp as pointer to make this MSVC warning shutup.
 			//"warning C4700: uninitialized local variable 'tmp' used."
 			//COLLADA_SUPPRESS_C(4700) //no effect???
+			//-Wmaybe-uninitialized is here in -On modes. GCC wants a full push/pop song and dance????
 			daeOK OK; T tmp; Typist::supercharge(dst,&tmp); 
 			for(;!src.eof();)
 			{
@@ -682,8 +705,8 @@ COLLADA_(public)
 
 COLLADA_(protected) //DATA MEMBERS
 
-	Typewriter<daeAtom> _daeAtomWriter;
-	Typewriter<daeArray<T>> _daeArrayWriter;
+	AtomWriter _daeAtomWriter;
+	ArrayWriter _daeArrayWriter;
 	/**
 	 * This is the Constructor logic.
 	 */
@@ -757,12 +780,34 @@ template<> struct daeTypist<daeBoolean> : daeTypist<> //xs:boolean
 	}
 	static daeOK encodeXML(std::istream &src, bool &dst)
 	{
+		/*I give up. A GCC/GNU implementation on Cygwin doesn't
+		//read the delimiter and so doesn't set eofbit and would
+		//presumably accept 1111 as four bool values, etc. Though
+		//I only witnessed with boolalpha (falsefalsefalse.)
 		src >> dst; if(src.fail())
 		{
 			src.clear(); src.setf(src.flags()^src.boolalpha);
 			src >> dst;
+		}*/
+		char b[6]; src >> std::setw(sizeof(b)) >> b;
+		switch(b[0])
+		{
+		case '0': case '1':
+
+			if(b[1]!='\0') break;
+			else dst = b[0]=='1'; return DAE_OK;
+
+		case 'f':
+
+			if('a'==b[1]&&'l'==b[2]&&'s'==b[3]&&'e'==b[4]&&b[5]=='\0')
+			dst = false; else break; return DAE_OK;
+
+		case 't':
+
+			if('r'==b[1]&&'u'==b[2]&&'e'==b[3]&&b[4]=='\0')
+			dst = true; else break; return DAE_OK;
 		}
-		return DAE_OK;
+		return DAE_ERROR;
 	}
 };
 
@@ -883,10 +928,10 @@ struct daeTypistFP : daeTypist<>
 	}
 };
 template<> struct daeTypist<float> : //xs:float (although daeFloat can be double.)
-daeTypistFP<float,int,0x7f800002,0x7f800000,0xff800000>
+daeTypistFP<float,unsigned,0x7f800002U,0x7f800000U,0xff800000U>
 {}; 
 template<> struct daeTypist<double> : //xs:double (although daeDouble can be float.)
-daeTypistFP<double,long long,0x7ff0000000000002LL,0x7ff0000000000000LL,0xfff0000000000000LL>
+daeTypistFP<double,unsigned long long,0x7ff0000000000002ULL,0x7ff0000000000000ULL,0xfff0000000000000ULL>
 {}; 
 
 //REMINDER: system_type must be visible to XS::Schema::_typewrit().
@@ -1101,7 +1146,7 @@ COLLADA_(public) //Binary accessors & mutators
 	/**
 	 * Empties the @c char array and sets @c getSurplus() to 0.
 	 */
-	void clear(){ daeArray::clear(); setSurplus(); }
+	void clear(){ daeArray<char>::clear(); setSurplus(); }
 
 	/**
 	 * @return Returns 16 for hexBinary or 64 for base64Binary.
@@ -1136,14 +1181,27 @@ COLLADA_(public) //Binary accessors & mutators
 
 COLLADA_(public) //Serialization APIs
 	/**
-	 * Writes @c N binary char-data to @c std::ostream. 
+	 * Writes @c base binary char-data to @c std::ostream.
 	 */
 	inline void serialize(std::ostream &dst)const
 	{
-		serialize<N>(dst);
+		serialize<base>(dst);
 	}
-	/**NOT-IMPLEMENTED This is a basis for specialization. */
-	template<int N>	void serialize(std::ostream&)const;
+	//This is implemented as a switch since GCC/C++ can't
+	//explicitly specialize class methods. It matters not.
+	template<int N>
+	/**
+	 * @tparam N must be 0, 16, or 64, where 0 is @c base.
+	 */
+	inline void serialize(std::ostream &dst)const
+	{
+		switch(N!=0?N:getBase())
+		{
+		case 16: _serialize_16(dst); break;
+		case 64: _serialize_64(dst); break;
+		default: dst.setstate(dst.failbit); assert(0);
+		}
+	}
 	/**
 	 * Inserts hexBinary char-data into a @c std::ostream. 
 	 * @note The algorithm is made complex because a char
@@ -1152,10 +1210,10 @@ COLLADA_(public) //Serialization APIs
 	 * as a char or a word. This implementation assumes a
 	 * char. (Compilers should eliminate the added code.)
 	 */
-	template<> void serialize<16>(std::ostream &dst)const
+	inline void _serialize_16(std::ostream &dst)const
 	{
-		const char *p = daeArray::data();
-		const char *d = p+daeArray::size();
+		const char *p = daeArray<char>::data();
+		const char *d = p+daeArray<char>::size();
 		if(0!=getSurplus()) d--; 
 		signed char i,j,c; 
 		for(;p<d;p++) 
@@ -1175,32 +1233,42 @@ COLLADA_(public) //Serialization APIs
 			dst.setstate(dst.failbit); assert(0);
 		}
 	}
-	/** Inserts base64Binary char-data into a @c std::ostream. */
-	template<> void serialize<64>(std::ostream &dst)const
+	/**UNIMPLEMENTED: ASK AND YOU SHALL RECEIVE.
+	 * Inserts base64Binary char-data into a @c std::ostream.
+	 */
+	inline void _serialize_64(std::ostream &dst)const
 	{
 		//UNIMPLEMENTED: ASK AND YOU SHALL RECEIVE.
-		if(!daeArray::empty()){ dst.setstate(dst.failbit); assert(0); }
-	}
-	/** Inserts @c getBase() char-data into a @c std::ostream. */
-	template<> void serialize<0>(std::ostream &dst)const
-	{
-		switch(getBase())
+		if(!daeArray<char>::empty())
 		{
-		case 16: return serialize<16>(dst);
-		case 64: return serialize<64>(dst);
-		default: os.setstate(src.failbit); assert(0);
+			dst.setstate(dst.failbit); assert(0);
 		}
 	}
 
 	/**
-	 * Extracts @c N char-data from an @c std::istream. 
+	 * Extracts @c base char-data from an @c std::istream.
 	 */
 	inline void unserialize(std::istream &src)const
 	{
-		unserialize<N>(src);
+		unserialize<base>(src);
 	}
-	/**NOT-IMPLEMENTED This is a basis for specialization. */
-	template<int N>	void unserialize(std::istream&);
+	//This is implemented as a switch since GCC/C++ can't
+	//explicitly specialize class methods. It matters not.
+	template<int N>
+	/**
+	 * @tparam N must be 0, 16, or 64, where 0 is @c base.
+	 *
+	 * Extracts @c getBase() char-data from an @c std::istream.
+	 */
+	inline void unserialize(std::istream &src)
+	{
+		switch(getBase())
+		{
+		case 16: _unserialize_16(src); break;
+		case 64: _unserialize_64(src); break;
+		default: src.setstate(src.failbit); assert(0);
+		}
+	}
 	/** 
 	 * Extracts hexBinary char-data from an @c std:istream. 
 	 * @remarks This class stops on whitespace. It doesn't
@@ -1212,13 +1280,13 @@ COLLADA_(public) //Serialization APIs
 	 * more to say about this.
 	 * @see @c serialize<16>() notes.
 	 */
-	template<> void unserialize<16>(std::istream &src)
+	inline void _unserialize_16(std::istream &src)
 	{
 		clear();
 		std::istream::sentry s(src); //Skip whitespace.
 		if(!s) return;		
 		signed char i,j,nibble,value=0; 
-		for(;;daeArray::push_back(value),value=0)
+		for(;;daeArray<char>::push_back(value),value=0)
 		for(i=0;i<CHAR_BIT;i+=8) //This is academic.
 		for(j=i+4;j>=i;j-=4) 
 		{
@@ -1236,15 +1304,17 @@ COLLADA_(public) //Serialization APIs
 				if(j!=4) if(j%8!=0)
 				{
 					setSurplus(CHAR_BIT-j-4); 
-					daeArray::push_back(value); 					
+					daeArray<char>::push_back(value);
 				}//Enforce two chars per value?
 				else src.setstate(src.failbit); return;
 			}//Can Endianness be related to CHAR_BIT?
 			else nibble-='0'; value+=nibble<<j;
 		}		
 	}
-	/** Extracts base64Binary char-data from an @c std::istream. */
-	template<> void unserialize<64>(std::istream &src)
+	/**UNIMPLEMENTED: ASK AND YOU SHALL RECEIVE.
+	 * Extracts base64Binary char-data from an @c std::istream.
+	 */
+	inline void _unserialize_64(std::istream &src)
 	{
 		//REMINDER: According to the XML Schema standard, it seems
 		//like whitespace is permitted in order to facilitate olden
@@ -1257,16 +1327,6 @@ COLLADA_(public) //Serialization APIs
 		//UNIMPLEMENTED: ASK AND YOU SHALL RECEIVE.
 		if(src.get()>0){ src.setstate(src.failbit); assert(0); }
 	}
-	/** Extracts @c getBase() char-data from an @c std::istream. */
-	template<> void unserialize<0>(std::istream &src)
-	{
-		switch(getBase())
-		{
-		case 16: return unserialize<16>(src);
-		case 64: return unserialize<64>(src);
-		default: os.setstate(src.failbit); assert(0);
-		}
-	}
 
 COLLADA_(public) //daeArray traits
 
@@ -1274,7 +1334,7 @@ COLLADA_(public) //daeArray traits
 	//daeArray has helpers that make this vastly simpler than it'd otherwise be.
 	static void __COLLADA__move(const daeObject *obj, daeBinary *lv, daeBinary *rv, size_t iN)
 	{
-		daeArray::_derive__COLLADA__move(obj,lv,rv,iN,_derive__COLLADA__mover);		
+		daeArray<char,size_on_stack>::_derive__COLLADA__move(obj,lv,rv,iN,_derive__COLLADA__mover);
 	}		
 	static void _derive__COLLADA__mover(daeBinary &lv, const daeBinary &rv)
 	{
@@ -1282,7 +1342,7 @@ COLLADA_(public) //daeArray traits
 	}
 	inline void __COLLADA__locate(const daeObject *obj, const daeBinary &cp)
 	{
-		daeArray::__COLLADA__locate(obj,cp); _derive__COLLADA__mover(*this,cp);
+		daeArray<char,size_on_stack>::__COLLADA__locate(obj,cp); _derive__COLLADA__mover(*this,cp);
 	}
 
 COLLADA_(public) //daeTypewriter support
@@ -1310,7 +1370,7 @@ template<int M, int N> struct daeTypist<daeBinary<M,N>> : daeTypist<>
 	inline int compare(const daeBinary<> &a, const daeBinary<> &b)
 	{
 		int cmp = memcmp(a.data(),b.data(),std::min(a.size(),b.size()));
-		return cmp!=0?cmp:daeOffset(a.size())-daeOffset(b.size());
+		return cmp!=0?cmp:(int)a.size()-(int)b.size();
 	}
 };
 //REMINDER: system_type must be visible to XS::Schema::_typewrit().

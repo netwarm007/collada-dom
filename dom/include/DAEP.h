@@ -139,10 +139,12 @@ COLLADA_(public) //VIRTUAL METHOD TABLE
 	//The virtual table reserves these.	
 	//If added, @c daeObject::_getVersion() must be checked.
 	//(The working assumption is that these methods can be renamed without breaking the system.)
+	/*
 	virtual daeError __DAEP__Object__reserved_vtable_entry_0(){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeError __DAEP__Object__reserved_vtable_entry_1(){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeError __DAEP__Object__reserved_vtable_entry_2(){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeError __DAEP__Object__reserved_vtable_entry_3(){ return DAE_ERR_NOT_IMPLEMENTED; }
+	*/
 
 COLLADA_(private) //DATA-MEMBERS
 
@@ -206,9 +208,9 @@ COLLADA_(public) //CONSTRUCTORS (MUST BE PUBLIC)
 	 * InterlockedIncrement(c->__DAEP__Object__refs)
 	 */
 	explicit Object(const Object *c)
-	:__DAEP__Object__parent(c)
-	,__DAEP__Object__refs(__DAEP__Object__refs_embedding_threshold)
+	:__DAEP__Object__refs(__DAEP__Object__refs_embedding_threshold)
 	,__DAEP__Object__tags(__DAEP__Object__vN__<<2*sizeof(daeByte)*CHAR_BIT)
+	,__DAEP__Object__parent(c)
 	{
 		assert(0!=COLLADA::DOM_process_share);
 		((daeTag*)&__DAEP__Object__tags)[3] = COLLADA::DOM_process_share;
@@ -318,6 +320,7 @@ COLLADA_(protected) //DATA-MEMBERS
 	friend class COLLADA::daeElement;
 	friend union COLLADA::daeContent;
 	friend class COLLADA::daeDocument;
+	friend class COLLADA::daeContents_base; //GCC/C++
 	struct __DAEP__Element__Data
 	{
 		daePseudonym NCName;
@@ -408,7 +411,7 @@ COLLADA_(protected) //CONSTRUCTORS
 enum VPTR{ VPTR=0 }; enum PTYPE{ PTYPE=0 };
 
 //NEW: Legacy is one of daeElement or DAEP Element.
-template<class T, class Legacy=daeLegacyOf<T>::type>
+template<class T, class Legacy=typename daeLegacyOf<T>::type>
 /**
  * @class COLLADA::DAEP::Elemental
  *
@@ -440,8 +443,8 @@ COLLADA_(public) //DAEP::Object methods
 	/**PURE-OVERRIDE
 	 * This __DAEP__Object__v1__model declation has to be defined.
 	 */
-	virtual DAEP::Model &__DAEP__Object__v1__model()const;	
-				   
+	virtual DAEP::Model &__DAEP__Object__v1__model()const;
+
 COLLADA_(public)
 	/**
 	 * Using to get the type of DAEP Element WRT a given class.
@@ -463,15 +466,15 @@ COLLADA_(public)
 COLLADA_(public) //UTILITIES
 	/**HELPER,
 	 * @struct @c COLLADA::DAEP::Elemental::Essentials
-	 * 
+	 *
 	 * All elements have these features, although names differ
 	 * according to how the generator is configured. Extracting
 	 * this information means generators don't have to ouptut it.
 	 *
-	 * @todo This could be implemented by @c XS::Schema and 
-	 * @c daeMetaElement where it's used. It's slightly better 
+	 * @todo This could be implemented by @c XS::Schema and
+	 * @c daeMetaElement where it's used. It's slightly better
 	 * organized to have here. SFINAE might be required if <_> is
-	 * the name of one of some schema's children. 
+	 * the name of one of some schema's children.
 	 */
 	struct Essentials
 	{
@@ -479,12 +482,16 @@ COLLADA_(public) //UTILITIES
 		daeFeatureID content_feature, union_feature;
 		template<class CC> void set(CC* &_)
 		{
-			daeCTC<CC::_No==_->_N.name>();
-			union_feature = _->_N.feature();
-			content_feature = _->content.feature(); 
-			content_offset = daeOffsetOf(CC,content);			
+			//Clang won't use . (but it sets _MSC_VER.)
+			//Doing this santity test on VS builds only.
+			#ifdef _MSC_VER
+			daeCTC<(CC::_No==_->_Z.name)>();
+			#endif
+			union_feature = _->_Z.feature();
+			content_feature = _->content.feature();
+			content_offset = daeOffsetOf(CC,content);
 		}
-		Essentials(){ typename T::_ *C4700; set(C4700); }		
+		Essentials(){ typename T::_ *C4700; set(C4700); }
 	};
 
 COLLADA_(public) //Elemental constructor
@@ -496,14 +503,14 @@ COLLADA_(public) //Elemental constructor
 	 * But, because there can be only one default-constructor, it's had
 	 * to take a back seat.
 	 */
-	explicit Elemental(enum DAEP::VPTR){ /*NOP*/ }	
+	explicit Elemental(enum DAEP::VPTR){ /*NOP*/ }
 
 COLLADA_(protected) //Embodied constructor
 	/**
-	 * Default/Prototype Constructor 
+	 * Default/Prototype Constructor
 	 *
 	 * This is a special constructor that means the memory footprint
-	 * is already initialized beneath the constructor, by memcpy'ing 
+	 * is already initialized beneath the constructor, by memcpy'ing
 	 * a "prototype" image over it. The metadata includes prototypes.
 	 *
 	 * It has to be the default-constructor so that the compiler can
@@ -523,7 +530,7 @@ COLLADA_(public) //One more for the road!
 	 * It can't use @c T::T() because that's the prototype constructor.
 	 * @c DAEP::Element is an abstract class. So it can't be constructed.
 	 */
-	explicit Elemental(enum DAEP::PTYPE):COLLADA_SUPPRESS_C(4355)Legacy(this){}	
+	explicit Elemental(enum DAEP::PTYPE):COLLADA_SUPPRESS_C(4355)Legacy(this){}
 };
 
 template<unsigned long long ULL=~0ULL> 
@@ -874,6 +881,132 @@ enum CONTENT{ CONTENT=2 };
 enum ATTRIBUTE{ ATTRIBUTE=4 }; 
 
 /**
+ * @class COLLADA::DAEP::Change
+ *
+ * When a change-notice is sent to a database it arrives
+ * via an object of this type. The database can use this
+ * window to examine the DAEP Object prior to the change.
+ * Calling @c carry_out_change() should apply the change.
+ * @see @c DAEP::Concern
+ * @see @c DAEP::InnerChange
+ * @see @c daeNoteChange()
+ *
+ * @remarks Presently changes are managed internally and
+ * are triggered by C++'s assignment operators on values
+ * whitelisted with @c DAEP::Concern.
+ */
+class Change
+{
+COLLADA_(public)
+
+	union
+	{
+	mutable daeObject *_object;
+	/**
+	 * This is the element that's changing.
+	 */
+	const DAEP::Element *element_of_change;
+	};
+
+	/**ENUM
+	 * One of:
+	 * @c DAEP::ELEMENT:
+	 * The element is moving.
+	 * (A new element is created.)
+	 * @c DAEP::CONTENT:
+	 * The value or mixed content is changing.
+	 * @c DAEP::ATTRIBUTE:
+	 * The attribute is changing.
+	 * @see @c daeDB::_v1_note() via @c daeNoteChange().
+	 */
+	int kind_of_change;
+
+	/**
+	 * Non-Constructor
+	 */
+	Change(){ /*NOP*/ }
+	/**
+	 * Constructor
+	 */
+	explicit Change(int kof):kind_of_change(kof){}
+	/**
+	 * Constructor
+	 */
+	Change(daeElement *e, int kof):_object((daeObject*)e),kind_of_change(kof){}
+	/**
+	 * Constructor
+	 */
+	Change(DAEP::Element *e, int kof):element_of_change(e),kind_of_change(kof){}
+	/**
+	 * Virtual Destructor
+	 * This doesn't have to be virtual really, but
+	 * it's no big deal, and C++11 forces it to be.
+	 */
+	virtual ~Change(){}
+
+	/**
+	 * This must be called to carry out the change.
+	 * It's a mechanism for getting a before/after.
+	 */
+	virtual void carry_out_change()const{ assert(0); }
+};
+
+template<class S, class U>
+/**
+ * Formerly "DAEP::Notice."
+ *
+ * A InnerChange dispatches change-notices. It's mainly
+ * an extension of DAEP Value. It should be ignored for
+ * the most part.
+ *
+ * First a compile-time check is done, so a translation
+ * unit can decide for itself to suppress notifications.
+ * This is done by specializing DAEP Concern's template.
+ */
+class InnerChange : public DAEP::Change
+{
+COLLADA_(private)
+	/**SCHEDULED FOR REMOVAL, C++98 SUPPORT
+	 * C++98 will not locally define template arguments.
+	 */
+	typedef void (*Operator)(typename S::underlying_type&,const U&);
+
+	S &lvalue; Operator op; const U &rvalue; mutable bool b;
+
+	template<class>
+	/** Dispatches change-notice. */
+	void _issue_change_if(...)
+	{
+		_object = (daeObject*)&lvalue.object();
+		kind_of_change = S::is_content?DAEP::CONTENT:DAEP::ATTRIBUTE;
+		daeNoteChange(*this,_value_or_attribute(element_of_change));
+	}
+	template<class SFINAE>
+	/** Suppresses change-notice. */
+	void _issue_change_if(typename DAEP::Concern<SFINAE>::VOID*){}
+
+	template<class LAZY>
+	//HACK: _meta_value is delaying evalution of incomplete types.
+	//Visual Studio's misapplication of templates is much simpler.
+	static daeAttribute &_value_or_attribute(LAZY e)
+	{
+		if(1==S::is_content) return dae(e)->getMeta().getValue();
+		if(0==S::is_content) return dae(e)->getMeta().getAttributes()[S::name];
+	}
+
+COLLADA_(public)
+
+	InnerChange(S &lv, Operator op, const U &rv)
+	:lvalue(lv),op(op),rvalue(rv),b()
+	{
+		_issue_change_if<typename S::note::concern>(nullptr);
+		if(!b) op(lvalue.value,rvalue);
+	}
+
+	virtual void carry_out_change()const{ op(lvalue.value,rvalue); b = true; }
+};
+
+/**
  * @class COLLADA::DAEP::Nil
  *
  * DAEP Nil is an empty base class, that can be used when required.
@@ -901,10 +1034,10 @@ template<class Note, class Type=void>
 struct NoConcern
 {
 	typedef char Yes; typedef long No;		
-	template<class Note>
+	template<class>
 	static Yes Exists(...);
-	template<class Note>
-	static No Exists(typename DAEP::Concern<Note>::VOID*);
+	template<class Note2> //GCC won't shadow Note.
+	static No Exists(typename DAEP::Concern<Note2>::VOID*);
 	enum{ value=sizeof(No)==sizeof(Exists<Note>(nullptr)) };
 	typedef typename daeTypic<value,Type,const Type>::type type;
 };
@@ -922,9 +1055,14 @@ class InnerChild : public EBO
 {	
 COLLADA_(public) //MAYBE PORTABLE
 	
-	typedef DAEP::Child<ID,T,CC,PtoM> type;	
-
-	friend class type;
+	typedef DAEP::Child<ID,T,CC,PtoM> type;
+	/**UNUSED?
+	 * Visual Studio won't use CC from the outer
+	 * scope or CC redefined (GCC won't override
+	 * template parameters at any level anyway.)
+	 */
+	template<int,class,class CCC,typename CCC::_>
+	friend class Child;
 
 	static const int name = ID;		
 	static const bool is_element = true;
@@ -947,7 +1085,11 @@ COLLADA_(public) //PUBLIC UTILITIES
 	/**
 	 * Gets @c this child's offset. Same as DAEP Value.
 	 */
-	inline daeOffset offset()const{ return daeOffsetOf(CC::__COLLADA__T,*PtoM); }
+	inline daeOffset offset()const
+	{
+		//2 is owing to GCC's "Token Pasting" practice.
+		return daeOffsetOf2(typename CC::__COLLADA__T,->*PtoM);
+	}
 
 	/**
 	 * Extracts the model-feature identifier.
@@ -1075,8 +1217,13 @@ COLLADA_(public)
 	 * This should be the equivalent Value. 
 	 */
 	typedef DAEP::Value<ID,T,CC,PtoM> type;	
-	
-	friend class type;
+	/**UNUSED?
+	 * Visual Studio won't use CC from the outer
+	 * scope or CC redefined (GCC won't override
+	 * template parameters at any level anyway.)
+	 */
+	template<int,class,class CCC,typename CCC::_>
+	friend class Value;
 			
 COLLADA_(public) //CONSTRUCTOR
 	/**
@@ -1100,11 +1247,15 @@ COLLADA_(public) //CONSTRUCTOR
 	InnerValue():COLLADA_SUPPRESS_C(4355)
 	value((const DAEP::Proto<type>&)*this)
 	{	
+	 	//GCC/C++ wants daeModel to be complete.
+		//Just run this check on Visual Studio builds.
+		#ifdef _MSC_VER
 		//Elements are not allowed to have subobjects
 		//because the schema is in control of layouts.
 		//Also, metadata registration uses the second
 		//form of daeModel::addFeature().
-		daeCTC<0==daeModel::__subobject_flag<EBO>::value>(); 
+		daeCTC<0==daeModel::__subobject_flag<EBO>::value>();
+		#endif
 	}
 
 COLLADA_(public) //MAYBE PORTABLE
@@ -1132,7 +1283,11 @@ COLLADA_(public) //PUBLIC UTILITIES
 	/**
 	 * Gets @c this value's offset. Same as DAEP Child.
 	 */
-	inline daeOffset offset()const{ return daeOffsetOf(CC::__COLLADA__T,*PtoM); }
+	inline daeOffset offset()const
+	{
+		//2 is owing to GCC's "Token Pasting" practice.
+		return daeOffsetOf2(typename CC::__COLLADA__T,->*PtoM);
+	}
 
 	/**
 	 * Gets the model-feature identifier. 
@@ -1217,7 +1372,7 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 		return (underlying_type*)&value; //Removed operator &from DAEP::Class.
 	}
 
-	template<class T>
+	template<class S>
 	/**
 	 * Select between two DAEP Value given that the first is @c nullptr based.
 	 * Or:
@@ -1233,15 +1388,16 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 	 * IT'S VALUE to extract a DAEP Value from potentially @c nullptr objects
 	 * is a more common scenario, which should make the operator not uncommon.
 	 */
-	inline typename DAEP::Default<T>::type operator->*(const T &other)const
+	inline typename DAEP::Default<S>::type operator->*(const S &other)const
 	{
-		if(&object()==nullptr) return other; return *this;
+		//*(type*) is so not to have to specialize DAEP::NoValue.
+		if(&object()==nullptr) return other; return *(type*)this;
 
 		//This is designed to catch "narrowing" issues, since the return type
 		//is T and not underlying_type. Something like using 1 to get a float
 		//can be quiet error.
 		daeCTC<(std::numeric_limits<underlying_type>::digits10<=
-		std::numeric_limits<typename DAEP::Default<T>::type>::digits10)>(); 
+		std::numeric_limits<typename DAEP::Default<S>::type>::digits10)>();
 	}
 
 	/**
@@ -1303,7 +1459,7 @@ COLLADA_(public) //CHANGE-NOTICE GUARANTEES
 	}
 };
 
-template<int ID, class T, class CC=DAEP::Nil, typename CC::_ PtoM=COLLADA_(nullptr)>
+template<int ID, class T, class CC=DAEP::Nil, typename CC::_ PtoM=typename CC::_()>
 /**
  * @class COLLADA::DAEP::Child
  *
@@ -1341,7 +1497,7 @@ COLLADA_(public) //using InnerChild::operator=; //-C2679-C2622
 	 */\
 	inline dae_Array<T,ID> &operator=(const S &cp)\
 	{\
-		this->__assign<S>(cp,nullptr); return *this;\
+		this->template __assign<S>(cp,nullptr); return *this;\
 	}\
 	/**\
 	 * Removes this element from the contents-array by means\
@@ -1356,7 +1512,7 @@ COLLADA_(public) //using InnerChild::operator=; //-C2679-C2622
 	COLLADA__DAEP__Child__union__assignment_operator(T,ID)
 };
 
-template<int ID, class T, class CC=DAEP::Nil, typename CC::_ PtoM=COLLADA_(nullptr)>
+template<int ID, class T, class CC=DAEP::Nil, typename CC::_ PtoM=typename CC::_()>
 /**
  * @class COLLADA::DAEP::Value
  *
@@ -1376,7 +1532,9 @@ template<int ID, class T, class CC=DAEP::Nil, typename CC::_ PtoM=COLLADA_(nullp
  */
 class Value : public DAEP::InnerValue<ID,T,CC,PtoM>
 {
-COLLADA_(public) using InnerValue::operator=; //C2679
+COLLADA_(public) //C2679 //GCC wants parameters.
+
+	using InnerValue<ID,T,CC,PtoM>::operator=;
 };
 
 template<int ID, class CC, typename CC::_ PtoM>
@@ -1387,127 +1545,36 @@ template<int ID, class CC, typename CC::_ PtoM>
  */
 class Value<ID,daeString,CC,PtoM> : public DAEP::InnerValue<ID,daeString,CC,PtoM,daeStringRef>
 {
-COLLADA_(public) using InnerValue::operator=; //C2679
+COLLADA_(public) //C2679 //GCC wants parameters.
+
+	using InnerValue<ID,daeString,CC,PtoM,daeStringRef>::operator=;
 };
 
-/**
- * @class COLLADA::DAEP::Change
- *
- * When a change-notice is sent to a database it arrives
- * via an object of this type. The database can use this
- * window to examine the DAEP Object prior to the change.
- * Calling @c carry_out_change() should apply the change.
- * @see @c DAEP::Concern
- * @see @c DAEP::InnerChange
- * @see @c daeNoteChange()
- *
- * @remarks Presently changes are managed internally and
- * are triggered by C++'s assignment operators on values
- * whitelisted with @c DAEP::Concern.
+template<class T>
+/**SFINAE
+ * This is used to exclude DAEP Value in and "enable_if" fashion. There 
+ * is ambiguity with the construction form of the = operator when there
+ * is are conversion operators and constructors. If a compiler selected
+ * either one it would be fine, but many won't do it.
+ * @see @c daeURI_size::daeURI_size().
+ * @see @c daeHashString::daeHashString().
  */
-class Change
+struct NoValue
 {
-COLLADA_(public) 
-
-	union
-	{
-	mutable daeObject *_object;
-	/**
-	 * This is the element that's changing.
-	 */
-	const DAEP::Element *element_of_change;	
-	};
-
-	/**ENUM
-	 * One of:
-	 * @c DAEP::ELEMENT:
-	 * The element is moving.
-	 * (A new element is created.)
-	 * @c DAEP::CONTENT: 
-	 * The value or mixed content is changing.
-	 * @c DAEP::ATTRIBUTE:
-	 * The attribute is changing.
-	 * @see @c daeDB::_v1_note() via @c daeNoteChange().
-	 */
-	int kind_of_change;
-
-	/**
-	 * Non-Constructor
-	 */
-	Change(){ /*NOP*/ }
-	/**
-	 * Constructor
-	 */
-	explicit Change(int kof):kind_of_change(kof){}	
-	/**
-	 * Constructor
-	 */
-	Change(daeElement *e, int kof):_object((daeObject*)e),kind_of_change(kof){}	
-	/**
-	 * Constructor
-	 */
-	Change(DAEP::Element *e, int kof):element_of_change(e),kind_of_change(kof){}	
-	/**
-	 * Virtual Destructor
-	 * This doesn't have to be virtual really, but
-	 * it's no big deal, and C++11 forces it to be.
-	 */
-	virtual ~Change(){}
-
-	/**
-	 * This must be called to carry out the change.
-	 * It's a mechanism for getting a before/after.
-	 */
-	virtual void carry_out_change()const{ assert(0); }
+	typedef int type; 
 };
-
-template<class S, class U>
-/**
- * Formerly "DAEP::Notice."
- *
- * A InnerChange dispatches change-notices. It's mainly
- * an extension of DAEP Value. It should be ignored for
- * the most part. 
- *
- * First a compile-time check is done, so a translation 
- * unit can decide for itself to suppress notifications.
- * This is done by specializing DAEP Concern's template.
+template<int ID, class T, class CC, typename CC::_ PtoM>
+/**SFINAE, PARTIAL-SPECIALIZATION
+ * This form provides no "type" to convert to.
  */
-class InnerChange : public DAEP::Change
-{
-COLLADA_(private) 
-	/**SCHEDULED FOR REMOVAL, C++98 SUPPORT
-	 * C++98 will not locally define template arguments.
-	 */
-	typedef void (*Operator)(typename S::underlying_type&,const U&);
-
-	S &lvalue; Operator op; const U &rvalue; mutable bool b;
-
-	template<class>
-	/** Dispatches change-notice. */
-	void _issue_change_if(...)
-	{
-		_object = (daeObject*)&lvalue.object();
-		kind_of_change = S::is_content?DAEP::CONTENT:DAEP::ATTRIBUTE;
-		daeMeta &m = dae(lvalue.object())->getMeta();
-		daeAttribute &v = S::is_content?*m.getValue():m.getAttributes()[S::name];
-		daeNoteChange(*this,v);		
-	}
-	template<class SFINAE>
-	/** Suppresses change-notice. */
-	void _issue_change_if(typename DAEP::Concern<SFINAE>::VOID*){}	
-	
-COLLADA_(public) 
-
-	InnerChange(S &lv, Operator op, const U &rv)
-	:lvalue(lv),op(op),rvalue(rv),b()
-	{
-		_issue_change_if<typename S::note::concern>(nullptr);
-		if(!b) op(lvalue.value,rvalue);
-	}
-
-	virtual void carry_out_change()const{ op(lvalue.value,rvalue); b = true; }
-};
+struct NoValue<DAEP::Value<ID,T,CC,PtoM>>
+{};
+template<int ID, class T, class CC, typename CC::_ PtoM>
+/**CONST-FORM, SFINAE, PARTIAL-SPECIALIZATION
+ * This form provides no "type" to convert to.
+ */
+struct NoValue<const DAEP::Value<ID,T,CC,PtoM>>
+{};
 
 /**
  * @class COLLADA::DAEP::Make

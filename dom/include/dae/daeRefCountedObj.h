@@ -45,6 +45,12 @@ class daeModel : public DAEP::Model
 	friend class daeFeature;
 	friend class DAEP::Object;
 
+	/**
+	 * @c daeModel is an overlay of @c DAEP::Model.
+	 * It adds functionality, but not data members.
+	 */
+	daeModel();
+
 COLLADA_(private) //INVISIBLE (protecting "obj")
 	/**
 	 * Does @c delete @a obj local to its process-share.
@@ -118,7 +124,6 @@ COLLADA_(public) //__DAEP__Object__v1__model mutator APIs
 		{
 			//Unions can't mix sizes, so try to stop if char-size?
 			assert(t<0&&sizeof(T)>1); 
-			operator[](daeFeatureID(t))._flags.unionized = 1;
 			operator[](daeFeatureID(-f))._flags.unionized = 1;
 			if(t<-f) f = -t;
 		}
@@ -150,7 +155,7 @@ COLLADA_(public) //__DAEP__Object__v1__model mutator APIs
 	/** Gets a default typewriter. Users can override this. */
 	template<class T> static void __addTypewriter(daeFeature &o, daeArray<T>*)
 	{
-		__addTypewriter<T>(o,nullptr); o._typewriter = o._typewriter->per<daeArray>();
+		__addTypewriter<T>(o,nullptr); o._typewriter = o._typewriter->where<daeArray>();
 	}
 	using DAEP::Model::operator[];
 	/** @c addFeature() is one time only, due to @c assert() checks. */
@@ -301,7 +306,7 @@ COLLADA_(public)
 	 */
 	daeModel &addModel(This *toc, daeClientStringCP (&cplusplus_ident)[N])
 	{
-		const daeObject *upcast = toc; 
+		const daeObject *upcast = toc; (void)upcast;
 		daeFeatureID ff = (daeFeatureID)(Features*(Features<=0?1:-1));
 		daeModel &o = _addModel(sizeof(This),ff); 
 		return o.setName(cplusplus_ident);
@@ -344,6 +349,16 @@ class daeObject : public DAEP::Object
 {	
 	//Microsoft's Natvis can't seem to find namespaces???
 	typedef DAEP::Object __super_natvis;
+
+COLLADA_(public)
+	/**WORKAROUND
+	 * This is now needed by all standard @c daeSmartRef classes since
+	 * many templates use it to let smart-refs stand in for their type.
+	 * (That allows consistent use of shorter WYSIWYG smart-ref names.)
+	 */
+	typedef daeObject __COLLADA__T;
+
+COLLADA_(private)
 
 	template<class> friend class daeSmartRef;
 
@@ -465,7 +480,7 @@ COLLADA_(public) //UNADVERTISED METHODS
 	 * -returns @c nullptr if the object is not database stored.
 	 * @see ColladaDOM.inl header's definition.
 	 */
-	inline daeDatabase *daeObject::_getDBase()const;
+	inline daeDatabase *_getDBase()const;
 	//{
 	//	return _isData()?&getDOM()->getDatabase():nullptr; 
 	//}
@@ -539,44 +554,6 @@ COLLADA_(public) //OPERATORS
 	inline const daeFeature &operator[](const T *member)const
 	{
 		return __DAEP__Object__v1__model().__DAEP__Model__feature(this,member); 
-	}
-
-COLLADA_(public) //daeSafeCast() SHORTHANDS
-	/**WORKAROUND
-	 * This is now needed by all standard @c daeSmartRef classes since
-	 * many templates use it to let smart-refs stand in for their type.	 
-	 * (That allows consistent use of shorter WYSIWYG smart-ref names.)
-	 */
-	typedef daeObject __COLLADA__T;
-
-	/** Follows style of daeElement::a(). */
-	template<class T> T *a()
-	{
-		//Only the pass-through form below is required.
-		//This is a start. Elements can be added later.
-		return this!=nullptr&&_isDoc()?((daeDoc*)this)->a<T>():nullptr;
-	}
-	/** Follows style of daeElement::a(). */
-	template<> daeDOM *a<daeDOM>()
-	{
-		return this!=nullptr&&_isDOM()?(daeDOM*)this:nullptr;
-	}
-	/** Follows style of daeElement::a(). */
-	template<> daeDoc *a<daeDoc>()
-	{
-		return this!=nullptr&&_isDoc()?(daeDoc*)this:nullptr;
-	}
-	/** Follows style of daeElement::a(). */
-	template<> daeElement *a<daeElement>()
-	{
-		return this!=nullptr&&_isElement()?(daeElement*)this:nullptr;
-	}
-	/** Pass-Through; Follows style of daeElement::a(). */
-	template<> daeObject *a<daeObject>(){ return this; }	
-	/**CONST-FORM Following style of daeElement::a(). */
-	template<class T> const T *a()const
-	{
-		return const_cast<daeObject*>(this)->a<T>();
 	}
 
 COLLADA_(protected) //PROTECTED CONSTRUCTORS
@@ -683,7 +660,9 @@ COLLADA_(public) //PUBLIC METHODS
 	{
 		const DAEP::Object *p,*q = __DAEP__Object__parent;
 		while(q!=(p=q->__DAEP__Object__parent)) q = p;
-		return dae(p)->a<daeDOM>();
+		//GCC/C++ cry "specialization after instantiation."
+		//return dae(p)->a<daeDOM>();
+		return dae(p)->_isDOM()?(daeDOM*)p:nullptr;
 	}
 
 	/**WARNING
@@ -829,7 +808,45 @@ COLLADA_(public) //LEGACY SUPPORT
 	{
 		return _isData()?_getDBase()->_userptrptr(*this):nullptr;
 	}
+
+COLLADA_(public) //daeSafeCast() SHORTHANDS (Continued after class.)
+	/**
+	 * Follows style of daeElement::a().
+	 */
+	template<class T> inline T *a()
+	{
+		//Only the pass-through form below is required.
+		//This is a start. Elements can be added later.
+		if(this==nullptr||!_isDoc()) 		
+		return nullptr;
+		return ((COLLADA_INCOMPLETE(T)daeDoc*)this)->template a<T>();
+	}
+	/**
+	 * CONST-FORM Following style of daeElement::a().
+	 */
+	template<class T> inline const T *a()const
+	{
+		return const_cast<daeObject*>(this)->a<T>();
+	}
+	/***GCC/C++ WANT THE FOLLOWING SPECIALIZATION IN THE NAMESPACE****/
 }; 
+/** Follows style of daeElement::a(). */
+template<> inline daeDOM *daeObject::a<daeDOM>()
+{
+	return this!=nullptr&&_isDOM()?(daeDOM*)this:nullptr;
+}
+/** Follows style of daeElement::a(). */
+template<> inline daeDoc *daeObject::a<daeDoc>()
+{
+	return this!=nullptr&&_isDoc()?(daeDoc*)this:nullptr;
+}
+/** Follows style of daeElement::a(). */
+template<> inline daeElement *daeObject::a<daeElement>()
+{
+	return this!=nullptr&&_isElement()?(daeElement*)this:nullptr;
+}
+/** Pass-Through; Follows style of daeElement::a(). */
+template<> inline daeObject *daeObject::a<daeObject>(){ return this; }
 
 //---.
 }//<-'

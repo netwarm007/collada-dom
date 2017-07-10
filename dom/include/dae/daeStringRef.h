@@ -57,55 +57,46 @@ COLLADA_(public)
 
 COLLADA_(public) //COMPARISON OPERATORS
 
-	template<class> struct _eq
-	{
-		template<class T> //C++98/03 support
-		struct Not{ typedef T nul_or_0; };
-		template<> struct Not<daeStringCP*>{};
-		template<> struct Not<daeStringCP*const>{};
-		template<> struct Not<const daeStringCP*>{};		
-		template<> struct Not<const daeStringCP*const>{};
-		template<class T>
+	template<class T> struct _eq
+	{	
+		template<class S>
+		/**
+		 * @return Returns @c true if two string/size
+		 * pairs are equal or @c nullptr is equal, but
+		 * does not compile if comparing two C-strings.
+		 */
+		static bool op(const This &_this, const S &cmp)
+		{
+			return _op2((T*)nullptr,_this,cmp);
+		}
+		
+		template<class S>
 		/**
 		 * This is just for comparing to @c nullptr. 
 		 * @tparam T Not all systems have @c nullptr.
 		 * It can't be used with @c daeString(nullptr).
 		 */
-		static bool op(const This &_this, const T &nul_or_0)
+		static bool _op2(daeString*,const This &_this, const S &nul_or_0)
 		{
-			assert(0==nul_or_0); return op2<Not<T>>(_this,nullptr);
-		}
-		template<class S>
-		/** @c nullptr is invisible to C++98/03. */
-		static bool op2(const This &_this, typename S::nul_or_0*)
-		{
+			class undefined *upcast = (S)0; assert(0==nul_or_0); (void)upcast;
 			return nullptr==_this.data();
-			class undefined *upcast = (typename S::nul_or_0)0;
-		}
-		template<class S>
-		/** Don't want @c == to auto convert to @c daeHashString. */
-		static bool op2(const This &_this,...)
-		{
-			return false; daeCTC<0>();
-		}	
-	};
-	template<> struct _eq<daeHashString>
-	{
-		//LAZY was daeHashString, but cannot be since moving here.
-		template<class LAZY>
-		/** This is the same as daeStringEqualFunctor() below. */
-		static bool op(const LAZY &_this, const daeHashString &cmp)
+		}		
+		/** 
+		 * This is the same as @c daeStringEqualFunctor() below. 
+		 * @tparam T lets @c daeHashString be an icomplete type.
+		 */
+		static bool _op2(daeHashString*, const This &_this, const T &cmp)
 		{
 			return _this.size()==cmp.size()&&0==memcmp(_this.data(),cmp.data(),cmp.size());
 		}		
-	};		
+	};
 	template<class T>
 	/**
 	 * Overloading can't pick up on the array forms.
 	 */
 	inline bool operator==(const T &cmp)const
 	{
-		return _eq<daeBoundaryString2<T>::type>::op((const This&)*this,cmp); 
+		return _eq<typename daeBoundaryString2<T>::type>::op((const This&)*this,cmp); 
 	}	
 	template<class T>
 	/**
@@ -113,7 +104,7 @@ COLLADA_(public) //COMPARISON OPERATORS
 	 */
 	inline bool operator!=(const T &cmp)const
 	{
-		return !_eq<daeBoundaryString2<T>::type>::op((const This&)*this,cmp); 
+		return !_eq<typename daeBoundaryString2<T>::type>::op((const This&)*this,cmp); 
 	}	
 	template<int N> 
 	/**
@@ -134,6 +125,566 @@ COLLADA_(public) //COMPARISON OPERATORS
 		return !_eq<daeHashString>::op(_this,cmp); 
 	}	
 };
+
+extern daeString daeStringRef_empty;
+/**
+ * Defines the @c daeStringRef class.
+ *
+ * Historically this class aspired to be a hashed string-table setup.
+ * In reality it was a pump-and-dump (nuke) bulk allocation strategy.
+ *
+ * THE FUTURE IS UNCERTAIN
+ *
+ * It's difficult to say if this is worthwhile or not. Databases can
+ * decide on what works and what doesn't, and clients/users by proxy.
+ */
+class daeStringRef : public daeString_support<daeStringRef>
+{
+COLLADA_(public)
+
+	template<class Type> //DAEP::Value<...>
+	/**
+	 * Prototype Constructor
+	 *
+	 * This constructor transfers the schema's default strings
+	 * to the database string-ref pool. The empty-string cases
+	 * go along an @c inline pathway. Default-strings go along
+	 * a @c COLLADA_DOM_LINKAGE path.
+	 */
+	explicit daeStringRef(const DAEP::Proto<Type> &pt)
+	{	
+		//HACK: underlying_type should be daeStringRef.
+		const COLLADA_INCOMPLETE(Type)
+		daeDOM *DOM = dae(pt.object()).getDOM();		
+		if(pt.has_default||pt.is_fixed) 
+		{
+			_ref(*DOM); assert(!empty());
+		}
+		else _string = DOM->getEmptyURI().data(); 
+	}
+
+COLLADA_(public) //daeArray traits
+
+	typedef const daeObject __COLLADA__Object;
+	template<class T>
+	inline void __COLLADA__place(const daeObject *obj, const T &cp)
+	{
+		_ref(obj,cp); 
+	}
+	template<class T>
+	static void __COLLADA__move(const daeObject *obj, T *lv, T *rv, size_t iN)
+	{
+		daeCTC<sizeof(T)==sizeof(void*)>(); //daeTokenRef
+		memcpy(lv,rv,iN*sizeof(void*)); //raw-copyable style move.
+	}	
+
+COLLADA_(public)
+	/**
+	 * Default Constructor
+	 * @warning Historically it set @c _string=nullptr.
+	 */
+	daeStringRef()
+	{ 		
+		//_ref() assigns the system-pool's empty string. It would
+		//be nice if the pointer could be assigned directly inline.
+		//Are data exports portable? DOM_process_share could hold it. 
+		#ifdef BUILDING_COLLADA_DOM
+		_string = daeStringRef_empty;
+		#else
+		_ref();
+		#endif
+	}		
+	template<class LAZY> //Object or daeBoundaryString2 type.
+	/**WARNING, EXPLICIT
+	 * @warning THIS IS NOW TWO-DISTINCT CONSTRUCTORS IN ONE.
+	 * (It had to be merged for C++ templates reasons.)
+	 *
+	 * @tparam LAZY can be either, a DAEP Object based pointer
+	 * or object-reference, or a number of string-type objects.
+	 * Objects arguments yield an empty string in the object's
+	 * pool. String arguments are drawn from the system's pool.
+	 * 
+	 * DEFAULT-CONSTRUCTOR CONTINUED
+	 * =============================
+	 * 1) @c DAEP::Object based single-argument. This form is
+	 * chiefly for @c daeArray::getObject(). It can be thought
+	 * of as an extension of the default-constructor, receiving
+	 * a DOM to locate its empty-string in.
+	 *
+	 * STRING-BASED SYSTEM-POOL CONSTRUCTOR
+	 * ====================================
+	 * 2) System-Pool Constructor
+	 *
+	 * This is not a replacement for the old @c daeString based
+	 * constructor. Pre-2.5 @c daeStringRef didn't have ownership
+	 * semantics. The system-pool is a special pool that's used for
+	 * metadata defaults, xs:any style client-strings, and long names.
+	 *
+	 * This method of construction is provided so clients can construct
+	 * comparators. It's used by @c daeAlloc<daeStringRef>::localThunk()
+	 * and equivalents for @c daeStringRef based classes.
+	 * @see @c daeTokenRef.
+	 */
+	explicit daeStringRef(const LAZY &cp)
+	{
+		//Incorporating daeHashString complicates this constructor.
+		_string_or_object(cp,nullptr);
+	}
+	template<int N>
+	/**LEGACY Minimal non-const buffer support. */
+	explicit daeStringRef(daeString (&cp)[N])
+	{
+		_ref((daeString)cp,N); 
+	}
+	template<class T> 
+	/**HACK Implements single-argument constructor. Receives a DAEP Object. */
+	void _string_or_object(T *obj, typename T::__DAEP__Object__signed*)
+	{
+		if(obj!=nullptr) _string_or_object(*obj,nullptr);
+		else new(this) daeStringRef(); //Set to "" via the system-pool.
+	}
+	template<class T> 
+	/**HACK Implements single-argument constructor. Receives a DAEP Object. */
+	void _string_or_object(T &obj, typename T::__DAEP__Object__signed*)
+	{
+		const COLLADA_INCOMPLETE(T)
+		daeDOM *DOM = dae(obj).getDOM();
+		if(DOM==nullptr) 
+		{
+			new(this) daeStringRef(); //Set to "" via the system-pool.
+		}
+		else _string = DOM->getEmptyURI().data();
+	}
+	template<class T> 
+	/**HACK Implements single-argument constructor. Receives non DAEP Object. */
+	void _string_or_object(T &cp,...)
+	{
+		_ref(typename daeBoundaryString2<T>::type(cp));
+	}
+	/**WARNING
+	 * Copy Constructor
+	 * It's not clear when this would be useful to use internally.
+	 * @warning @a cp must belong to the same object, or the constructed ref
+	 * must be outside of objects, or of a limited scope, tied to the scope 
+	 * of the object being copied from.
+	 * @note Some initialization routines may have this as a subroutine.
+	 */
+	daeStringRef(const daeStringRef &cp):_string(cp)
+	{
+		//_rollover lets pools prioritize strings and handle the case of
+		//a ref-counter having overflowed the 16-bit counter. This is not
+		//a constructor that would see heavy use by itself. Normally a set
+		//API calls it, along with ~daeStringRef(), which has to _release().
+		enum{ arbitrary_power_of_2=256 };
+		if(_ptr->ref()%arbitrary_power_of_2==0) 
+		_rollover(const_cast<daeStringRef&>(cp),arbitrary_power_of_2);
+	}
+
+	#ifdef NDEBUG
+	#error Can this and the above/below possibly be refactored to allow
+	#error for non-const buffer assignment?
+	#endif
+	//REMINDER
+	//daeElement is no longer based on DAEP Element.
+	template<class LAZY>
+	/**OPTIMIZING, CIRCULAR-DEPENDENCY
+	 * Constructor
+	 * An element should always have a DOM, and they
+	 * will be getting a direct pointer to their DOM.
+	 */
+	daeStringRef(const daeElement &c, const LAZY &cp)
+	{
+		const COLLADA_INCOMPLETE(LAZY) daeElement &i = c;
+
+		_ref(i.getDOM(),cp); //Emulate the DOM constructor.
+	}			
+	template<class LAZY>
+	/**OPTIMIZING, CIRCULAR-DEPENDENCY
+	 * Constructor
+	 * An element should always have a DOM, and they
+	 * will be getting a direct pointer to their DOM.
+	 */
+	daeStringRef(const DAEP::Element &c, const LAZY &cp)
+	{
+		new(this) daeStringRef(dae(c),cp);
+	}	
+	template<class LAZY>
+	/**OPTIMIZING, CIRCULAR-DEPENDENCY
+	 * Constructor with @a extent argument
+	 * An element should always have a DOM, and they
+	 * will be getting a direct pointer to their DOM.
+	 */
+	daeStringRef(const daeElement &c, const LAZY &cp, size_t extent)
+	{
+		const COLLADA_INCOMPLETE(LAZY) daeElement &i = c;
+
+		_ref(i.getDOM(),cp,extent); //Emulate the DOM constructor.
+	}	
+	template<class LAZY>
+	/**OPTIMIZING, CIRCULAR-DEPENDENCY
+	 * Constructor with @a extent argument
+	 * An element should always have a DOM, and they
+	 * will be getting a direct pointer to their DOM.
+	 */
+	daeStringRef(const DAEP::Element &c, const LAZY &cp, size_t extent)
+	{
+		new(this) daeStringRef(dae(c),cp,extent);
+	}		
+
+	/**
+	 * System-Pool Constructor with @a extent argument
+	 * @see @c explicit form of this constructor's Doxygentation.
+	 * @param extent Technically @c cp[extent] doesn't have to be a 0-terminator.
+	 * However, it's on database implementors to implement this correctly, and a
+	 * performance loss can be incurred if the string must be copied in order to
+	 * do so. With @c COLLADA_DOM_UNORDERED_SET there is no loss for system-refs.
+	 */
+	daeStringRef(daeBoundaryStringIn cp, size_t extent){ _ref(cp.c_str,extent); }
+	/**
+	 * Constructor
+	 * The other forms more-or-less extract the DOM.
+	 */
+	daeStringRef(const daeDOM &DOM, const daeStringRef &cp)
+	{
+		_ref(DOM,cp); 
+	}
+	/**
+	 * Constructor
+	 */
+	daeStringRef(const DAEP::Object &c, const daeStringRef &cp)
+	{
+		_ref(c,cp); 
+	}
+	template<class LAZY>
+	/**
+	 * Constructor
+	 * The other forms more-or-less extract the DOM.	 
+	 */
+	daeStringRef(const daeDOM &DOM, const LAZY &cp)
+	{
+		_ref(DOM,daeBoundaryString2<LAZY>::type(cp)); 
+	}
+	/**
+	 * Constructor with @a extent argument
+	 * The other forms more-or-less extract the DOM.
+	 * @param extent Technically @c cp[extent] doesn't have to be a 0-terminator.
+	 * However, it's on database implementors to implement this correctly, and a
+	 * performance loss can be incurred if the string must be copied in order to
+	 * do so. With @c COLLADA_DOM_UNORDERED_SET there is no loss for system-refs.
+	 */
+	daeStringRef(const daeDOM &DOM, daeBoundaryStringIn cp, size_t extent)
+	{
+		_ref(DOM,cp.c_str,extent); 
+	}
+	template<class LAZY>
+	/**
+	 * Constructor	 
+	 */
+	daeStringRef(const DAEP::Object &c, const LAZY &cp)
+	{
+		_ref(c,typename daeBoundaryString2<LAZY>::type(cp));
+	}		
+	/**
+	 * Constructor with @a extent argument
+	 * @param extent Technically @c cp[extent] doesn't have to be a 0-terminator.
+	 * However, it's on database implementors to implement this correctly, and a
+	 * performance loss can be incurred if the string must be copied in order to
+	 * do so. With @c COLLADA_DOM_UNORDERED_SET there is no loss for system-refs.
+	 */
+	daeStringRef(const DAEP::Object &c, daeBoundaryStringIn cp, size_t extent)
+	{
+		_ref(c,cp.c_str,extent); 
+	}		
+	/**
+	 * Destructor
+	 * Ref counting is required to deal with large text objects.
+	 * An allocator can assign 2 refs to small strings to ensure
+	 * that they won't call the exporeted API.
+	 */
+	~daeStringRef(){ if(0==_ptr->release()) _release(); }
+	
+	/**
+	 * @c daeString_support requires this.
+	 */
+	inline daeString data()const{ return _string; }
+	/**
+	 * @c daeString_support requires this.
+	 *
+	 * Gets the size of this string, excluding the 0 termintor.
+	 *
+	 * %2 is for "id" attributes. It might make sense to do it
+	 * only for a "daeStringRefID" class. All strings have a #.
+	 */
+	inline daeUInt size()const
+	{
+		//Compilers should combine %2 with _Ptr::operator->().
+		return _ptr->fragmentN-size_t(_string)%2; 
+		daeCTC<sizeof(size_t)==sizeof(void*)>(); //unsigned intptr_t??
+		daeCTC<sizeof(size())==daeSizeOf(daeDBaseString,fragmentN)>();
+	}		
+	/**
+	 * The "" string is expected to be pool-agnostic. This is
+	 * to accelerate the construction of DAEP Element objects.
+	 */
+	inline bool empty()const{ return _string[0]=='\0'; };
+
+	/**LEGACY
+	 * Sets a string from an external @c daeStringRef.
+	 * @param cp The daeString to copy.
+	 * @see @c setRef() to change pools.
+	 * @see @c reset() to assert that the pools are the same.
+	 */
+	inline void set(const daeStringRef &cp)
+	{
+		if(_ptr->pool==cp._ptr->pool)
+		{
+			this->~daeStringRef(); new(this) daeStringRef(cp);
+		}
+		else _ref_and_release(cp);
+	}
+	template<class LAZY>
+	/**LEGACY
+	 * Sets a string from an external @c daeString.
+	 * @param cp The daeString to copy.
+	 * @see @c setString().
+	 */
+	inline void set(const LAZY &cp)
+	{
+		_ref_and_release(typename daeBoundaryString2<LAZY>::type(cp));
+	}
+	template<int N>
+	/**LEGACY Minimal non-const buffer support. */
+	inline void set(daeString (&cp)[N])
+	{
+		_ref_and_release((daeString)cp,N);
+	}
+	/**
+	 * Sets a string from an external @c daeString.
+	 * @param cp The daeString to copy.
+	 * @see @c setString().
+	 */
+	inline void set(daeBoundaryStringIn cp, size_t extent)
+	{
+		_ref_and_release(cp,extent);
+	}
+
+	/**
+	 * Explicitly sets a string-ref via a ref without a same pool check.
+	 * @note It's safe to change pools, although it's hard to think of a
+	 * reason to do so.
+	 * @param cp The daeString to copy.
+	 */
+	inline void setRef(const daeStringRef &cp)
+	{
+		this->~daeStringRef(); new(this) daeStringRef(cp);
+	}
+
+	/**
+	 * Explicitly sets a string-ref via a ref belonging to the same pool.
+	 * Does @c assert(_ptr->pool==cp.ptr->_pool);
+	 * @param cp The daeString to copy.
+	 */
+	inline void reset(const daeStringRef &cp)
+	{
+		assert(_ptr->pool==cp._ptr->pool);
+		this->~daeStringRef(); new(this) daeStringRef(cp);
+	}
+
+	template<class LAZY>
+	/**
+	 * Explicitly sets a string from an external @c daeStringRef.
+	 * @param cp The daeString to copy.
+	 */
+	inline void setString(const LAZY &cp)
+	{
+		_ref_and_release(daeBoundaryString2<LAZY>::type(cp)); 
+	}
+	/**
+	 * Explicitly sets a string from an external @c daeStringRef.
+	 * @param cp The daeString to copy.
+	 */
+	inline void setString(daeBoundaryStringIn cp, size_t extent)
+	{
+		_ref_and_release(cp,extent); 
+	}
+								
+COLLADA_(public) //OPERATORS	
+
+	typedef const daeStringCP __COLLADA__Atom;
+
+	template<class T>
+	/**OPERATOR
+	 * Sets a string from an external @c daeString.
+	 * @param cp The daeString to copy.
+	 * @return A reference to this object.
+	 */
+	inline daeStringRef &operator=(const T &cp)
+	{
+		set(cp); return *this; 
+	}
+	template<int N>
+	/**LEGACY Minimal non-const buffer support. */
+	inline daeStringRef &operator=(daeString (&cp)[N])
+	{
+		set(cp); return *this;
+	}
+	/**C++ BUSINESS
+	 * This must be present or C++ will generate @c operator=.
+	 */
+	inline daeStringRef &operator=(const daeStringRef &cp)
+	{
+		set(cp); return *this; 
+	}
+
+	/**OPERATOR
+	 * Converts to  @c daeString. 
+	 */
+	inline operator daeString()const{ return _string; }
+		
+	template<class I>	
+	/**
+	 * C-string style array accessor. 
+	 * @return Returns by address to satisfy @c DAEP::Value::operator[]().
+	 */
+	inline const daeStringCP &operator[](const I &i)const
+	{
+		return _string[i]; 
+	}
+
+	using daeString_support::operator==;
+	/**
+	 * Pools must guarantee strict-equality. 
+	 */
+	inline bool operator==(const daeStringRef &cmp)const
+	{
+		return _string==cmp._string;
+	}
+	using daeString_support::operator!=;
+	/**
+	 * Pools must guarantee strict-equality. 
+	 */
+	inline bool operator!=(const daeStringRef &cmp)const
+	{
+		return _string!=cmp._string;
+	}
+
+	template<class T>
+	/**WARNING
+	 * @warning Defect? This is not a lexical comparison. 
+	 * @c daeStringRef shouldn't support <, <=, >, nor >=.
+	 * To do so, access the string directly via other means.
+	 *
+	 * @param cmp must be convertible to a @c daeStringRef&.
+	 * This had been specialized under Visual Studio, but it's
+	 * too messy elsewhere and this can handle wrappers as well.
+	 */
+	inline bool operator<(const T &cmp)const
+	{
+		//Casting to prevent copy construction.
+		daeStringRef &ref = const_cast<T&>(cmp);
+		return _string<ref._string;
+	}
+
+COLLADA_(public) //daeDBaseString API
+	/**
+	 * The library should find a way to guarantee this always
+	 * works for strings originating from @c XS::Schema::getIDs()
+	 * registered attribute names.
+	 * For the time being it should work with all @c daeStringRef.
+	 */
+	const daeStringRef &getID_fragment
+	(class undefined*_=0,const daeString &def=0)const
+	{
+		(daeString&)def = (daeString)((daeOffset)_string&~daeOffset(1));
+		assert('#'==def[0]); return (daeStringRef&)def;
+	}
+	/**
+	 * This does the inverse of @c getID_fragment().
+	 */
+	const daeStringRef &getID_id
+	(class undefined*_=0,const daeString &def=0)const
+	{
+		(daeString&)def = (daeString)((daeOffset)_string|daeOffset(1));
+		assert('#'==def[-1]); return (daeStringRef&)def;
+	}
+
+	/**WARNING
+	 * Gets the underlying reference count. 
+	 *
+	 * @warning This is not for monkeying with refs.
+	 * COLLADA encourages high-frequency SIDs which
+	 * are very difficult to dereference because if
+	 * a bottom-up search is used it must eliminate
+	 * many many SIDs. But a top-down search has to
+	 * consider the entire document downstream from
+	 * the starting point. A middle-ground is to do
+	 * a one level deep search if the SID is a high
+	 * frequency, and fall back to a slow bottom-up.	 
+	 * THIS STRATEGY IS IMPERFECT, BUT THOUGHT GOOD
+	 * ENOUGH FOR THE BUILT-IN, PROVIDED FACILITIES.
+	 */
+	inline size_t getSID_frequency()const{ return (size_t)_ptr->refs; }
+
+COLLADA_(private) //DATA-MEMBER
+
+	struct _Ptr //Emulate daeSmartRef::_ptr.
+	{		
+		daeString string;
+		/**OPERATOR (previously of daeStringRef.)
+		 * Gets the underlying @c daeDBaseString. 
+		 * It doesn't really have public methods.
+		 * @see @c daeStringRef::size() about %2.
+		 */
+		inline daeDBaseString *operator->()const
+		{
+			//This might better be computed with "diff&~size_t(1);" This trusts the compiler output.
+			return (daeDBaseString*)(string-size_t(string)%2-daeOffsetOf(daeDBaseString,fragment));
+			daeCTC<1==sizeof(daeStringCP)>();
+		}
+	};	
+	union //daeStringRef itself can't be a union.
+	{
+		/**
+		 *Gets operator-> out of daestringRef.
+		 */
+		_Ptr _ptr;
+		
+		/**
+		 * This is really a ref-counted @c daeDBaseString.
+		 */
+		daeString _string;
+	};
+
+COLLADA_(private) //daeStringRef.cpp business
+
+	//Every permutation is implemented.
+	//It's impenetrable, but there's nothing to gain by restating it.
+	COLLADA_DOM_LINKAGE void _release();
+	COLLADA_DOM_LINKAGE void _rollover(daeStringRef&,int);	
+	COLLADA_DOM_LINKAGE void _ref_and_release(daeString); //assignment
+	COLLADA_DOM_LINKAGE void _ref_and_release(daeString,size_t); //assignment
+	COLLADA_DOM_LINKAGE void _ref_and_release(const daeStringRef&); //assignment
+	COLLADA_DOM_LINKAGE void _ref_and_release(const daeHashString&); //assignment
+	COLLADA_DOM_LINKAGE void _ref(const daeObject*,daeString); //array-emplacement
+	COLLADA_DOM_LINKAGE void _ref(const daeObject*,daeString,size_t); //array-emplacement
+	COLLADA_DOM_LINKAGE void _ref(const daeObject*,const daeStringRef&); //array-emplacement
+	COLLADA_DOM_LINKAGE void _ref(const daeObject*,const daeHashString&); //array-emplacement
+	COLLADA_DOM_LINKAGE void _ref(const daeDOM&); //prototype-constructor
+	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,daeString); //constructor/prototype-constructor
+	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,daeString,size_t); //constructor/prototype-constructor
+	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,const daeStringRef&); //constructor
+	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,const daeHashString&); //constructor
+	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,daeString); //constructor
+	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,daeString,size_t); //constructor
+	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,const daeStringRef&); //constructor	
+	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,const daeHashString&); //constructor	
+	COLLADA_DOM_LINKAGE void _ref(); //system-pool's empty-string
+	COLLADA_DOM_LINKAGE void _ref(const daeString); //system-pool/subroutine
+	COLLADA_DOM_LINKAGE void _ref(const daeString,size_t); //system-pool/subroutine
+	COLLADA_DOM_LINKAGE void _ref(const daeStringRef&); //same, inaccessible
+	COLLADA_DOM_LINKAGE void _ref(const daeHashString&); //same, inaccessible
+};/** This is a shorthand for Microsoft's natvis product. */
+static const daeOffset daeStringRef_debase = daeOffsetOf(daeDBaseString,fragment);
 
 /**INTERNAL
  * This class registers @c daeStringPool.
@@ -287,561 +838,6 @@ COLLADA_(public) //ABSTRACT INTERFACE
 	virtual void rollover(String &string, String &source, int factor) = 0;
 };
 
-extern daeString daeStringRef_empty;
-/**
- * Defines the @c daeStringRef class.
- *
- * Historically this class aspired to be a hashed string-table setup.
- * In reality it was a pump-and-dump (nuke) bulk allocation strategy.
- *
- * THE FUTURE IS UNCERTAIN
- *
- * It's difficult to say if this is worthwhile or not. Databases can
- * decide on what works and what doesn't, and clients/users by proxy.
- */
-class daeStringRef : public daeString_support<daeStringRef>
-{	
-COLLADA_(public)
-
-	template<class Type> //DAEP::Value<...>
-	/**
-	 * Prototype Constructor
-	 *
-	 * This constructor transfers the schema's default strings
-	 * to the database string-ref pool. The empty-string cases
-	 * go along an @c inline pathway. Default-strings go along
-	 * a @c COLLADA_DOM_LINKAGE path.
-	 */
-	explicit daeStringRef(const DAEP::Proto<Type> &pt)
-	{	
-		if(!pt.has_default&&!pt.is_fixed)
-		{
-			assert(empty());
-			//OPTIMIZING: getEmptyURI() should not be exported.
-			_string = dae(pt.object()).getDOM()->getEmptyURI().data();			
-		}
-		else 
-		{
-			assert(!empty()); _ref(*dae(pt.object()).getDOM()); 
-		}
-	}
-
-COLLADA_(public) //daeArray traits
-
-	typedef const daeObject __COLLADA__Object;
-	template<class T>
-	inline void __COLLADA__place(const daeObject *obj, const T &cp)
-	{
-		_ref(obj,cp); 
-	}
-	template<class T>
-	static void __COLLADA__move(const daeObject *obj, T *lv, T *rv, size_t iN)
-	{
-		daeCTC<sizeof(T)==sizeof(void*)>(); //daeTokenRef
-		memcpy(lv,rv,iN*sizeof(void*)); //raw-copyable style move.
-	}	
-
-COLLADA_(public)
-	/**
-	 * Default Constructor
-	 * @warning Historically it set @c _string=nullptr.
-	 */
-	daeStringRef()
-	{ 		
-		//_ref() assigns the system-pool's empty string. It would
-		//be nice if the pointer could be assigned directly inline.
-		//Are data exports portable? DOM_process_share could hold it. 
-		#ifdef BUILDING_COLLADA_DOM
-		_string = daeStringRef_empty;
-		#else
-		_ref();
-		#endif
-	}		
-	template<class LAZY> //Object or daeBoundaryString2 type.
-	/**WARNING, EXPLICIT
-	 * @warning THIS IS NOW TWO-DISTINCT CONSTRUCTORS IN ONE.
-	 * (It had to be merged for C++ templates reasons.)
-	 *
-	 * @tparam LAZY can be either, a DAEP Object based pointer
-	 * or object-reference, or a number of string-type objects.
-	 * Objects arguments yield an empty string in the object's
-	 * pool. String arguments are drawn from the system's pool.
-	 * 
-	 * DEFAULT-CONSTRUCTOR CONTINUED
-	 * =============================
-	 * 1) @c DAEP::Object based single-argument. This form is
-	 * chiefly for @c daeArray::getObject(). It can be thought
-	 * of as an extension of the default-constructor, receiving
-	 * a DOM to locate its empty-string in.
-	 *
-	 * STRING-BASED SYSTEM-POOL CONSTRUCTOR
-	 * ====================================
-	 * 2) System-Pool Constructor
-	 *
-	 * This is not a replacement for the old @c daeString based
-	 * constructor. Pre-2.5 @c daeStringRef didn't have ownership
-	 * semantics. The system-pool is a special pool that's used for
-	 * metadata defaults, xs:any style client-strings, and long names.
-	 *
-	 * This method of construction is provided so clients can construct
-	 * comparators. It's used by @c daeAlloc<daeStringRef>::localThunk()
-	 * and equivalents for @c daeStringRef based classes.
-	 * @see @c daeTokenRef.
-	 */
-	explicit daeStringRef(const LAZY &cp)
-	{
-		//Incorporating daeHashString complicates this constructor.
-		_string_or_object(cp,nullptr);
-	}
-	template<int N>
-	/**LEGACY Minimal non-const buffer support. */
-	explicit daeStringRef(daeString (&cp)[N])
-	{
-		_ref((daeString)cp,N); 
-	}
-	template<class T> 
-	/**HACK Implements single-argument constructor. Receives a DAEP Object. */
-	void _string_or_object(T *obj, typename T::__DAEP__Object__signed*)
-	{
-		const daeDOM *DOM = obj==nullptr?nullptr:dae(obj)->getDOM();		
-		if(DOM==nullptr) 
-		{
-			new(this) daeStringRef(); //Set to "" via the system-pool.
-		}
-		else _string = DOM->getEmptyURI().data();
-	}
-	template<class T> 
-	/**HACK Implements single-argument constructor. Receives a DAEP Object. */
-	void _string_or_object(T &obj, typename T::__DAEP__Object__signed*)
-	{
-		_string_or_object(&obj,nullptr); 
-	}
-	template<class T> 
-	/**HACK Implements single-argument constructor. Receives non DAEP Object. */
-	void _string_or_object(T &cp,...)
-	{
-		_ref(daeBoundaryString2<T>::type(cp)); 
-	}
-	/**WARNING
-	 * Copy Constructor
-	 * It's not clear when this would be useful to use internally.
-	 * @warning @a cp must belong to the same object, or the constructed ref
-	 * must be outside of objects, or of a limited scope, tied to the scope 
-	 * of the object being copied from.
-	 * @note Some initialization routines may have this as a subroutine.
-	 */
-	daeStringRef(const daeStringRef &cp):_string(cp)
-	{
-		//_rollover lets pools prioritize strings and handle the case of
-		//a ref-counter having overflowed the 16-bit counter. This is not
-		//a constructor that would see heavy use by itself. Normally a set
-		//API calls it, along with ~daeStringRef(), which has to _release().
-		enum{ arbitrary_power_of_2=256 };
-		if(_ptr->ref()%arbitrary_power_of_2==0) 
-		_rollover(const_cast<daeStringRef&>(cp),arbitrary_power_of_2);
-	}
-
-	#ifdef NDEBUG
-	#error Can this and the above/below possibly be refactored to allow
-	#error for non-const buffer assignment?
-	#endif
-	//REMINDER
-	//daeElement is no longer based on DAEP Element.
-	template<class LAZY>
-	/**OPTIMIZING, CIRCULAR-DEPENDENCY
-	 * Constructor
-	 * An element should always have a DOM, and they
-	 * will be getting a direct pointer to their DOM.
-	 */
-	daeStringRef(const daeElement &c, const LAZY &cp)
-	{
-		_ref(c.getDOM(),cp); //Emulate the DOM constructor.
-	}			
-	template<class LAZY>
-	/**OPTIMIZING, CIRCULAR-DEPENDENCY
-	 * Constructor
-	 * An element should always have a DOM, and they
-	 * will be getting a direct pointer to their DOM.
-	 */
-	daeStringRef(const DAEP::Element &c, const LAZY &cp)
-	{
-		_ref(*dae(c).getDOM(),cp); //Emulate the DOM constructor.
-	}	
-	template<class LAZY>
-	/**OPTIMIZING, CIRCULAR-DEPENDENCY
-	 * Constructor with @a extent argument
-	 * An element should always have a DOM, and they
-	 * will be getting a direct pointer to their DOM.
-	 */
-	daeStringRef(const daeElement &c, const LAZY &cp, size_t extent)
-	{
-		_ref(*c.getDOM(),cp,extent); //Emulate the DOM constructor.
-	}	
-	template<class LAZY>
-	/**OPTIMIZING, CIRCULAR-DEPENDENCY
-	 * Constructor with @a extent argument
-	 * An element should always have a DOM, and they
-	 * will be getting a direct pointer to their DOM.
-	 */
-	daeStringRef(const DAEP::Element &c, const LAZY &cp, size_t extent)
-	{
-		_ref(*dae(c).getDOM(),cp,extent); //Emulate the DOM constructor.
-	}		
-
-	/**
-	 * System-Pool Constructor with @a extent argument
-	 * @see @c explicit form of this constructor's Doxygentation.
-	 * @param extent Technically @c cp[extent] doesn't have to be a 0-terminator.
-	 * However, it's on database implementors to implement this correctly, and a
-	 * performance loss can be incurred if the string must be copied in order to
-	 * do so. With @c COLLADA_DOM_UNORDERED_SET there is no loss for system-refs.
-	 */
-	daeStringRef(daeBoundaryStringIn cp, size_t extent){ _ref(cp.c_str,extent); }
-	/**
-	 * Constructor
-	 * The other forms more-or-less extract the DOM.
-	 */
-	daeStringRef(const daeDOM &DOM, const daeStringRef &cp)
-	{
-		_ref(DOM,cp); 
-	}
-	/**
-	 * Constructor
-	 */
-	daeStringRef(const DAEP::Object &c, const daeStringRef &cp)
-	{
-		_ref(c,cp); 
-	}
-	template<class LAZY>
-	/**
-	 * Constructor
-	 * The other forms more-or-less extract the DOM.	 
-	 */
-	daeStringRef(const daeDOM &DOM, const LAZY &cp)
-	{
-		_ref(DOM,daeBoundaryString2<LAZY>::type(cp)); 
-	}
-	/**
-	 * Constructor with @a extent argument
-	 * The other forms more-or-less extract the DOM.
-	 * @param extent Technically @c cp[extent] doesn't have to be a 0-terminator.
-	 * However, it's on database implementors to implement this correctly, and a
-	 * performance loss can be incurred if the string must be copied in order to
-	 * do so. With @c COLLADA_DOM_UNORDERED_SET there is no loss for system-refs.
-	 */
-	daeStringRef(const daeDOM &DOM, daeBoundaryStringIn cp, size_t extent)
-	{
-		_ref(DOM,cp.c_str,extent); 
-	}
-	template<class LAZY>
-	/**
-	 * Constructor	 
-	 */
-	daeStringRef(const DAEP::Object &c, const LAZY &cp)
-	{
-		_ref(c,daeBoundaryString2<LAZY>::type(cp)); 
-	}		
-	/**
-	 * Constructor with @a extent argument
-	 * @param extent Technically @c cp[extent] doesn't have to be a 0-terminator.
-	 * However, it's on database implementors to implement this correctly, and a
-	 * performance loss can be incurred if the string must be copied in order to
-	 * do so. With @c COLLADA_DOM_UNORDERED_SET there is no loss for system-refs.
-	 */
-	daeStringRef(const DAEP::Object &c, daeBoundaryStringIn cp, size_t extent)
-	{
-		_ref(c,cp.c_str,extent); 
-	}		
-	/**
-	 * Destructor
-	 * Ref counting is required to deal with large text objects.
-	 * An allocator can assign 2 refs to small strings to ensure
-	 * that they won't call the exporeted API.
-	 */
-	~daeStringRef(){ if(0==_ptr->release()) _release(); }
-	
-	/**
-	 * @c daeString_support requires this.
-	 */
-	inline daeString data()const{ return _string; }
-	/**
-	 * @c daeString_support requires this.
-	 *
-	 * Gets the size of this string, excluding the 0 termintor.
-	 *
-	 * %2 is for "id" attributes. It might make sense to do it
-	 * only for a "daeStringRefID" class. All strings have a #.
-	 */
-	inline daeUInt size()const
-	{
-		//Compilers should combine %2 with _Ptr::operator->().
-		return _ptr->fragmentN-size_t(_string)%2; 
-		daeCTC<sizeof(size_t)==sizeof(void*)>(); //unsigned intptr_t??
-		daeCTC<sizeof(size())==daeSizeOf(daeDBaseString,fragmentN)>();
-	}		
-	/**
-	 * The "" string is expected to be pool-agnostic. This is
-	 * to accelerate the construction of DAEP Element objects.
-	 */
-	inline bool empty()const{ return _string[0]=='\0'; };
-
-	/**LEGACY
-	 * Sets a string from an external @c daeStringRef.
-	 * @param cp The daeString to copy.
-	 * @see @c setRef() to change pools.
-	 * @see @c reset() to assert that the pools are the same.
-	 */
-	inline void set(const daeStringRef &cp)
-	{
-		if(_ptr->pool==cp._ptr->pool)
-		{
-			this->~daeStringRef(); new(this) daeStringRef(cp);
-		}
-		else _ref_and_release(cp);
-	}
-	template<class LAZY>
-	/**LEGACY
-	 * Sets a string from an external @c daeString.
-	 * @param cp The daeString to copy.
-	 * @see @c setString().
-	 */
-	inline void set(const LAZY &cp)
-	{
-		_ref_and_release(daeBoundaryString2<LAZY>::type(cp));
-	}
-	template<int N>
-	/**LEGACY Minimal non-const buffer support. */
-	inline void set(daeString (&cp)[N])
-	{
-		_ref_and_release((daeString)cp,N);
-	}
-	/**
-	 * Sets a string from an external @c daeString.
-	 * @param cp The daeString to copy.
-	 * @see @c setString().
-	 */
-	inline void set(daeBoundaryStringIn cp, size_t extent)
-	{
-		_ref_and_release(cp,extent);
-	}
-
-	/**
-	 * Explicitly sets a string-ref via a ref without a same pool check.
-	 * @note It's safe to change pools, although it's hard to think of a
-	 * reason to do so.
-	 * @param cp The daeString to copy.
-	 */
-	inline void setRef(const daeStringRef &cp)
-	{
-		this->~daeStringRef(); new(this) daeStringRef(cp);
-	}
-
-	/**
-	 * Explicitly sets a string-ref via a ref belonging to the same pool.
-	 * Does @c assert(_ptr->pool==cp.ptr->_pool);
-	 * @param cp The daeString to copy.
-	 */
-	inline void reset(const daeStringRef &cp)
-	{
-		assert(_ptr->pool==cp._ptr->pool);
-		this->~daeStringRef(); new(this) daeStringRef(cp);
-	}
-
-	template<class LAZY>
-	/**
-	 * Explicitly sets a string from an external @c daeStringRef.
-	 * @param cp The daeString to copy.
-	 */
-	inline void setString(const LAZY &cp)
-	{
-		_ref_and_release(daeBoundaryString2<LAZY>::type(cp)); 
-	}
-	/**
-	 * Explicitly sets a string from an external @c daeStringRef.
-	 * @param cp The daeString to copy.
-	 */
-	inline void setString(daeBoundaryStringIn cp, size_t extent)
-	{
-		_ref_and_release(cp,extent); 
-	}
-								
-COLLADA_(public) //OPERATORS	
-
-	typedef const daeStringCP __COLLADA__Atom;
-
-	template<class T>
-	/**OPERATOR
-	 * Sets a string from an external @c daeString.
-	 * @param cp The daeString to copy.
-	 * @return A reference to this object.
-	 */
-	inline daeStringRef &operator=(const T &cp)
-	{
-		set(cp); return *this; 
-	}
-	template<int N>
-	/**LEGACY Minimal non-const buffer support. */
-	inline daeStringRef &operator=(daeString (&cp)[N])
-	{
-		set(cp); return *this;
-	}
-	/**C++ BUSINESS
-	 * This must be present or C++ will generate @c operator=.
-	 */
-	inline daeStringRef &operator=(const daeStringRef &cp)
-	{
-		set(cp); return *this; 
-	}
-
-	/**OPERATOR
-	 * Converts to  @c daeString. 
-	 */
-	inline operator daeString()const{ return _string; }
-		
-	template<class I>	
-	/**
-	 * C-string style array accessor. 
-	 */
-	inline daeStringCP operator[](const I &i)const{ return _string[i]; }
-
-	using daeString_support::operator==;
-	/**
-	 * Pools must guarantee strict-equality. 
-	 */
-	inline bool operator==(const daeStringRef &cmp)const
-	{
-		return _string==cmp._string;
-	}
-	using daeString_support::operator!=;
-	/**
-	 * Pools must guarantee strict-equality. 
-	 */
-	inline bool operator!=(const daeStringRef &cmp)const
-	{
-		return _string!=cmp._string;
-	}
-
-	template<class T>
-	/**WARNING
-	 * @warning Defect? This is not a lexical comparison. 
-	 * @c daeStringRef shouldn't support <, <=, >, nor >=.
-	 * To do so, access the string directly via other means.
-	 */
-	inline bool operator<(const T &cmp)const
-	{
-		//WON'T COMPILE.
-		//strcmp LIKE COMPARISONS ARE-NOT/SHOULDN'T-BE DONE.
-		daeCTC<0>(); return false;
-	}
-	template<>
-	/**WARNING, TEMPLATE-SPECIALIZATION
-	 * @warning Defect? This is not a lexical comparison. 
-	 * @c daeStringRef shouldn't support <, <=, >, nor >=.
-	 * To do so, access the string directly via other means.
-	 */
-	inline bool operator<(const daeStringRef &cmp)const
-	{
-		//> shouldn't be necessary as this for searching only.
-		return _string<cmp._string;
-	}
-
-COLLADA_(public) //daeDBaseString API
-	/**
-	 * The library should find a way to guarantee this always
-	 * works for strings originating from @c XS::Schema::getIDs()
-	 * registered attribute names.
-	 * For the time being it should work with all @c daeStringRef.
-	 */
-	const daeStringRef &getID_fragment
-	(class undefined*_=0,const daeString &def=0)const
-	{
-		(daeString&)def = (daeString)((daeOffset)_string&~daeOffset(1));
-		assert('#'==def[0]); return (daeStringRef&)def;
-	}
-	/**
-	 * This does the inverse of @c getID_fragment().
-	 */
-	const daeStringRef &getID_id
-	(class undefined*_=0,const daeString &def=0)const
-	{
-		(daeString&)def = (daeString)((daeOffset)_string|daeOffset(1));
-		assert('#'==def[-1]); return (daeStringRef&)def;
-	}
-
-	/**WARNING
-	 * Gets the underlying reference count. 
-	 *
-	 * @warning This is not for monkeying with refs.
-	 * COLLADA encourages high-frequency SIDs which
-	 * are very difficult to dereference because if
-	 * a bottom-up search is used it must eliminate
-	 * many many SIDs. But a top-down search has to
-	 * consider the entire document downstream from
-	 * the starting point. A middle-ground is to do
-	 * a one level deep search if the SID is a high
-	 * frequency, and fall back to a slow bottom-up.	 
-	 * THIS STRATEGY IS IMPERFECT, BUT THOUGHT GOOD
-	 * ENOUGH FOR THE BUILT-IN, PROVIDED FACILITIES.
-	 */
-	inline size_t getSID_frequency()const{ return (size_t)_ptr->refs; }
-
-COLLADA_(private) //DATA-MEMBER
-
-	union //daeStringRef itself can't be a union.
-	{
-	/**
-	 * This is really a ref-counted @c daeDBaseString.
-	 */
-	daeString _string;
-
-	struct _Ptr //Emulate daeSmartRef::_ptr.
-	{		
-		daeString string;
-		/**OPERATOR (previously of daeStringRef.)
-		 * Gets the underlying @c daeDBaseString. 
-		 * It doesn't really have public methods.
-		 * @see @c daeStringRef::size() about %2.
-		 */
-		inline daeDBaseString *operator->()const
-		{
-			//This might better be computed with "diff&~size_t(1);" This trusts the compiler output.
-			return (daeDBaseString*)(string-size_t(string)%2-daeOffsetOf(daeDBaseString,fragment));
-			daeCTC<1==sizeof(daeStringCP)>();
-		}
-	}_ptr;//Gets operator-> out of daestringRef.
-	};
-
-COLLADA_(private) //daeStringRef.cpp business
-
-	//Every permutation is implemented.
-	//It's impenetrable, but there's nothing to gain by restating it.
-	COLLADA_DOM_LINKAGE void _release();
-	COLLADA_DOM_LINKAGE void _rollover(daeStringRef&,int);	
-	COLLADA_DOM_LINKAGE void _ref_and_release(daeString); //assignment
-	COLLADA_DOM_LINKAGE void _ref_and_release(daeString,size_t); //assignment
-	COLLADA_DOM_LINKAGE void _ref_and_release(const daeStringRef&); //assignment
-	COLLADA_DOM_LINKAGE void _ref_and_release(const daeHashString&); //assignment
-	COLLADA_DOM_LINKAGE void _ref(const daeObject*,daeString); //array-emplacement
-	COLLADA_DOM_LINKAGE void _ref(const daeObject*,daeString,size_t); //array-emplacement
-	COLLADA_DOM_LINKAGE void _ref(const daeObject*,const daeStringRef&); //array-emplacement
-	COLLADA_DOM_LINKAGE void _ref(const daeObject*,const daeHashString&); //array-emplacement
-	COLLADA_DOM_LINKAGE void _ref(const daeDOM&); //prototype-constructor
-	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,daeString); //constructor/prototype-constructor
-	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,daeString,size_t); //constructor/prototype-constructor
-	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,const daeStringRef&); //constructor
-	COLLADA_DOM_LINKAGE void _ref(const daeDOM&,const daeHashString&); //constructor
-	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,daeString); //constructor
-	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,daeString,size_t); //constructor
-	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,const daeStringRef&); //constructor	
-	COLLADA_DOM_LINKAGE void _ref(const DAEP::Object&,const daeHashString&); //constructor	
-	COLLADA_DOM_LINKAGE void _ref(); //system-pool's empty-string
-	COLLADA_DOM_LINKAGE void _ref(const daeString); //system-pool/subroutine
-	COLLADA_DOM_LINKAGE void _ref(const daeString,size_t); //system-pool/subroutine
-	COLLADA_DOM_LINKAGE void _ref(const daeStringRef&); //same, inaccessible
-	COLLADA_DOM_LINKAGE void _ref(const daeHashString&); //same, inaccessible
-};/** This is a shorthand for Microsoft's natvis product. */
-static const daeOffset daeStringRef_debase = daeOffsetOf(daeDBaseString,fragment);
-
 /**INTERNAL
  * @c daeStringAlligator implements a one-way memory pool.
  * It's definitely not limited to strings, but that's the
@@ -896,7 +892,7 @@ COLLADA_(public)
 	 */
 	inline void _reset(size_t r=sizeof(T)*N)
 	{
-		this->~daeStringAlligator(); daeStringAlligator(r);
+		this->~daeStringAlligator(); new(this) daeStringAlligator(r);
 	}
 
 	/**
@@ -1055,6 +1051,30 @@ COLLADA_(public)
 		extent = 0; string = (daeString)&extent;
 	}
 
+	template<class T>
+	/**
+	 * This is added to parser COLLADA's <keyword> field that's
+	 * not an xs:list.
+	 */
+	inline daeHashString pop_first_word(const T &sentinels)
+	{
+		//Reminder: isspace does not return 1.
+		for(;0!=extent&&0!=sentinels(*string);string++,extent--);
+		daeHashString out = *this;
+		for(;0!=extent&&0==sentinels(*string);string++,extent--);
+		out.extent = string-out.string; 
+		for(;0!=extent&&0!=sentinels(*string);string++,extent--);
+		return out;
+	}
+	/**
+	 * This is added to parser COLLADA's <keyword> field that's
+	 * not an xs:list.
+	 */
+	inline daeHashString pop_first_word()
+	{
+		return pop_first_word(COLLADA_isspace);
+	}	
+
 COLLADA_(public) //Assignment operator
 
 	template<class T>
@@ -1079,7 +1099,10 @@ COLLADA_(public) //Ambiguous constructors
 	/**
 	 * Overloading can't pick up on the array forms.
 	 */
-	daeHashString(T &cp){ _init<T>::cp(*this,cp); }
+	daeHashString(T &cp, typename DAEP::NoValue<T>::type SFINAE=0)
+	{
+		_init<T>::cp(*this,cp); (void)SFINAE;
+	}
 	//MSVC bug??
 	template<class T>
 	/**
@@ -1088,95 +1111,10 @@ COLLADA_(public) //Ambiguous constructors
 	 * in overload resolution. 
 	 * @see @c daeElement::getChild() is an example.
 	 */
-	daeHashString(const T &cp){ _init<T>::cp(*this,cp); }
-	
-	template<class T> struct _init
+	daeHashString(const T &cp, typename DAEP::NoValue<T>::type SFINAE=0)
 	{
-		//REMINDER: THIS PULLS IN CLASSES DERIVED FROM
-		//daeHashString ITSELF.
-		template<class T> //T
-		/**
-		 * This is designed to fault on types that don't
-		 * have express constructors...
-		 * But might as well support classes like @c daeRefView
-		 * that can't be included at the same time.
-		 */
-		static void cp(daeHashString &_this, const T &cp)
-		{
-			//These are just heuristics to weed out 0 and nullptr
-			//including systems that do not define std::nullptr_t.
-			enum{ plain=daeArrayAware<T>::is_plain };
-			_maybe_nullptr<plain&&(sizeof(T)<=sizeof(void*))>(_this,cp);
-		}
-		template<bool>
-		static void _maybe_nullptr(daeHashString &_this, const T &cp)
-		{
-			class undefined *upcast = (T)0;
-			assert(cp==0); _this.string = nullptr; _this.extent = 0;
-		}
-		template<>
-		static void _maybe_nullptr<false>(daeHashString &_this, const T &cp)
-		{
-			daeCTC<sizeof(daeStringCP)==sizeof(*cp.data())>();
-			_this.string = (daeString)cp.data(); _this.extent = cp.size();
-		}	
-		template<>
-		/**
-		 * C++98 @c std::map and @c std::set constructor
-		 */
-		static void cp(daeHashString &_this, const daeString &c_str)
-		{
-			_this.string = c_str; _this.extent = c_str==nullptr?0:strlen(c_str);
-		}
-		template<>
-		/**NON-CONST-VARIANT
-		 * C++98 @c std::map and @c std::set constructor
-		 */
-		static void cp(daeHashString &_this, daeStringCP*const &c_str)
-		{
-			_this.string = c_str; _this.extent = c_str==nullptr?0:strlen(c_str);
-		}
-		
-		template<class B, class C>
-		/**
-		 * @c std::string constructor.
-		 */
-		static void cp(daeHashString &_this, const std::basic_string<daeStringCP,B,C> &str)
-		{
-			_this.string = str.c_str(); _this.extent = str.size();
-		}
-
-		template<int> friend class daeURI_size;
-		template<int N>
-		/**
-		 * This is preventing conversion from a @c daeURI. This is to force a
-		 * user to choose @c daeURI_base::getURI_baseless() or the entire URI.
-		 * Generally the relative form is the preferred representation of URI.
-		 */
-		static void cp(daeHashString &_this, const daeURI_size<N>&)
-		{
-			daeCTC<0>("getURI_baseless() or getURI()?");
-		}
-	};
-	template<class T, int N> struct _init<T[N]>
-	{
-		static void cp(daeHashString &_this, daeStringCP (&lit)[N])
-		{
-			_this.string = lit; //No const? Assume a buffer...
-			_this.extent = strlen(lit); assert(_this.extent<N);
-		}
-		static void cp(daeHashString &_this, const daeStringCP (&lit)[N])
-		{	
-			_this.string = lit; _this.extent = N-1;
-			//This catches users (and librarians) passing buffers.
-			//Ideally compilers can eliminate it for string-literals.
-			//Unfortunately there's no other way to tell literals apart.
-			assert(lit[N-1]=='\0'&&strlen(lit)==N-1); daeCTC<(N>0)>();
-		}			
-	};	
-	template<class T, int N> struct _init<T (&)[N]> : _init<T[N]>{};
-	template<class T, int N> struct _init<const T[N]> : _init<T[N]>{};
-	template<class T, int N> struct _init<const T (&)[N]> : _init<T[N]>{};
+		_init<T>::cp(*this,cp); (void)SFINAE; 
+	}
 					
 COLLADA_(public) //Non-copy constructors
 	/**
@@ -1207,7 +1145,110 @@ COLLADA_(public) //Standard Library compatibility layer
 	 * @c daeString_support requires this.
 	 */
 	inline daeString data()const{ return string; }	
+
+COLLADA_(private)
+	/**
+	 * This is used by @c daeHashString::daeHashString() because methods
+	 * convert arrays (string-literals) into pointers and so cannot work.
+	 */
+	template<class T> struct _init
+	{
+		//REMINDER: THIS PULLS IN CLASSES DERIVED FROM
+		//daeHashString ITSELF.
+		template<class S> //T
+		/**
+		 * This is designed to fault on types that don't
+		 * have express constructors...
+		 * But might as well support classes like @c daeRefView
+		 * that can't be included at the same time.
+		 */
+		static void cp(daeHashString &_this, const S &cp)
+		{
+			_maybe_nullptr((typename daeBoundaryString2<T>::type*)0,_this,cp);
+		}
+		template<class S>
+		static void _maybe_nullptr(daeString*, daeHashString &_this, const S &cp)
+		{
+			class undefined *upcast = (T)0; (void)upcast;
+			assert(cp==0); _this.string = nullptr; _this.extent = 0;
+		}
+		template<class S>
+		static void _maybe_nullptr(daeHashString*, daeHashString &_this, const S &cp)
+		{
+			daeCTC<sizeof(daeStringCP)==sizeof(*cp.data())>();
+			_this.string = (daeString)cp.data(); _this.extent = cp.size();
+		}	
+		
+		/**
+		 * C++98 @c std::map and @c std::set constructor
+		 */
+		static void cp(daeHashString &_this, const daeString &c_str)
+		{
+			_this.string = c_str; _this.extent = c_str==nullptr?0:strlen(c_str);
+		}
+		
+		/**NON-CONST-VARIANT
+		 * C++98 @c std::map and @c std::set constructor
+		 */
+		static void cp(daeHashString &_this, daeStringCP*const &c_str)
+		{
+			_this.string = c_str; _this.extent = c_str==nullptr?0:strlen(c_str);
+		}
+		
+		template<class B, class C>
+		/**
+		 * @c std::string constructor.
+		 */
+		static void cp(daeHashString &_this, const std::basic_string<daeStringCP,B,C> &str)
+		{
+			_this.string = str.c_str(); _this.extent = str.size();
+		}
+
+		template<int> friend class daeURI_size;
+		template<int N>
+		/**
+		 * This is preventing conversion from a @c daeURI. This is to force a
+		 * user to choose @c daeURI_base::getURI_baseless() or the entire URI.
+		 * Generally the relative form is the preferred representation of URI.
+		 */
+		static void cp(daeHashString &_this, const daeURI_size<N>&)
+		{
+			daeCTC<0>("getURI_baseless() or getURI()?");
+		}
+	}; 
+	/*** CONT. BELOW. GCC/C++ WANT SPECIALIZATIONS IN THEIR NAMESPACE ****/
 };
+template<class T, int N> 
+/**TEMPLATE-SPECIALIZATION
+ * This is used by @c daeHashString::daeHashString() because methods
+ * convert arrays (string-literals) into pointers and so cannot work.
+ */
+struct daeHashString::_init<T[N]>
+{
+	static void cp(daeHashString &_this, daeStringCP (&lit)[N])
+	{
+		_this.string = lit; //No const? Assume a buffer...
+		_this.extent = strlen(lit); assert(_this.extent<N);
+	}
+	static void cp(daeHashString &_this, const daeStringCP (&lit)[N])
+	{	
+		_this.string = lit; _this.extent = N-1;
+		//This catches users (and librarians) passing buffers.
+		//Ideally compilers can eliminate it for string-literals.
+		//Unfortunately there's no other way to tell literals apart.
+		assert(lit[N-1]=='\0'&&strlen(lit)==N-1); daeCTC<(N>0)>();
+	}			
+};	
+template<class T, int N> 
+struct daeHashString::_init<T (&)[N]> : daeHashString::_init<T[N]>
+{};
+template<class T, int N> 
+struct daeHashString::_init<const T[N]> : daeHashString::_init<T[N]>
+{};
+template<class T, int N> 
+struct daeHashString::_init<const T (&)[N]> : daeHashString::_init<T[N]>
+{};
+
 /**INTERNAL */
 struct daeStringEqualFunctor
 {
@@ -1251,7 +1292,7 @@ daeStringEqualFunctor,daeStringAllocator<std::pair<const daeHashString,T>,N>>>
 struct daeStringMap:map::allocator_type::Alligator,map 
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringMap():/*A,*/map(8/*MSVC2013*/,map::hasher(),map::key_equal(),*this){}
+	daeStringMap():/*A,*/map(8/*MSVC2013*/,typename map::hasher(),typename map::key_equal(),*this){}
 };
 template<class T, int N=64, class map=
 std::unordered_multimap<daeHashString,T,daeStringHashFunctor,
@@ -1259,7 +1300,7 @@ daeStringEqualFunctor,daeStringAllocator<std::pair<const daeHashString,T>,N>>>
 struct daeStringMultiMap:map::allocator_type::Alligator,map
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringMultiMap():/*A,*/map(8/*MSVC2013*/,map::hasher(),map::key_equal(),*this){}
+	daeStringMultiMap():/*A,*/map(8/*MSVC2013*/,typename map::hasher(),typename map::key_equal(),*this){}
 };
 template<class T, int N=64, class map=
 std::unordered_map<daeString/*Ref*/,T,std::hash<daeString>,
@@ -1267,7 +1308,7 @@ std::equal_to<daeString>,daeStringAllocator<std::pair<const daeString,T>,N>>>
 struct daeStringRefMap:map::allocator_type::Alligator,map
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringRefMap():/*A,*/map(8/*MSVC2013*/,map::hasher(),map::key_equal(),*this){}
+	daeStringRefMap():/*A,*/map(8/*MSVC2013*/,typename map::hasher(),typename map::key_equal(),*this){}
 };
 template<class T, int N=64, class map=
 std::unordered_multimap<daeString/*Ref*/,T,std::hash<daeString>,
@@ -1275,7 +1316,7 @@ std::equal_to<daeString>,daeStringAllocator<std::pair<const daeString,T>,N>>>
 struct daeStringRefMultiMap:map::allocator_type::Alligator,map
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringRefMultiMap():/*A,*/map(8/*MSVC2013*/,map::hasher(),map::key_equal(),*this){}
+	daeStringRefMultiMap():/*A,*/map(8/*MSVC2013*/,typename map::hasher(),typename map::key_equal(),*this){}
 };
 #elif defined(COLLADA_DOM_MAP)
 
@@ -1285,7 +1326,7 @@ daeStringAllocator<std::pair<const daeString,T>,N>>>
 struct daeStringMap:map::allocator_type::Alligator,map
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringMap():/*A,*/map(map::key_compare(),*this){}
+	daeStringMap():/*A,*/map(typename map::key_compare(),*this){}
 };
 template<class T, int N=64, class map=
 std::multimap<daeString,T,daeStringLessFunctor,
@@ -1293,7 +1334,7 @@ daeStringAllocator<std::pair<const daeString,T>,N>>>
 struct daeStringMultiMap:map::allocator_type::Alligator,map
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringMultiMap():/*A,*/map(map::key_compare(),*this){}
+	daeStringMultiMap():/*A,*/map(typename map::key_compare(),*this){}
 };
 template<class T, int N=64, class map=
 std::map<daeString,T,std::less<daeString>,
@@ -1301,7 +1342,7 @@ daeStringAllocator<std::pair<const daeString,T>,N>>>
 struct daeStringRefMap:map::allocator_type::Alligator,map
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringRefMap():/*A,*/map(map::key_compare(),*this){}
+	daeStringRefMap():/*A,*/map(typename map::key_compare(),*this){}
 };
 template<class T, int N=64, class map= 
 std::multimap<daeString,T,std::less<daeString>,
@@ -1309,7 +1350,7 @@ daeStringAllocator<std::pair<const daeString,T>,N>>>
 struct daeStringRefMultiMap:map::allocator_type::Alligator,map
 {
 	COLLADA_SUPPRESS_C(4355)
-	daeStringRefMultiMap():/*A,*/map(map::key_compare(),*this){}
+	daeStringRefMultiMap():/*A,*/map(typename map::key_compare(),*this){}
 };
 #endif //COLLADA_DOM_MAP
 
@@ -1413,12 +1454,14 @@ COLLADA_(private) //UTILITIES
 
 COLLADA_(private) //DATA-MEMBERS
 
+	size_t _pool;
+	daeStringSet _set;
 	#ifdef _DEBUG 
 	/** Max size of the table's strings. */
 	size_t _small;
+	#else
+	enum{ _small=INT_MAX };
 	#endif
-	size_t _pool;
-	daeStringSet _set;
 	typedef daeStringSet::iterator _it;
 };
 #endif //COLLADA_DOM_SET || COLLADA_DOM_UNORDERED_SET

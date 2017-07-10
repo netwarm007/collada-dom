@@ -31,10 +31,12 @@ echoCode("
 COLLADA_(namespace)
 {
 	//The generator will do:
-	//COLLADA_($1,namespace) 
-	//The client must have done:
-	//#define COLLADA__$1__namespace \\
-	//COLLADA_DOM_NICKNAME(TinyName,$1)
+	/**warning: multi-line comment [-Wcomment]
+	 * COLLADA_($1,namespace)
+	 * The client must have done:
+	 * #define COLLADA__$1__namespace \\
+	 * COLLADA_DOM_NICKNAME(TinyName,$1)
+	 */
 	//Or:
 	//namespace $1
     COLLADA_($1,namespace)

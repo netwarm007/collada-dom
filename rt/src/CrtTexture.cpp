@@ -25,7 +25,7 @@ void RT::Image::DeleteTexture()
 
 //SCHEDULED FOR REMOVAL
 //RT::Frame::Load swap-clears this afterward.
-extern std::vector<char> CrtTexture_buffer(0);
+COLLADA_(extern) std::vector<char> CrtTexture_buffer(0);
 
 //This had been a global API that received a local file name.
 //It was only used by this file, and it must be URI based, but
@@ -91,7 +91,7 @@ static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
 	#ifdef NDEBUG
 	#error WHY NOT const void*? TRACE THIS.
 	#endif
-	if(IL_TRUE!=ilIsValidL(type,(void*)buf,size))
+	if(IL_TRUE!=ilIsValidL(type,(void*)buf,(ILuint)size))
 	{
 		daeEH::Error<<"DevIL image library believes this resource invalid: \n"<<req.localURI;
 		assert(0); return false;
@@ -114,7 +114,7 @@ static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
 	//ilSetData((void*)buf); 
 	//ilSetInteger(IL_IMAGE_SIZE_OF_DATA,size); 
 	//ilSetInteger(IL_IMAGE_TYPE,type); 	
-	ilLoadL(type,buf,size);
+	ilLoadL(type,buf,(ILuint)size);
 	 	 
 	int bpp = 0;	
 	switch(ilGetInteger(IL_IMAGE_FORMAT))
@@ -184,13 +184,23 @@ bool RT::Image::Refresh()
 
 		//Create Nearest Filtered Texture
 		glBindTexture(GL_TEXTURE_2D,TexId);
-		
-		glGetError();
+				
+		int iFormat = Format;
+		if(sRGB&&glIsEnabled(GL_FRAMEBUFFER_SRGB))
+		switch(Format)
+		{		
+		case GL_RGB: iFormat = GL_SRGB; break;
+		case GL_RGBA: iFormat = GL_SRGB_ALPHA; break;
+		case GL_LUMINANCE: iFormat = GL_SLUMINANCE; break;
+		case GL_LUMINANCE_ALPHA:  iFormat = GL_SLUMINANCE_ALPHA; break;
+		default: assert(0);
+		}
+
 		//2017: Remove GLU dependency.
 		//This API calls glTexImage2D.
 		//gluBuild2DMipmaps(GL_TEXTURE_2D,Format,Width,Height,Format,GL_UNSIGNED_BYTE,Data);
-		glTexImage2D(GL_TEXTURE_2D,0,Format,Width,Height,0,Format,GL_UNSIGNED_BYTE,Data);
-		assert(!glGetError());		
+		glTexImage2D(GL_TEXTURE_2D,0,iFormat,Width,Height,0,Format,GL_UNSIGNED_BYTE,Data);
+		
 		//Note: cfxSampler.cpp does this according to the min-filter.
 		//(So this--while harmless--may not be right place for this.)
 		if(mipmap==GL_LINEAR_MIPMAP_LINEAR)
@@ -220,7 +230,7 @@ bool RT::Image::Refresh()
 }
 
 //SCHEDULED FOR REMOVAL?
-RT::Texture *RT::LoadTargaFromURI(const daeURI &URI)
+RT::Texture * /*C4138*//*RT::*/LoadTargaFromURI(const daeURI &URI)
 {
 	URI.resolve();
 	daeIORequest req(RT::Main.DOM,nullptr,&URI,&URI);

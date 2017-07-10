@@ -230,7 +230,7 @@ COLLADA_(public) //<xs:min/maxInclusive>, <xs:min/maxExlusive>
 	 */
 	daeTypewriter &getMinMaxTypewriter()const
 	{
-		return getRestrictedType().getValueTypewriter().per<daeArray>();
+		return getRestrictedType().getValueTypewriter().where<daeArray>();
 	}
 
 	/**
@@ -325,7 +325,9 @@ COLLADA_(public) //<xs:min/maxInclusive>, <xs:min/maxExlusive>
 	 */
 	inline void addMaxExclusive(daeHashString value){ _addMinMax(1,-1,value); }
 
-COLLADA_(private) friend class XS::Schema;
+COLLADA_(private)
+
+	friend class XS::Schema;
 
 	/** Implements @c getMin() and @c getMax(). */
 	inline daeOK _getMinMax(int i, daeArray<daeStringCP> &dst)const
@@ -513,7 +515,7 @@ COLLADA_(public) //ARRAY-LIKE SEMANTICS
 	 */
 	inline const daeClientEnum *find(daeEnumeration value)const
 	{	
-		daeEnumeration n = value-_enum->integral_constant;
+		size_t n = value-_enum->integral_constant;
 		if(value<0||value>=(int&)_size||value!=_enum[n].integral_constant)
 		{
 			n = std::lower_bound(_enum,_enumEnd,value,_enum_predicate)-_enum;
@@ -621,7 +623,7 @@ class Schema : public daeProcessShare_base, private __Schema__invisible
 {	
 	friend class XS::Group;
 	friend class XS::Element;
-	friend class daeMetaElement;
+	friend class COLLADA::daeMetaElement;
 
 COLLADA_(public)
 
@@ -725,7 +727,7 @@ COLLADA_(public) //ACCESSORS
 	 */
 	inline const XS::SimpleType *findType(const T &QName)const
 	{
-		return _findType(daeBoundaryString2<T>::type(QName)); 
+		return _findType(typename daeBoundaryString2<T>::type(QName));
 	}
 	/** Implements @c findType(). */
 	NOALIAS_LINKAGE const XS::SimpleType *_findType(daeString QName)const
@@ -759,7 +761,7 @@ COLLADA_(public) //ACCESSORS
 	 */
 	inline daeMeta *findChild(const T &QName)const
 	{
-		return _findChild(daeBoundaryString2<T>::type(QName)); 
+		return _findChild(typename daeBoundaryString2<T>::type(QName));
 	}
 	/** Implements @c findType(). */
 	NOALIAS_LINKAGE daeMeta *_findChild(daeString QName)const
@@ -826,7 +828,7 @@ COLLADA_(protected) //OFFLINE-GENERATOR-MUTATORS
 	inline XS::SimpleType &_addValueType(VT*&/*C4700*/, const daeName &base, const daeName &name)
 	{
 		//This is just stripping DAEP::Class off of VT, since VT cannot be a List.
-		typedef XS::List::Item<VT>::type NC;
+		typedef typename XS::List::Item<VT>::type NC;
 		XS::SimpleType &o = _addAtom(_typewrit<VT>(),base,name);
 		if(name!=nullptr) o.getRestriction()._setMinMax<NC>(); return o;
 	}
@@ -887,15 +889,16 @@ COLLADA_(protected) //OFFLINE-GENERATOR-MUTATORS
 	const daeClientEnum (&e)[N], const daeClientEnum (&re)[N], const daeName &base, const daeName &name)
 	{																		   
 		XS::SimpleType &o = _addEnum(N,e,re,base,name,sizeof(daeType<VT>));
-		XS::Enumeration &e = o.getRestriction().getEnumeration();
+		XS::Enumeration &xe = o.getRestriction().getEnumeration();
 		typedef typename daeType<VT>::Typist Typist;
-		daeType<VT> &ext = e.getValueType<Typist>();
-		new(&ext) daeType<VT>(e); o._value_typewriter = ext;
+		daeType<VT> &ext = xe.getValueType<Typist>();
+		new(&ext) daeType<VT>(xe); o._value_typewriter = ext;
 		o._value_typewriter->setTypeID<VT>(); return o;
 	}
 	
-	friend class domAny;
-	template<class T, class> friend class DAEP::Elemental;
+	friend class COLLADA::domAny;
+	template<class T, class>
+	friend class DAEP::Elemental;
 	template<class T, int N> //DAEP::Elemental::TOC
 	/**GENERATOR-SIDE API
 	 * Begins adding metadata for an element to @c this schema.

@@ -7,8 +7,6 @@
  */
 #include "viewer_base.pch.h" //PCH 
 
-#include <iostream> //HACK for AttachConsole???
-
 #include <zmouse.h>
 #if _DEBUG //#define HEAP_DEBUG will use the older _CrtSetDbgFlag params
 #include <crtdbg.h>
@@ -19,8 +17,7 @@
 #if 1 //EXPERIMENTAL
 #include <gl/glut.h>   
 #else
-#include "../../../viewer\external-libs/freeglut/include/GL/glut.h"
-#include "../../../viewer\external-libs/freeglut/include/GL/freeglut_ext.h"
+#include "../../../viewer\external-libs/freeglut/include/GL/freeglut.h"
 #endif
 #ifndef FREEGLUT
 #pragma comment(lib,"glut32.lib")
@@ -33,12 +30,6 @@
 #endif
 
 #include "../../src/viewer_base.inl"
-
-//2017: This really should be obsolete. Even the old Cg package includes
-//an implementation of GLUT on Windows.
-#ifndef GLUT_API_VERSION
-#include "Windows_wgl.inl" 
-#endif
 
 HWND Window = 0;
 BOOL WINAPI Windows_CONSOLE_HandlerRoutine(DWORD dwCtrlType)
@@ -58,6 +49,23 @@ BOOL WINAPI Windows_CONSOLE_HandlerRoutine(DWORD dwCtrlType)
 		return 1;
 	}
 	return 0;
+}
+
+static char *Windows_main_UTF8(const wchar_t *in)
+{
+	URI_to_ASCII_buf.reserve(128); top:
+	char *out = URI_to_ASCII_buf.data();
+	int len = WideCharToMultiByte(CP_UTF8,0,in,-1,out,URI_to_ASCII_buf.capacity(),0,0);
+	//Error is not set upon success!?
+	if(len==0) switch(GetLastError()) 
+	{
+	case ERROR_INSUFFICIENT_BUFFER: 
+
+		URI_to_ASCII_buf.reserve(2*URI_to_ASCII_buf.capacity()); goto top;
+
+	default: len = 1; 
+	}
+	out[len] = '\0'; return out;
 }
 
 //going behind GLUT to add WM_MOUSEWHEEL
@@ -84,7 +92,15 @@ static LRESULT CALLBACK Windows_main_GLUT(HWND GLUT, UINT msg, WPARAM w, LPARAM 
 		mouseDown[0] = mouseDown[1] = mouseDown[2] = false; 
 		#endif
 		break;
-	}		
+
+	case WM_DROPFILES:
+	{
+		//Don't grow stack inside window-procs!
+		static wchar_t *buf = new wchar_t[MAX_PATH];
+		DragQueryFileW((HDROP)w,0,buf,MAX_PATH);
+		COLLADA_viewer_main2(Windows_main_UTF8(buf));
+		break;
+	}}		
 	return DefSubclassProc(GLUT,msg,w,l);
 }
 static LRESULT CALLBACK Windows_main_GLUT_hook_proc(int code, WPARAM w, LPARAM l)
@@ -95,9 +111,8 @@ static LRESULT CALLBACK Windows_main_GLUT_hook_proc(int code, WPARAM w, LPARAM l
 		//Might want to do more here later. FreeGLUT doesn't require
 		//anything. The CONSOLE handler needs the main window handle.
 		Window = (HWND)w;
-		#ifndef FREEGLUT 
+		DragAcceptFiles(Window,1);		
 		SetWindowSubclass(Window,Windows_main_GLUT,0,0);		
-		#endif
 		UnhookWindowsHookEx(Windows_main_GLUT_hook);
 
 		//Give the CONSOLE window an icon. Assuming it's unattached!!
@@ -112,16 +127,11 @@ static LRESULT CALLBACK Windows_main_GLUT_hook_proc(int code, WPARAM w, LPARAM l
 //
 int main(int argc, char *argv[])
 {	
-	#ifndef GLUT_API_VERSION
-	//#include "Windows_wgl.inl"
-	CreateGLWindow = CreateWGLWindow;
-	COLLADA_viewer_main_loop = Windows_wgl_main_loop; 
-	#else
 	Windows_main_GLUT_hook = 
 	SetWindowsHookEx(WH_CBT,Windows_main_GLUT_hook_proc,0,GetCurrentThreadId());
-	#endif
-	//cage.dae didn't even have its textures set up right??
-	int exit_status = COLLADA_viewer_main(argc,argv,"demo.dae"); //cage.dae	 
+	
+	int exit_status = COLLADA_viewer_main
+	(argc,argv,"http://www.swordofmoonlight.net/holy/example.dae");
 	return (int)exit_status;
 }
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
@@ -141,14 +151,10 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 	//Convert UTF16_LE to UTF8 and do CONSOLE stuff before main().
 	int argc = 0;
 	wchar_t **argw = CommandLineToArgvW(GetCommandLineW(),&argc);
-	char **argv = new char*[argc];
-	std::vector<char> buffer(MAX_PATH);
-	for(int i=0;i<argc;argv[i++]=_strdup(buffer.data())) top:
-	{
-		WideCharToMultiByte(CP_UTF8,0,argw[i],-1,buffer.data(),buffer.size(),0,0);
-		if(GetLastError()!=ERROR_INSUFFICIENT_BUFFER) continue;
-		buffer.resize(2*buffer.size()); goto top;
-	}
+	char **argv = new char*[argc];	
+	for(int i=0;i<argc;i++)
+	argv[i]=_strdup(Windows_main_UTF8(argw[i]));
+	 
 	//This is not necessary for CONSOLE applications, but it's better
 	//to not be a console application since that tends to close doors.
 	if(!AttachConsole(GetCurrentProcessId()))
@@ -159,6 +165,7 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 		//BLACK MAGIC: better to clear these together after reopening.
 		clearerr(stdout); clearerr(stderr); 
 		//The C-Runtime (CRT) in the DLL doesn't know it's redirected.
+		if(Silence_console_if_DEBUG!=1) //If so it's already been set.
 		daeErrorHandler::setErrorHandler(new daeStandardErrorHandler);		
 	}
 	//There are shutdown issues if the CONSOLE is used. Especially if
@@ -166,4 +173,4 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 	SetConsoleCtrlHandler(Windows_CONSOLE_HandlerRoutine,1);
 	UINT cp = GetConsoleOutputCP(); SetConsoleOutputCP(65001);	
 	int exit_code = main(argc,argv); SetConsoleOutputCP(cp); return exit_code;
-} 
+}

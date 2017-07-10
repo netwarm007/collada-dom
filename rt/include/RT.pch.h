@@ -13,7 +13,7 @@
 //without meaningful documentation.
 //That said, it lines up with OpenGL,
 //-so you can feel your way around it.
-#ifndef NO_DEVIL
+#ifndef NO_IL
 #include <IL/il.h>
 #endif
 #ifdef SN_TARGET_PS3
@@ -35,7 +35,8 @@
 
 //HACK: cfxLoader.h defines stuff this file would
 //have to otherwise.
-#include "cfxLoader.h"
+#include "../../fx/include/cfxLoader.h"
+#include "../../fx/include/cfxData.h"
 #if COLLADA_DOM!=3
 #error This is relying cfxLoader.h to set things up.
 #endif
@@ -52,9 +53,15 @@
 #define __profile_GLSL_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
 #define __profile_GLES_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
 #define __profile_GLES2_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+//Blocking off some more to shave off of dog-slow *Nix world build-times/document support.
+#define __brep_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+#define __library_formulas_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+#define __library_kinematics_scenes_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+#define __library_kinematics_models_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
 #define COLLADA_DOM_LITE
-#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(COLLADA))
-#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(COLLADA))
+//These can do (x(y)) but GCC won't accept degenerate token-pasting.
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema)(COLLADA)
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema)(COLLADA)
 #undef COLLADA_DOM_LITE
 #endif //PRECOMPILING_COLLADA_RT
 

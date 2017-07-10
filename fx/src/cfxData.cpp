@@ -100,20 +100,22 @@ struct cfxData_copier<FX::Sampler,5,E,T>
 		//Reminder: Samplers aren't targetable for animation.
 		return cgCreateSamplerStateAssignment(Data.Cg,cgGetNamedSamplerState(Cg,cc));
 	}
-	template<class T> void _wrap(const char *cc, const T &ee)
+	template<class S> void _wrap(const char *cc, const S &ee)
 	{
 		if(!ee.empty()) _set(cc,_wrap_GLenum(*ee->value.operator->()));
 	}
-	template<int> void _wrap_N(){ _wrap("WrapS",e->wrap_s); }
-	template<> void _wrap_N<2>(){ _wrap("WrapT",e->wrap_t); _wrap_N<1>(); }
-	template<> void _wrap_N<3>(){ _wrap("WrapR",e->wrap_p); _wrap_N<2>(); }			
+	//GCC/C++ won't facilitate explicit-specialization.
+	template<int N> void _wrap_N(){ _wrap_N(daeFig<N>()); }
+	void _wrap_N(daeFig<1>){ _wrap("WrapS",e->wrap_s); }
+	void _wrap_N(daeFig<2>){ _wrap("WrapT",e->wrap_t); _wrap_N<1>(); }
+	void _wrap_N(daeFig<3>){ _wrap("WrapR",e->wrap_p); _wrap_N<2>(); }
 	//SCHEDULED FOR REMOVAL
 	void _Cg_common_constructor(FX::Paramable *p, xs::ID sid)
 	{
 		//Data doesn't normally need Cg handles any longer
 		//except the Cg API uses handles to build samplers.
-		#ifdef NDEBUG
-		#error Non-CG samplers don't require CG handles.
+		#ifdef NDEBUG //GCC doesn't like apostrophes.
+		#error "Non-CG samplers don't require CG handles."
 		//NOTE: At the <effect> level the samplers are shared.
 		//NOTE: FX::Effect::Profiles don't know their profile.
 		#endif
@@ -160,10 +162,10 @@ struct cfxData_copier<FX::Sampler,5,E,T>
 		_set("MagFilter",_filter_GLenum(e->magfilter->value));
 
 		//Only the depth texture (sampler) is unmipmapped.
-		_mipmap_if<E!=CG_UNKNOWN_TYPE>(); //CG_SAMPLERDEPTH
+		_mipmap_if(daeFig<E!=CG_UNKNOWN_TYPE>()); //CG_SAMPLERDEPTH
 	}	
-	template<bool> void _mipmap_if(){}
-	template<> void _mipmap_if<true>()
+	void _mipmap_if(...){}
+	void _mipmap_if(daeFig<1>) //GCC/C++ hate explicit specialization.
 	{	
 		if(!e->mipfilter.empty()) 
 		_set("MipFilter",_filter_GLenum(e->mipfilter->value));
@@ -189,6 +191,11 @@ struct cfxData_copier<FX::Sampler,5,E,T>
 template<CGtype E, class T> 
 struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 {	
+	typedef cfxData_copier<FX::Sampler,5,E,T> base;
+	using base::e;
+	using base::Data;
+	using base::_set;
+
 	GLenum _minfilter_GLenum(Collada08_XSD::fx_sampler_min_filter_enum e)
 	{
 		switch(e) //Do the 1.5.0 enumerants make sense?
@@ -225,14 +232,14 @@ struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 	cfxData_copier(FX::Sampler &s, T &e, FX::Paramable *p, xs::ID sid)
 	:cfxData_copier<FX::Sampler,5,E,T>(s,e)
 	{ 						
-		_Cg_common_constructor(p,sid);
+		base::_Cg_common_constructor(p,sid);
 
 		Data.Params = p; Data.Source = sid;
 		
 	////These values are accessed in <xs:sequence> order.
 
 		//wrap_* goes by the sampler's dimensionality.
-		_wrap_N<E==CG_SAMPLER1D?1:E!=CG_SAMPLER3D?2:3>();
+		base::template _wrap_N<E==CG_SAMPLER1D?1:E!=CG_SAMPLER3D?2:3>();
 											
 		GLenum mf = GL_NEAREST;
 		if(!e->minfilter.empty())
@@ -249,10 +256,10 @@ struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 		_set("MagFilter",_magfilter_GLenum(e->magfilter->value));
 
 		//Only the depth texture (sampler) is unmipmapped.
-		_mipmap_etc_if<E!=CG_UNKNOWN_TYPE>(p); //CG_SAMPLERDEPTH
+		_mipmap_etc_if(p,daeFig<E!=CG_UNKNOWN_TYPE>()); //CG_SAMPLERDEPTH
 	}	
-	template<bool> void _mipmap_etc_if(FX::Paramable *p){}
-	template<> void _mipmap_etc_if<true>(FX::Paramable *p)
+	void _mipmap_etc_if(FX::Paramable*,...){}
+	void _mipmap_etc_if(FX::Paramable *p, daeFig<1>)
 	{	
 		if(!e->mipfilter.empty()) 
 		_set("MipFilter",_mipfilter_GLenum(e->mipfilter->value));
@@ -270,6 +277,10 @@ struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 		if(!e->mip_bias.empty()) 
 		_set("MipMapLodBias",(float)e->mip_bias->value);	
 
+		_etc_if(p,&e); //sampler_states?
+	}
+	void _etc_if(FX::Paramable *p,...) //GCC/C++ hate explicit specialization.
+	{
 		if(!e->instance_image.empty())
 		{
 			xs::anyURI URI = e->instance_image->url;
@@ -277,6 +288,32 @@ struct cfxData_copier<FX::Sampler,8,E,T> : cfxData_copier<FX::Sampler,5,E,T>
 			FX::Surface *ii = new FX::Surface(FX::Loader::GetID_TexId(yy));
 			p->Surfaces.push_back(std::make_pair(Data.Source,ii));
 		}
+	}
+	void _etc_if(FX::Paramable*,const Collada08::const_sampler_states*_e){ (void)_e; }
+};
+template<> 
+struct cfxData_copier<FX::Sampler,8,CG_SAMPLER2D,const Collada08::const_sampler_states> 
+{
+	cfxData_copier(FX::Sampler &s, const Collada08::const_sampler_states &e, FX::Paramable *p, xs::ID sid)	
+	{ 	
+		FX::NewParam *parent; FX::DataSampler2D *cp;
+		if(p->FindNewParam(sid,parent)&&nullptr!=(cp=parent->OwnData().As<FX::Sampler>()))
+		{
+			#ifdef NDEBUG //GCC doesn't like apostrophes.
+			#error "This doesn't inherit Cg values. Should it inherit at all?"
+			#error NOT-IMPLEMENTING BECAUSE THE CG PATHWAY WILL BE GONE ASAP.
+			#endif
+			//s = cp->Value doesn't replace the "vptr."
+			//Assuming sampler_states can't change the sampler's very nature.
+			memcpy(&s,&cp->Value,sizeof(s));
+			s.Params = p; s.Cg = nullptr; //Cg is reset; but just to be safe.
+			//HACK: _etc_if filters out the image and 
+			//sampler_states has all 3 wrapping modes.
+			//CG_SAMPLER2D is "recursive on all paths."
+			cfxData_copier<FX::Sampler,8,CG_SAMPLER3D,const Collada08::const_sampler_states>(s,e,p,sid);
+		}
+		else daeEH::Verbose<<"Did not match <sampler_states> "<<sid<<"\n"
+		"(The specification says this is a \"speculative call\" and so OK.)";	
 	}
 };
 
@@ -301,18 +338,20 @@ template<int YY> struct cfxData_MakeData
 	void FailData()
 	{				   
 		xs::ID e = "nullptr"; _new<FX::DataString>(e);
-	}template<>
-	inline void _copy<CG_STRING>(xs::string &d, const xs::ID &e)
+	}
+	template<CGtype Error>
+	inline void _copy(xs::string &d, const xs::ID &e)
 	{
-		d = e; //"nullptr"
+		daeCTC<Error==CG_STRING>(); d = e; //"nullptr"
 	}
 
 	COLLADA_NOINLINE
 	void operator()(const const_daeChildRef &e)
 	{
-		_foreach<YY>(e);
+		//GCC/C++ don't allow explicit specialization.
+		_foreach(daeFig<YY>(),e);
 	}	
-	template<int> void _foreach(const const_daeChildRef &e)
+	void _foreach(daeFig<5>,const const_daeChildRef &e)
 	{	
 		//This ensures genus cannot be mistaken.		
 		if(1!=e.name()) switch(e->getElementType())
@@ -321,11 +360,12 @@ template<int YY> struct cfxData_MakeData
 		case DAEP::Schematic<Collada05::y>::genus:\
 		return _new<FX::Data##x>(*(Collada05::const_##y*)&e);
 		#define _3(x,y) \
-		_1(x,annotate::y)_1(x,profile_CG::newparam::y)\
-		_1(x,instance_effect::setparam::y)
+		_1(x,annotate::y)_1(x,instance_effect::setparam::y)\
+		_1(x,profile_CG::newparam::y)\
+		_1(x,profile_GLSL::newparam::y)
 		#define _5(x,y) _3(x,y##__alias)\
-		/*_3(x##1,y##1)*/_3(x##2,y##2)_3(x##3,y##3)_3(x##4,y##4)	
-		#define _S(x) /*falling thru*/\
+		/*_3(x##1,y##1)*/_3(x##2,y##2)_3(x##3,y##3)_3(x##4,y##4)
+		#define _Sam(x) /*falling thru*/\
 		case DAEP::Schematic<Collada05::profile_CG::newparam::sampler##x>::genus:\
 		_1(Sampler##x,texture##x::value)
 		//_1(Sampler##x,instance_effect::setparam::sampler##x)
@@ -338,14 +378,21 @@ template<int YY> struct cfxData_MakeData
 		_1(Int1,profile_CG::newparam::int1)
 		_1(Float1,profile_CG::newparam::float1)
 		_1(String,profile_CG::newparam::string)
+#ifdef NDEBUG
+#error	THERE ARE MANY MORE CG_TYPES.
+#endif
 		_5(Bool,bool)_5(Int,int)_5(Float,float)
+		_1(Float,profile_COMMON::newparam::float__alias) 
+		_1(Float2,profile_COMMON::newparam::float2) 
+		_1(Float3,profile_COMMON::newparam::float3) 
+		_1(Float4,profile_COMMON::newparam::float4) 
 		_3(Float2x2,float2x2)_3(Float3x3,float3x3)_3(Float4x4,float4x4)
 		//The 1.4.1 schema defines aliases for these types just for the "fun" of it.
 		case DAEP::Schematic<Collada05::profile_COMMON::newparam::sampler2D>::genus:	
-		_S(2D)/*falling thru*/_S(1D)_S(3D)_S(CUBE)_S(RECT)_S(DEPTH)
+		_Sam(2D)/*falling thru*/_Sam(1D)_Sam(3D)_Sam(CUBE)_Sam(RECT)_Sam(DEPTH)
 
 		//END MACRO USES
-		#undef _S
+		#undef _Sam //_S belongs to ctype.h. (And looks like 5.)
 		#undef _5
 		#undef _3
 		#undef _1
@@ -360,7 +407,7 @@ template<int YY> struct cfxData_MakeData
 		default: assert(0);
 		}
 	}
-	template<> void _foreach<8>(const const_daeChildRef &e)
+	void _foreach(daeFig<8>, const const_daeChildRef &e)
 	{	
 		//This ensures genus cannot be mistaken.		
 		if(1!=e.name()) switch(e->getElementType())
@@ -373,7 +420,7 @@ template<int YY> struct cfxData_MakeData
 		_1(x,instance_effect::setparam::y)
 		#define _5(x,y) _3(x,y##__alias)\
 		/*_3(x##1,y##1)*/_3(x##2,y##2)_3(x##3,y##3)_3(x##4,y##4)	
-		#define _S(x) /*falling thru*/\
+		#define _Sam(x) /*falling thru*/\
 		/*case DAEP::Schematic<Collada08::profile_CG::newparam::sampler##x>::genus:*/\
 		_1(Sampler##x,texture##x::value)
 		//_1(Sampler##x,instance_effect::setparam::sampler##x)
@@ -387,13 +434,21 @@ template<int YY> struct cfxData_MakeData
 		//_1(Float1,profile_CG::newparam::float1)
 		_1(String,profile_CG::newparam::string)
 		_5(Bool,bool)_5(Int,int)_5(Float,float)
+		//float2-4 are able merged into synthetic types.
+		_1(Float,profile_COMMON::newparam::float__alias)
+		_1(Float,annotate::float__alias)
+		_1(Float,profile_CG::newparam::float__alias)
+		_1(Float,profile_GLSL::newparam::float__alias)
 		_3(Float2x2,float2x2)_3(Float3x3,float3x3)_3(Float4x4,float4x4)
 		//The 1.4.1 schema defines aliases for these types just for the "fun" of it.
 		//case DAEP::Schematic<Collada08::profile_COMMON::newparam::sampler2D>::genus:	
-		_S(2D)/*falling thru*/_S(1D)_S(3D)_S(CUBE)_S(RECT)_S(DEPTH)
+		_Sam(2D)/*falling thru*/_Sam(1D)_Sam(3D)_Sam(CUBE)_Sam(RECT)_Sam(DEPTH)
+
+		//This is a counterpart to sampler_image.
+		_1(Sampler2D,sampler_states)
 
 		//END MACRO USES
-		#undef _S
+		#undef _Sam //_S belongs to ctype.h. (And looks like 5.)
 		#undef _5
 		#undef _3
 		#undef _1
@@ -426,26 +481,29 @@ void FX::DataMaker<T>::MakeData()
 	MakeData2(io,sid); assert(sid[-1]=='#');
 }
 template<class T>
-void DataMaker<T>::MakeData2(T*, xs::ID sid)
+void FX::DataMaker<T>::MakeData2(T*, xs::ID sid)
 {
 	o->SetData = &o->OwnData(); o->Name = sid-1; new(o) T(this);
 }
-void DataMaker<FX::Annotate>::MakeData2(FX::Annotate*, xs::ID sid)
+template<>
+void FX::DataMaker<FX::Annotate>::MakeData2(FX::Annotate*, xs::ID sid)
 {
 	o->Name = sid-1; new(o) FX::Annotate(this);
 }
-void DataMaker<FX::ShaderParam>::MakeData2(FX::ShaderParam *io, xs::ID)
+template<>
+void FX::DataMaker<FX::ShaderParam>::MakeData2(FX::ShaderParam *io, xs::ID)
 {
 	io->SetData = (FX::Data*)o;
 }
-extern void FX::MakeData05(DataMaker<FX::Annotate> &dm){ dm.MakeData<5>(); }
-extern void FX::MakeData05(DataMaker<FX::NewParam> &dm){ dm.MakeData<5>(); }
-extern void FX::MakeData05(DataMaker<FX::SetParam> &dm){ dm.MakeData<5>(); }
-extern void FX::MakeData05(DataMaker<FX::ShaderParam> &dm){ dm.MakeData<5>(); }
-extern void FX::MakeData08(DataMaker<FX::Annotate> &dm){ dm.MakeData<8>(); }
-extern void FX::MakeData08(DataMaker<FX::NewParam> &dm){ dm.MakeData<8>(); }
-extern void FX::MakeData08(DataMaker<FX::SetParam> &dm){ dm.MakeData<8>(); }
-extern void FX::MakeData08(DataMaker<FX::ShaderParam> &dm){ dm.MakeData<8>(); }
+COLLADA_(extern) //rror: explicit qualification in declaration
+void /*FX::*/MakeData05(FX::DataMaker<FX::Annotate> &dm){ dm.MakeData<5>(); }
+void /*FX::*/MakeData05(FX::DataMaker<FX::NewParam> &dm){ dm.MakeData<5>(); }
+void /*FX::*/MakeData05(FX::DataMaker<FX::SetParam> &dm){ dm.MakeData<5>(); }
+void /*FX::*/MakeData05(FX::DataMaker<FX::ShaderParam> &dm){ dm.MakeData<5>(); }
+void /*FX::*/MakeData08(FX::DataMaker<FX::Annotate> &dm){ dm.MakeData<8>(); }
+void /*FX::*/MakeData08(FX::DataMaker<FX::NewParam> &dm){ dm.MakeData<8>(); }
+void /*FX::*/MakeData08(FX::DataMaker<FX::SetParam> &dm){ dm.MakeData<8>(); }
+void /*FX::*/MakeData08(FX::DataMaker<FX::ShaderParam> &dm){ dm.MakeData<8>(); }
 
 template<> void FX::DataString::Load(FX::ShaderParam &r)
 {
@@ -551,32 +609,23 @@ template<> void FX::DataFloat4x4::Load(FX::ShaderParam &r)
 template<> void FX::DataType<double>::Load(FX::ShaderParam &r)
 {
 	//client data type//
-	GL.Uniform1d(r.GLSL,Value);
+	GL.Uniform1f(r.GLSL,(float)Value);
 }
 template<> void FX::DataType<RT::Matrix>::Load(FX::ShaderParam &r)
 {	
 	//client data type//
 	#if 1==COLLADA_DOM_PRECISION
+	float *v = Value;
+	#else
+	float v[16]; for(int i=0;i<16;i++) v[i] = (float) Value[i];
+	#endif
 	//The Cg type is vec4[4].
 	//See Loading_script::EXPERIMENTAL_Cg_to_GLSL_order().
 	if(r.Type==GL_FLOAT_MAT4)
-	GL.UniformMatrix4fv(r.GLSL,1,GL_FALSE,Value);
+	GL.UniformMatrix4fv(r.GLSL,1,GL_FALSE,v);
 	else //Assuming Cg float4[4].
-	GL.Uniform4fv(r.GLSL,4,Value);
-	#else
-	//This probably demands a temporary buffer.
-	assert(0); 
-	//GL.UniformMatrix4dv(r.GLSL,1,GL_FALSE,Value);
-	GL.Uniform4dv(r.GLSL,4,Value);
-	#endif
+	GL.Uniform4fv(r.GLSL,4,v);	
 }	
-#define _(x) \
-template<> void FX::DataSampler##x::Load(FX::ShaderParam &r)\
-{\
-	((FX::DataSampler2D*)this)->DataSampler2D::Load(r);\
-}
-_(1D)/*_(2D)*/_(3D)_(CUBE)_(RECT)_(DEPTH) //SAMPLER
-#undef _
 template<> void FX::DataSampler2D::Load(FX::ShaderParam &r) //SAMPLER
 {
 	int TexId = Value.FindTexID();
@@ -616,6 +665,13 @@ template<> void FX::DataSampler2D::Load(FX::ShaderParam &r) //SAMPLER
 		}
 	}
 }
+#define _(x) /*Do this after above (instantiation.)*/\
+template<> void FX::DataSampler##x::Load(FX::ShaderParam &r)\
+{\
+	((FX::DataSampler2D*)this)->DataSampler2D::Load(r);\
+}
+_(1D)/*_(2D)*/_(3D)_(CUBE)_(RECT)_(DEPTH) //SAMPLER
+#undef _
 GLuint FX::Sampler::FindTexID(GLuint missing)
 {
 	FX::Surface *surf = Params->FindSurface(Source);

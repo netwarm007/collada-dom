@@ -21,40 +21,105 @@ COLLADA_(namespace)
 	{//-.
 //<-----'
   
+//APIENTRY is Windows specific.
+void APIENTRY CrtCommonGL_ErrorCallback
+(GLenum source, GLenum type, GLuint id, GLenum severity, 
+GLsizei length, const GLchar *message, const void *userParam)
+{
+	if(type!=GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB)
+	daeEH::Warning<<"OpenGL programmer error:\n"<<message;
+}
+COLLADA_(extern) GLDEBUGPROC
+CrtCommonGL_DEBUGPROC = CrtCommonGL_ErrorCallback;
+									   
+//This is a complicated dance to avoid double setting
+//the shader parameters of the WORLD semantics family.
+static RT::Stack_Draw *CrtCommonGL_SetWorld = nullptr;
+
 void RT::Stack::SetMaterial(RT::Material *mat)
 {
-	RT::Effect *effect = mat->Effect;
-	 //In COLLADA 1.4 a material is required to have a reference to an effect
-	assert(effect!=nullptr);
+	if(mat==CurrentMaterial) //Same material?
+	{
+		//But differently positioned instance?
+		if(CrtCommonGL_SetWorld!=CurrentDraw)
+		{
+			CrtCommonGL_SetWorld = CurrentDraw;
 
-	FLOAT shininess = mat->Shininess;
-	//if the scale is 0.0 to 1.0, make it 0.0 to 100.0
+			if(CurrentMaterial->FX!=nullptr)			  
+			{
+				if(RT::Main.ShowCOLLADA_FX)
+				CurrentMaterial->FX->SetWorld(0);
+			}
+		}
+	}
+	else ResetMaterial(mat); //...
+}
+void RT::Stack::ResetMaterial(RT::Material *mat)
+{
+	FX::Material *fx = CurrentMaterial->FX;	
+
+	if(RT::Main.ShowCOLLADA_FX) if(fx!=nullptr)
+	{
+		//SCHEDULED FOR REMOVAL
+		//Switching to legacy OpenGL rendering?
+		fx->ResetPassState(0); if(mat->FX==nullptr) 
+		{							   
+			//Reminder: this must undo all cumulative effects.
+			//So while a lot of it is Cg specific, there isn't
+			//a flag tracking the use of Cg effects.
+
+			//UNDOES glPushAttrib(GL_LIGHTING_BIT|GL_TRANSFORM_BIT)
+			//It seems like the depth-test is always or something??
+			//WTF??? cgSetPassState wipes the projection matrix for
+			//absolutely no reason?!
+			glPopAttrib(); RT::Main.FX.RestoreGL(); 
+			//I swear the Cg API resets the projection matrix, but
+			//it's necessary to eat this because Draw_Triangles is
+			//setting up the matrixes without consideration of the
+			//materials coming up next.
+			glMatrixMode(GL_PROJECTION); 
+			GL.LoadMatrix(RT::Main.FX.PROJECTION.Value);
+			glMatrixMode(GL_MODELVIEW); 
+			GL.LoadMatrix(RT::Main.FX.WORLD_VIEW.Value);
+		}
+	}
+	else if(mat->FX!=nullptr)
+	{
+		//SCHEDULED FOR REMOVAL
+		//See ResetPassState concerns above.
+		glPushAttrib(GL_LIGHTING_BIT);
+	}
+
+	CurrentMaterial = mat; fx = mat->FX; //!
+	if(fx!=nullptr&&RT::Main.ShowCOLLADA_FX) 
+	{
+		CrtCommonGL_SetWorld = CurrentDraw;
+
+		//Reminder: Only doing Apply once per change depends on
+		//CG_IMMEDIATE_PARAMETER_SETTING.
+		//Pushes the setparam values into cgFX for this material
+		//(Avoiding connected parameters.)
+		fx->Apply();
+		fx->SetPassState(0); return;
+	}
+							  
+	float shininess = mat->Shininess;
+	//if the scale is 0 to 1, make it 0 to 100
 	if(shininess<1) shininess = shininess*128; 
 
-	//	diffuse.a	=	effect->Transparency;
-	glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,&mat->Emission.f0);
-	glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,&mat->Ambient.f0);
-	glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,&mat->Diffuse.f0);
-	glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,&mat->Specular.f0);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,&mat->Emission.r);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,&mat->Ambient.r);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,&mat->Diffuse.r);
+	glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,&mat->Specular.r);
 	glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shininess);
 
-	//This looped through the textures, but it's 
-	//being used for profile_COMMON only and it's
-	//SCHEDULED FOR REMOVAL also.
-	if(!effect->Textures.empty()&&(1&RT::Main.ShowTextures_Mask))
-	{
-		int TexId = effect->Textures[0]->TexId;
-		if(TexId==0) //HACK: Load missing texture?
-		{
-			Collada05::const_image yy = nullptr;
-			TexId = FX::Loader::GetID_TexId(yy);
-		}
-
-		glEnable(GL_TEXTURE_2D);
-		//GL.ActiveTexture(GL_TEXTURE0+i);
-		glBindTexture(GL_TEXTURE_2D,TexId);		
+	GL.ActiveTexture(GL_TEXTURE0);
+	if(mat->Mono_TexId!=0&&(1&RT::Main.ShowTextures_Mask))
+	{			
+		glEnable(GL_TEXTURE_2D);		
+		glBindTexture(GL_TEXTURE_2D,mat->Mono_TexId);		
 	}
-	else glDisable(GL_TEXTURE_2D); CurrentMaterial = mat;
+	else glDisable(GL_TEXTURE_2D);
 }
 
 void RT::Stack::_ResetCamera()
@@ -72,7 +137,7 @@ void RT::Stack::_ResetCamera()
 		nZ = std::max(RT::Main.Zoom,RT::Main.SetRange.Zoom)/50;
 		fZ = nZ*1000;
 	}
-	else if(RT::Main.Zoom>0)
+	else if(RT::Main.Zoom>0) //Zoomed out?
 	{
 		//Would like to adjust near/far to capture the zoom.
 		//Historically "zoom" moves the view-volume instead
@@ -95,7 +160,9 @@ void RT::Stack::_ResetCamera()
 		glFrustum(-right,right,-top,top,nZ,fZ); break;
 	}			
 	glMatrixMode(GL_MODELVIEW);
-
+	
+	//NEW: Added for GLUI location bar.
+	int l = RT::Main.Left, t = RT::Main.Top; 
 	//While not strictly necessary, cameras have aspect ratios, and whatever
 	//is outside of the ratio is not part of the intended image. Distortions
 	//are a large problem in graphics, and distortions are greatest at edges.
@@ -103,21 +170,27 @@ void RT::Stack::_ResetCamera()
 	if(w>RT::Main.Width)
 	{
 		int h = int(RT::Main.Width/c->Aspect+0.5f);
-		glViewport(0,(RT::Main.Height-h)/2,RT::Main.Width,h);
+		glViewport(l,t+(RT::Main.Height-h)/2,RT::Main.Width,h);
 	}
-	else glViewport((RT::Main.Width-w)/2,0,w,RT::Main.Height);
+	else glViewport(l+(RT::Main.Width-w)/2,t,w,RT::Main.Height);
 }
 
 void RT::Stack::Draw()
 {
 	//The camera is always updated in case it's animated.
-	RT::Main.Matrix(&_View,&RT::Main.Cg._InverseViewMatrix);
-	GL::LoadMatrix(_View);
-	_ResetCamera();	
-							 
+	RT::Frame_FX &FX = RT::Main.FX;
+	RT::Main.Matrix(&FX.VIEW.Value,&FX.VIEW_INVERSE.Value);
+	GL::LoadMatrix(FX.VIEW.Value);
+	_ResetCamera(); 
+	FX.Reset_Context();
+				
+	#ifdef NDEBUG
+	#error Shaders may exceed GL_MAX_LIGHTS.
+	#endif
 	//reset all lights	
 	int l=0,lN = 7;
 	glGetIntegerv(GL_MAX_LIGHTS,&lN);
+	if(glIsEnabled(GL_LIGHTING))
 	for(size_t i=0;i<Data.size();i++)	
 	if(!Data[i].Node->Lights.empty())
 	{
@@ -132,24 +205,17 @@ void RT::Stack::Draw()
 		
 	if(RT::Main.ShowGeometry)
 	{
-		//Are we using shadow maps?
-		//!!!GAC Shadow map code may not be functional right now
-		if(RT::Main.ShadowMap.Use&&RT::Main.ShadowMap.Initialized)
-		{
-			//Render the shadow pass
-			RT::Main.ShadowMap.PushRenderingToShadowMap();
-			Draw_Triangles();		
-			//Now render the scene 
-			RT::Main.ShadowMap.PopRenderingToShadowMap();
-			Draw_Triangles();
-		}
-		else Draw_Triangles();
+		ResetMaterial(); //In case client draws.
+
+		Draw_Triangles();
+
+		ResetMaterial(); //Reset the FX state.
 	}
-	
+
 	//This should be last.	
 	if(RT::Main.ShowHierarchy) 
 	{
-		GL::LoadMatrix(_View); Draw_ShowHierarchy();
+		GL::LoadMatrix(FX.VIEW.Value); Draw_ShowHierarchy();
 	}
 }
 void RT::Stack::Draw_Triangles()
@@ -231,31 +297,34 @@ void RT::Stack::Draw_Triangles()
 				g->OverrideWith_ControllerData(VBuffer2.new_Memory);	
 			}
 
-			//w is here for shader semantics.
-			RT::Matrix w,wv;
+			RT::Frame_FX &FX = RT::Main.FX;
 			//<skin> is done in Y_UP/1 space.
 			//<morph> is in geometry space if
 			//there are no joints. Technically
 			//the targets could be in different
-			//spaces, but it seems very unlikely.
-			if(ic==nullptr||ic->Joints.empty())			
+			//spaces, but it seems very unlikely.			
+			RT::Matrix &wv = FX.WORLD_VIEW.Value,&w = 			
+			(ic==nullptr||ic->Joints.empty()?FX.WORLD:FX.IDENTITY).Value;
+			if(&w!=&FX.IDENTITY.Value) //Non-skin?
 			{			
-				RT::MatrixMult(um_m,d.Data->Matrix,w);
-				RT::Main.Cg._WorldMatrix = &w;
-				RT::MatrixMult(w,_View,wv);
+				RT::MatrixMult(um_m,d.Data->Matrix,w);				
+				RT::MatrixMult(w,FX.VIEW.Value,wv);
 			}
-			else
-			{
-				RT::Main.Cg._WorldMatrix = &d.Data->Matrix;
-				RT::MatrixMult(d.Data->Matrix,_View,wv);
-			}
-			GL::LoadMatrix(wv);
+			else RT::MatrixMult(d.Data->Matrix,FX.VIEW.Value,wv);
+
+			if(!RT::Main.FX.SetWorld(d,w,wv)) GL::LoadMatrix(wv);
+
+			//This is a backdoor signal to SetMaterial to 
+			//tell it if an instance is reusing materials.
+			CurrentDraw = &d;
 			
 			//SHOULD DO THIS HERE. See CrtGeometry.cpp.
 			g->Draw_VBuffer(VBuffer1.Memory,d.GetMaterials());
 
 		}while(++i<DrawData.size()&&g==DrawData[i].first);
 	}
+
+	CurrentDraw = nullptr;
 }
 
 void RT::Stack_Data::ShowHierarchy_glVertex3d()
@@ -281,16 +350,17 @@ void RT::Stack::Draw_ShowHierarchy()
 		Data[i].ShowHierarchy_glVertex3d();
 		Data[i].Parent->ShowHierarchy_glVertex3d();
 	}
+	//THIS IS BETTER WITH NEWER LIBRARIES.
 	//It would be good to visualize shapes.
 	//The Bullet Physics visualizer insists
 	//on unneeded axes that are not to scale.
-	#ifdef _DEBUG	
+	//#ifdef _DEBUG	
 	{
 		//Debug only. Visualize Physics sims.
 		glColor3f(0.25,0.25,1); 
 		RT::Main.Physics.VisualizeWorld();
 	}
-	#endif		
+	//#endif		
 	glEnd(); glLineWidth(1);
 
 	//GL_POINTS
@@ -328,12 +398,12 @@ void RT::Stack::Draw_ShowHierarchy()
 			//In the event that lights/cameras are stacked
 			//on a common node:
 			//(Note: If two nodes overlap, they just are.)
-			int stacked = i+cameras; if(stacked!=0)
+			size_t stacked = i+cameras; if(stacked!=0)
 			{
 				int px = &d==RT::Main.Parent?2:5;
 
 				glEnd(); //glPointSize is fixed.
-				glPointSize(ps+stacked*2*px);
+				glPointSize(ps+(int)stacked*2*px);
 				glBegin(GL_POINTS);
 			}
 
@@ -364,7 +434,7 @@ void RT::Stack::Draw_ShowHierarchy()
 		RT::Matrix wv;
 		RT::MatrixLoadAsset(wv,um.first,um.second);
 		RT::MatrixMult(wv,DrawData[j].Data->Matrix,wv);		
-		RT::MatrixMult(wv,_View,wv);
+		RT::MatrixMult(wv,RT::Main.FX.VIEW.Value,wv);
 		GL::LoadMatrix(wv);		
 		glBegin(GL_LINE_STRIP);
 		//TODO: Try to generalize this to an animation display.
@@ -396,7 +466,7 @@ void RT::Stack::Draw_ShowHierarchy()
 	//Undo set up.
 	glEnable(GL_TEXTURE_2D);
 	glDepthFunc(df);
-	if(lit) glEnable(GL_LIGHTING);
+	if(lit) glEnable(GL_LIGHTING); glColor3f(1,1,1);
 }
 
 int RT::Stack_Data::Light(int l)
@@ -410,7 +480,7 @@ int RT::Stack_Data::Light(int l)
 		RT::Light *light = Node->Lights[i];		
 		
 		//There's only one color in the light, try to set the GL parameters sensibly.		
-		if(RT::Light_Type::AMBIENT==light->Type)		
+		if(l<8) if(RT::Light_Type::AMBIENT==light->Type)		
 		{
 			glLightfv(GL_LIGHT0+l,GL_AMBIENT,&light->Color.r);
 			glLightfv(GL_LIGHT0+l,GL_DIFFUSE,&vp.x);
@@ -427,7 +497,7 @@ int RT::Stack_Data::Light(int l)
 		{	
 			vp.x = Matrix[M30]; vp.y = Matrix[M31]; vp.z = Matrix[M32];
 
-			if(l==i&&RT::Light_Type::DEFAULT==light->Type)
+			if(l==(int)i&&RT::Light_Type::DEFAULT==light->Type)
 			{
 				switch(i)
 				{
@@ -442,179 +512,75 @@ int RT::Stack_Data::Light(int l)
 				vp.y+=RT::Main.SetRange.Y();
 			}
 
+			if(l<8) 
+			{
 			glLightfv(GL_LIGHT0+l,GL_POSITION,&vp.x);		
 			glLightf(GL_LIGHT0+l,GL_CONSTANT_ATTENUATION,light->ConstantAttenuation);
 			glLightf(GL_LIGHT0+l,GL_LINEAR_ATTENUATION,light->LinearAttenuation);
 			glLightf(GL_LIGHT0+l,GL_QUADRATIC_ATTENUATION,light->QuadraticAttenuation);
+			}
+
+			if(l<RT::Frame_FX::LIGHT_MAX)
+			RT::Main.FX.LIGHT_POSITION[l].World.Value = vp;
+			if(l<RT::Frame_FX::LIGHT_MAX)
+			glGetLightfv(GL_LIGHT0+l,GL_POSITION,&RT::Main.FX.LIGHT_POSITION[l].View.Value.x);
 		}
 
 		if(RT::Light_Type::POINT!=light->Type)
 		{
+			float sense = 1;	
+			//This is somewhat nuts. GL_POSITION is -1 
+			//just as spotlights are, but it's defined
+			//in terms of the -z direction, defaulting
+			//to 0,0,1,0 whereas GL_SPOT_DIRECTION has
+			//only 3 components and is a normal vector.
+			if(RT::Light_Type::SPOT==light->Type)
+			sense = -sense;
+
 			FX::Float3 z(0);
-			//It seems like Z_UP might want -1 instead, but +1 just works.
-			//glLight says 1 is -1:
-			//"The initial position is (0,0,1,0); thus, the initial light 
-			//source is directional, parallel to, and in the direction of 
-			//the -z axis."
 			switch(RT::GetUp_Meter(Node->Asset).first)
 			{
 			case RT::Up::X_UP: 
-			//1 is consistent with FxComposer.
-			//(COLLADA-CTS is too cool for surface normals.)
-			case RT::Up::Y_UP: z.z = 1; break;
-			case RT::Up::Z_UP: z.y = 1; break; //Why not -1?
+			//1 is consistent with FxComposer.			
+			case RT::Up::Y_UP: z.z = sense; break;
+			case RT::Up::Z_UP: z.y = sense; break; 
 			}
+
 			RT::MatrixRotate(Matrix,z,vp);
+			//MatrixRotate is just a 3x3 multiplication.
+			//OpenGL may normalize but a shader may not.
+			vp.Normalize();
 			
 			if(RT::Light_Type::DIRECTIONAL==light->Type)
 			{
-				vp.w = 0; glLightfv(GL_LIGHT0+l,GL_POSITION,&vp.x);				
-			}
-			else glLightfv(GL_LIGHT0+l,GL_SPOT_DIRECTION,&vp.x);
-		}
+				vp.w = 0; if(l<8) glLightfv(GL_LIGHT0+l,GL_POSITION,&vp.x);				
 
-		if(RT::Light_Type::SPOT==light->Type)
+				if(l<RT::Frame_FX::LIGHT_MAX)
+				RT::Main.FX.LIGHT_POSITION[l].World.Value = vp;
+				if(l<RT::Frame_FX::LIGHT_MAX)
+				glGetLightfv(GL_LIGHT0+l,GL_POSITION,&RT::Main.FX.LIGHT_POSITION[l].View.Value.x);
+			}
+			else 
+			{
+				if(l<8) glLightfv(GL_LIGHT0+l,GL_SPOT_DIRECTION,&vp.x);
+
+				if(l<RT::Frame_FX::LIGHT_MAX)
+				RT::Main.FX.SPOT_DIRECTION[l].World.Value = vp;
+				if(l<RT::Frame_FX::LIGHT_MAX)
+				glGetLightfv(GL_LIGHT0+l,GL_SPOT_DIRECTION,&RT::Main.FX.SPOT_DIRECTION[l].View.Value.x);
+			}
+		}		
+
+		if(l<8) if(RT::Light_Type::SPOT==light->Type)
 		{
 			//The Conformance Test Suite suggests /2 (or a full angle.)
 			glLightf(GL_LIGHT0+l,GL_SPOT_CUTOFF,light->FalloffAngle/2);
-			glLightf(GL_LIGHT0+l,GL_SPOT_EXPONENT,light->FalloffExponent);			
+			glLightf(GL_LIGHT0+l,GL_SPOT_EXPONENT,std::max(0.00001f,light->FalloffExponent));
 		}
 		else glLightf(GL_LIGHT0+l,GL_SPOT_CUTOFF,180); //Necessary?
 	}
 
 	return l;
-}
-
-/*REFERENCE
-int RT::Frame::GenerateVBO()
-{
-	if(UseVBOs&&VBOsAvailable)
-	{
-		size_t vboID;
-		//Generate And Bind The Vertex Buffer
-		glGenBuffers(1,&vboID);
-
-		return vboID;
-	}
-	return -1;
-}
-bool RT::Frame::_UpdateVBO(GLenum type, GLuint vboID, const void *data, GLsizeiptrARB size)
-{
-	if(UseVBOs&&VBOsAvailable&&vboID>0)
-	{
-		//Bind The Buffer
-		glBindBuffer(type,vboID);
-		//Load The Data
-		glBufferData(type,size,data,GL_STATIC_DRAW);
-
-		return true;
-	}
-	return false;
-}
-bool RT::Frame::BindVBO(GLenum type, GLuint vboID)
-{
-	if(UseVBOs&&VBOsAvailable)
-	{
-		glBindBuffer(type,vboID);
-		return true;
-	}
-	else return false;
-}
-void RT::Frame::FreeVBO(size_t vboUID)
-{
-	//Delete VBO
-	if(UseVBOs&&vboUID>0)
-	{
-		//Free The VBO Memory
-		glDeleteBuffers(1,&vboUID);	assert(vboUID!=0);
-	}
-} */
-
-void RT::Frame_ShadowMap::Init()
-{
-	if(Initialized) return;
-
-	//setup the depth texture
-	glGenTextures(1,&Id);
-	glBindTexture(GL_TEXTURE_2D,Id);
-
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_COMPARE_MODE_ARB,GL_COMPARE_R_TO_TEXTURE_ARB);
-	glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT,Width,Height,0,GL_DEPTH_COMPONENT,GL_UNSIGNED_INT,nullptr);
-
-	Initialized = true;
-}
-
-void RT::Frame_ShadowMap::PushRenderingToShadowMap()
-{
-	//set tc flag so polygroups will know which shader to use 
-	RenderingTo = true;
-	RenderingWith = false;
-
-	//gl stuff to setup rendering to the shadow map 
-	glEnable(GL_CULL_FACE);
-	glViewport(0,0,Width,Height);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	glColorMask(GL_FALSE,GL_FALSE,GL_FALSE,GL_FALSE);
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(1.1f,4);
-
-	//void RT::Frame::PushLightViewMatrix()
-	{
-		//should get the current light from the scene and get it 
-		//position and what now but for just for now going to 
-		//set a hard value 
-		glMatrixMode(GL_PROJECTION);
-		//glPopMatrix is done by PopRenderingToShadowMap().
-		glPushMatrix();
-		glLoadIdentity();
-		//Not implemented yet: need to look into perspective range
-		//gluPerspective(35,(double)Width/Height,1,30);
-		float top = 1*tan(RT::DEGREES_TO_RADIANS*35/2);
-		float right = top*Width/Height;
-		glFrustum(-right,right,-top,top,1,30);
-
-		//setup light view
-		glMatrixMode(GL_MODELVIEW);
-		//glPopMatrix is done by PopRenderingToShadowMap().
-		glPushMatrix();		
-		//light is directly above for now 
-		//gluLookAt(0,30,0, 0,0,0, 0,1,0);
-		RT::Matrix m;
-		RT::MatrixLoadIdentity(m);
-		RT::MatrixRotateAngleAxis(m,1,0,0,180);
-		m[31] = 30;
-		glLoadMatrixf(m);
-	}
-}	 
-void RT::Frame_ShadowMap::PopRenderingToShadowMap()
-{
-	//daeEH::Verbose<<"Setting Rendering with shadowmap.";
-
-	//set tc flag so polygroups will know which shader to use 
-	RenderingWith = true;
-	RenderingTo = false;
-
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(0,0);
-	glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
-	glBindTexture(GL_TEXTURE_2D,Id);
-	
-	glViewport(0,0,Width,Height);
-	glClear(GL_DEPTH_BUFFER_BIT);
-
-	//void RT::Frame::PopLightViewMatrix()
-	{
-		glMatrixMode(GL_PROJECTION);
-		glPopMatrix();
-
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
-	}
 }
 
 //-------.

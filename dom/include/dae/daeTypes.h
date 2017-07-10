@@ -106,10 +106,16 @@ COLLADA_(namespace)
 		//Reminder: %p is non-portable.
 		static daeStringCP address[2+16+1] = "0x";
 		if('\0'==address[2]) COLLADA_SUPPRESS_C(4996)			
-		if(sprintf(address+2,"%p",&DOM_process_share)>=sizeof(address)) assert(0);
+		if(sprintf(address+2,"%p",&DOM_process_share)>=(int)sizeof(address)) assert(0);
 		return address;
 	}
 	//#endif
+
+	/**
+	 * XML considers these to be whitespace; whereas @c ::isspace() consults the locale
+	 * which might produce surprises, and anyway, is not technically correct.
+	 */
+	inline int COLLADA_isspace(int i){ return i==' '||i=='\t'||i=='\r'||i=='\n'?1:0; }
 
 	//see daeStringRef.h (unrelated to daeString)
 	class daeStringRef; class daeTokenRef;
@@ -134,32 +140,40 @@ COLLADA_(namespace)
 	typedef ptrdiff_t daeOffset;
 	//alternative to C offsetof macro
 	//(Probably to suppress warnings.)
-	#define daeOffsetOf(class,member) \
-	((daeOffset)(((char*)&(((class*)0x0100)->member))-(char*)0x0100))
+	#define daeOffsetOf(class,member) daeOffsetOf2(class,->member)
+	//This is introduced for pointer-to-member
+	//thanks to GCC's "Token Spacing" practice.
+	#define daeOffsetOf2(class,___member) \
+	((daeOffset)(((char*)&(((class*)0x0100)___member))-(char*)0x0100))
 	typedef size_t daeSize;
 	#define daeSizeOf(class,member) ((daeSize)sizeof(((class*)0x100)->member))
-	  
+	  								 
 	//predeclaration
 	//NOTE: typedef types are not 
 	//defined here, so that Visual Studio
 	//will associate the comment text with the typedef.
 	//Their deprecated forms must be postponed as well.	
 	namespace DAEP
-	{
-		template<class> class Proto;
+	{	
+		template<class> class Proto;		
+		template<class> struct NoValue;
+		class Change; 
 		class Object; class Element; class Model;	
 	}	
-	class daeAllocThunk;
+	template<class=void> class daePlatonic;
+	class daeAllocThunk;	
 	template<class,int=0> class daeArray;
+	template<class,class> class daeArrayAware;
 	//4*4 is anything to avoid 0. It's 3D matrix sized.
 	template<class=void,int=4*4> class daeAlloc;
 	class daeObject;	
 	class daeText;
 	class daeEOText;
 	union daeContent;	
+	class daeContents_base;
+	class daeElement;
 	template<class=void> class dae_;
 	template<class=daeElement,int=0> class dae_Array;
-	class daeElement;
 	//can be daeDocument::_PseudoElement
 	typedef daeElement daePseudoElement;	
 	class daeDoc;
@@ -224,6 +238,9 @@ COLLADA_(namespace)
 	class daeRefRequest;
 	class daeRefResolver;
 	class daeRefResolverList;
+	template<int> 
+	class daeURI_size; //GCC
+	class daeURI_base;
 	class daeContainedObject;
 	class daeDefaultURIResolver;
 	class daeDefaultIDREFResolver;
@@ -282,6 +299,67 @@ COLLADA_(namespace)
 	typedef daeSmartRef<const daeArchive> const_daeArchiveRef;
 	typedef daeSmartRef<const daeDocument> const_daeDocumentRef;
 
+	//NOTE This grew out of a need/realization
+	//but it's actually pretty neat and useful.
+	struct INCOMPLETE_base
+	{	
+		typedef daeMeta daeMeta;
+		typedef daeModel daeModel;		
+		typedef daeDoc daeDoc;
+		typedef daeDOM daeDOM;
+		typedef daeArchive daeArchive;
+		typedef daeElement daeElement;
+		typedef daeDocument daeDocument;
+		typedef daeObject daeObject;
+		typedef daeURI_base daeURI_base;		
+		typedef daeContents_base daeContents_base;	
+		typedef daeContainedObject daeContainedObject;
+		//daeDB	(Clang)
+		typedef daeAlloc<> daeAlloc;
+
+		struct XS
+		{
+			//daeMetaElement::addAttribute.
+			typedef COLLADA::XS::List List;
+		};
+
+		struct DAEP
+		{
+			typedef COLLADA::DAEP::Change Change;
+		};
+
+		typedef daeDocRef daeDocRef;
+	};
+	/**GCC/C++ QUICK-FIX
+	 * This is used to let templates look into
+	 * the future so that the definition order
+	 * doesn't matter, and code can stay close
+	 * together around a class definition.
+	 *
+	 * The @c typename keyword must be used to
+	 * access it, indirectly, via another type.
+	 * Usually @c DAEP::Object, since it's the
+	 * top-most type.
+	 */
+	template<class> struct INCOMPLETE : INCOMPLETE_base{};
+	/**
+	 * This macro is used to convert a strange
+	 * notation into a kind of usage directive.
+	 */
+	#define COLLADA_INCOMPLETE(x) typename ::COLLADA::INCOMPLETE<x>::
+
+	//COLLADA_INCOMPLETE(daeFig<N>) would work.
+	/**
+	 * This is for when there is not a type to
+	 * work with but there is an int parameter.
+	 */
+	template<int> struct NCOMPLETE : INCOMPLETE_base{};
+	/**
+	 * This is analogous to COLLADA_INCOMPLETE
+	 * but uses numerical constants in a pinch.
+	 */
+	#define COLLADA_NCOMPLETE(x) typename ::COLLADA::NCOMPLETE<x>::
+
 	#ifndef COLLADA_NOLEGACY
 	//these are legacy for the most part
 	typedef daeArray<daeInt> daeIntArray; //xsIntegerArray
@@ -336,6 +414,28 @@ COLLADA_(namespace) //maybe a separate support header someday
 {//-.
 //<-'
 
+/**WORKAROUND
+ * "error: explicit specialization in non-namespace scope."
+ * Visual Studio has long allowed method specializations in
+ * the class body but C++ says no. 
+ * This creates an overloadable type. It's called fig since
+ * it is functionally a fig leaf and it looks like a figure.
+ */
+template<int> struct daeFig{};
+
+/**
+ * This was used lightly until GCC's enforcement of
+ * "explicit specialization in non-namespace scope."
+ */
+template<bool, class A, class B> struct daeTypic
+{
+	typedef A type; 
+};
+template<class A, class B> struct daeTypic<false,A,B>
+{
+	typedef B type; 
+};
+
 template<class> class daeElemental;
 /**
  * This is pretty crazy. This is introduced after @c daeElement
@@ -351,9 +451,9 @@ template<class T> struct daeLegacyOf
 	typedef char Yes; typedef long No;	
 	static Yes DAEP(...);
 	template<typename S> static No DAEP(daeElemental<S>*);
-	template<int> struct Type{ typedef daeElement type; };
-	template<> struct Type<sizeof(Yes)>{ typedef DAEP::Element type; };
-	typedef typename Type<sizeof(DAEP((T*)nullptr))>::type type;
+	//error: explicit specialization in non-namespace scope.
+	enum{ is_legacy=sizeof(No)==sizeof(DAEP((T*)nullptr)) };
+	typedef typename daeTypic<is_legacy,daeElement,DAEP::Element>::type type;
 };
 
 template<class T>
@@ -396,8 +496,7 @@ struct daeBoundaryStringIn
 	template<class A, class B, class C>
 	daeBoundaryStringIn(const std::basic_string<A,B,C> &str):c_str(str.c_str()){}	
 	template<class T> //See WORKAROUND
-	daeBoundaryStringIn(const T &operator_char_):c_str(operator_char_){}
-	template<int> friend class daeURI_size; //(Just predeclaring.)
+	daeBoundaryStringIn(const T &operator_char_):c_str(operator_char_){}	
 	//WORKAROUND: MSVC2010 wants the above constructor to be valid
 	//when matching overloads of other APIs! specifically newDoc<void>
 	//which isn't ambiguous on the second argument, but is for the first.
@@ -409,11 +508,12 @@ struct daeBoundaryStringIn
 };
 //This form is used when daeHashString is desired.
 template<class T> struct daeBoundaryString2
-{	//Anything larger than a pointer, is assumed to
-	//have its length encoded somewhere inside of it.
-	template<int N> struct extended{ typedef daeHashString type; };
-	template<> struct extended<sizeof(void*)>{ typedef daeString type; };
-	typedef typename extended<sizeof(T)>::type type;
+{	
+	//This had assumed anything larger than a pointer
+	//has a size packed into it, but that misses types
+	//that refer to a pointer, especially DAEP::value's.	
+	typedef typename daeTypic<daeArrayAware
+	<T,T>::is_class,daeHashString,daeString>::type type;	
 };//These are all sizeof(void*).
 template<> struct daeBoundaryString2<daeStringRef>
 { typedef daeHashString type; };
@@ -430,13 +530,11 @@ template<class T, int N> struct daeBoundaryString2<const T (&)[N]>
 { typedef daeHashString type; };
 
 //ColladaDOM.inl templates
-template<class S> 
-inline bool daeUnsafe(const daeElement*);
-template<template<class> class S>
-inline bool daeUnsafe(const daeElement*);
-template<class S, class T>
-inline typename daeConstOf
-<T,typename S::__COLLADA__T>::type *daeSafeCast(T*);
+template<class> inline daeMeta &daeGetMeta();
+template<class> inline const daeModel &daeGetModel();
+template<class S,class T> inline 
+typename daeConstOf<T,typename S::__COLLADA__T>::type *daeSafeCast(T*);
+template<class> inline bool daeUnsafe(const daeElement*);
 //PHASING OUT? THESE WERE BYPASSING VIRTUAL-INHERITANCE. BUT IT'S NOT USED.
 //These workaround that C++ requires virtual-base-classes use dynamic_cast.
 //Note: dynamic_cast cannot be of use here, as the types may be incomplete.
@@ -471,26 +569,6 @@ inline daeDocRoot<T> &dae(const daeDocRoot<T> &NOP){ return (daeDocRoot<T>&)NOP;
 //Many legacy APIs take it upon themselves to clear (or not clear) arrays.
 //Rather than doubling the number of APIs, this enum is added as a default.
 enum dae_clear{ dae_default=0,dae_append=0,dae_clear };
-
-//icky template-meta-programming
-template<int,class,class,class=void> struct daeTypic;
-//this form is most likely unused
-template<int N, class A, class B, class C> struct daeTypic
-{
-	template<int> struct _choice; 
-	template<> struct _choice<0>{ typedef A type; };
-	template<> struct _choice<1>{ typedef B type; };
-	template<> struct _choice<2>{ typedef C type; };
-	typedef typename _choice<N>::type type;
-};
-//flip the sense around if only 2
-template<int N, class B, class A> struct daeTypic<N,B,A,void>
-{
-	template<int> struct _choice; 
-	template<> struct _choice<0>{ typedef A type; };
-	template<> struct _choice<1>{ typedef B type; };	
-	typedef typename _choice<N!=0>::type type;
-};
 
 /**NULLABLE
  * Added for @c daeURI_base::isSameDocumentReference(). 
@@ -535,10 +613,10 @@ inline daeObj *operator->(){ return (daeObj*)this; }\
 inline const daeObj *operator->()const{ return (daeObj*)this; }\
 template<class T>\
 /** COLLADA_DOM_OBJECT_OPERATORS Weak conversion to pointer. */\
-inline operator T*(){ T *upcast = (daeObj*)nullptr; return (T*)this; }\
+inline operator T*(){ T *upcast = (daeObj*)nullptr; return (T*)this; (void)upcast; }\
 template<class T>\
 /** COLLADA_DOM_OBJECT_OPERATORS Weak conversion to const-pointer. */\
-inline operator const T*()const{ T *upcast = (daeObj*)nullptr; return (T*)this; }
+inline operator const T*()const{ T *upcast = (daeObj*)nullptr; return (T*)this; (void)upcast;  }
 
 #endif //__COLLADA_DOM__DAE_TYPES_H__
 /*C1071*/

@@ -4,24 +4,69 @@
     <ClCompile Include="..\vc10-Win\Windows_main.cpp" />
     <ClCompile Include="..\linux\Linux_main.cpp" />
     <ClCompile Include="..\xcode\OSX_main.cpp" />
-    <ClCompile Include="..\vc8-PS3\PS3_BrowserUI.cpp" />
-    <ClCompile Include="..\vc8-PS3\PS3_main.cpp" />
-    <ClCompile Include="..\..\src\viewer_base.lite.cpp" />
-    <ClCompile Include="..\..\src\viewer_base.pch.cpp" />
+    <ClCompile Include="..\vc8-PS3\PS3_BrowserUI.cpp">
+      <Filter>PlayStation 3</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vc8-PS3\PS3_main.cpp">
+      <Filter>PlayStation 3</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\viewer_base.pch.cpp">
+      <Filter>Precompilation Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\viewer_base.lite.cpp">
+      <Filter>Precompilation Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\vc8-PS3\PS3_BrowserUI.h" />
-    <ClInclude Include="..\..\src\viewer_base.inl" />
-    <ClInclude Include="..\..\src\viewer_base.pch.h" />
-    <ClInclude Include="resource.h" />
+    <ClInclude Include="..\..\src\viewer_base.inl">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\viewer_GLUI.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\viewer_GLUT.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\viewer_HTTP.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vc8-PS3\PS3_BrowserUI.h">
+      <Filter>PlayStation 3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\viewer_base.pch.h">
+      <Filter>Precompilation Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\vc10-Win\Windows_wgl.inl" />
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{9dfb8f76-e1df-473a-b93c-82e6a93feadd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{b06fe7f7-68ba-4d62-963c-f0fca8321208}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PlayStation 3">
+      <UniqueIdentifier>{67b3022a-2300-4353-9ff8-7907f558f975}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Precompilation Files">
+      <UniqueIdentifier>{787c75fe-097d-44f5-afe2-cc5b1ff8391c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="viewer.rc" />
+    <ResourceCompile Include="viewer.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="GLUT_ICON.ico" />
+    <Image Include="GLUT_ICON.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="..\..\build\vc9-Win-d\obj\viewer\viewer_base.lite.obj">
+      <Filter>Precompilation Files</Filter>
+    </Object>
   </ItemGroup>
 </Project>

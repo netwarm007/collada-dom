@@ -136,7 +136,7 @@ COLLADA_(public)
 	 * Tells if this value is a @c daeArray contained value.
 	 * @return Returns @c true if this value is an array type.
 	 */
-	inline bool isArrayValue()const{ return _type==_type->per<daeArray>(); }
+	inline bool isArrayValue()const{ return _type==_type->where<daeArray>(); }
 	
 	/**LEGACY
 	 * Gets the @c daeTypewriter used by this value.
@@ -210,7 +210,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline typename daeConstOf<T,daeOpaque>::type getWRT(T &e)const
 	{
-		const daeElement &upcast = dae(*e); return daeOpaque(e)[getOffset()]; 
+		const daeElement &upcast = dae(*e); return daeOpaque(e)[getOffset()]; (void)upcast;
 	}
 	template<class This> //daeElement
 	/**LEGACY, NOT-RECOMMENDED
@@ -221,7 +221,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline typename daeConstOf<This,daeOpaque>::type getWRT(This *e)const
 	{
-		const daeElement &upcast = dae(*e); return daeOpaque(e)[getOffset()]; 
+		const daeElement &upcast = dae(*e); return daeOpaque(e)[getOffset()]; (void)upcast;
 	}
 	
 	template<class Change> //DAEP::Change
@@ -246,7 +246,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline void copyWRT(daeElement *toElement, const daeElement *fromElement)const
 	{
-		_operation<> op(toElement,this,getWRT(fromElement)); return !noteChangeWRT(op);
+		_op_assign op(toElement,this,getWRT(fromElement)); return !noteChangeWRT(op);
 	}
 	/**LEGACY
 	 * Copies the default value of this value to the element
@@ -256,7 +256,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline void copyDefaultWRT(daeElement *toElement)const
 	{
-		_operation<> op(toElement,this,getType().value); return !noteChangeWRT(op);
+		_op_assign op(toElement,this,getType().value); return !noteChangeWRT(op);
 	}
 
 	/**LEGACY
@@ -292,7 +292,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline daeOK stringToMemoryWRT(daeElement *e, daeString src)const
 	{
-		_operation<daeOpaque> op(e,this,src,getWRT(e)); return noteChangeWRT(op);
+		_op_unserialize<daeOpaque> op(e,this,src,getWRT(e)); return noteChangeWRT(op);
 	}
 	template<class T> //const daeStringCP* or int
 	/**LEGACY, OVERLOAD
@@ -303,7 +303,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline daeOK stringToMemoryWRT(daeElement *e, const daeStringCP *src, T len_or_end)const
 	{
-		_operation<T,daeOpaque> op(e,this,src,len_or_end,getWRT(e)); return noteChangeWRT(op);
+		_op_unserialize<T,daeOpaque> op(e,this,src,len_or_end,getWRT(e)); return noteChangeWRT(op);
 	}
 	/**OVERLOAD, NEW/MAY HAVE ISSUES, LEGACY-SUPPORT
 	 * Converts a string to a memory value in the specified element.
@@ -313,7 +313,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	 */
 	inline daeOK stringToMemoryWRT(daeElement *e, const daeHashString &src)const
 	{
-		_operation<daeString,daeOpaque> op(e,this,src,src+src.extent,getWRT(e)); return noteChangeWRT(op);
+		_op_unserialize<daeString,daeOpaque> op(e,this,src,src+src.extent,getWRT(e)); return noteChangeWRT(op);
 	}
 
 	/**LEGACY
@@ -329,7 +329,7 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 	/**EXPERIMENTAL, SEMI-INTERNAL
 	 * Implements change-notice logic. 
 	 */
-	class _operation : public DAEP::Change
+	class _op_unserialize : public DAEP::Change
 	{	
 		S s; T t; 		
 		daeTypewriter *tw; daeString src;		
@@ -338,16 +338,16 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 		{
 			b = true; OK = tw->stringToMemory(src,s,t);
 		}public:
-		_operation(daeElement *e, const daeValue *v, daeString src, S s, T t=0)			
+		_op_unserialize(daeElement *e, const daeValue *v, daeString src, S s, T t=0)
 		//Reminder: getXS here is intended to be provisional.
-		:Change(e,v->getXS()==0?DAEP::CONTENT:DAEP::ATTRIBUTE) 
-		,tw(v->getType()),src(src),s(s),t(t),b(){}
+		:Change(e,0==+v->getXS()?+DAEP::CONTENT:+DAEP::ATTRIBUTE)
+		,s(s),t(t),tw(v->getType()),src(src),b(){}
 		inline operator daeOK(){ if(!b) carry_out_change(); return OK; } 		
 	};
 	/**TEMPLATE-SPECIALIZATION
 	 * Implements @c daeTypeWriter::copy(). 
 	 */
-	template<> class _operation<> : public DAEP::Change
+	class _op_assign : public DAEP::Change
 	{	
 		daeOpaque s,t;
 		daeTypewriter *tw; mutable bool b; 		
@@ -355,10 +355,10 @@ COLLADA_(public) //"WRT" APIs. (With Respect To.)
 		{
 			b = true; tw->copy(s,t);
 		}public:
-		_operation(daeElement *e, const daeValue *v, const daeOpaque src)			
+		_op_assign(daeElement *e, const daeValue *v, const daeOpaque src)
 		//Reminder: getXS here is intended to be provisional.
-		:Change(e,v->getXS()==0?DAEP::CONTENT:DAEP::ATTRIBUTE) 
-		,tw(v->getType()),s(src),t(v->getWRT(e)),b(){}
+		:Change(e,0==+v->getXS()?+DAEP::CONTENT:+DAEP::ATTRIBUTE)
+		,s(src),t(v->getWRT(e)),tw(v->getType()),b(){}
 		//operator! works surprisingly well for this purpose.
 		inline void operator!(){ if(!b) carry_out_change(); } 		
 	};

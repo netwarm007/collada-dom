@@ -25,7 +25,9 @@ template<class T> struct Reset
 {
 	T &t; T reset;
 
-	Reset(T &t):t(t){} ~Reset(){ t = reset; } 	
+	Reset(T &t):t(t),reset(t)
+	{}
+	~Reset(){ t = reset; } 	
 };
 
 struct UnplugIO

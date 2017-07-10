@@ -5,6 +5,7 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+#include "viewer_base.pch.h" //PCH 
 
 #include <GL/glut.h>
 

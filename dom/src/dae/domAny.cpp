@@ -60,7 +60,7 @@ domAny::~domAny()
 	//a shared metadata object.	
 	_meta->_attribs.~daeArray(); 
 	//delete/destruct the attribute-buckets.
-	_attribs._self_destruct(_meta->_attribs.size());
+	_attribs._self_destruct((int)_meta->_attribs.size());
 }
 void domAny::AttributeBucket::_self_destruct(int i)
 {

@@ -59,6 +59,7 @@ if(!inline_CM||$meta!=NULL)
 global $COLLADA_DOM_GENERATION;
 global $root_xmlns, $root_version;
 echoCode("
+#ifndef COLLADA_DOM_LITE
 inline ::COLLADA::XS::Schema &__XS__()
 {
 	static struct schema : XS::Schema
@@ -161,7 +162,8 @@ echo "
 	//-------.
 		}//<-'		
 	}singleton; return singleton;
-}";
+}
+#endif //COLLADA_DOM_LITE";
 if(!inline_CM) echo "
 
 

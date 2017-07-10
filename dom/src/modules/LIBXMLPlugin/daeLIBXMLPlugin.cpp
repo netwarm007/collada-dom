@@ -96,7 +96,7 @@ daeLibXMLPlugin::daeLibXMLPlugin(int legacy):_saveRawFile()
 daeLibXMLPlugin::~daeLibXMLPlugin(){ xmlCleanupParser(); }
  
 //This an old feature request.
-//_CD is extended Latin. Put UTF8 into the _X buffer.
+//_CD is extended Latin. Put UTF8 into the _X_CD buffer.
 //It isn't said why the document isn't just written with a Latin declaration.
 void daeLibXMLPlugin::option_to_use_codec_Latin1()
 {
@@ -424,10 +424,10 @@ int daeLibXMLPlugin::_readContent2(daePseudoElement &parent)
 				daeHashString target = _encode(xmlTextReaderConstName(reader),_CD);
 				if(xmlTextReaderHasValue(reader))
 				{
-					//HACK: repurposing _X as a secondary buffer.
-					_X.assign(target).push_back(' ');
-					_X.append(_encode(xmlTextReaderConstValue(reader),_CD));
-					parent.getContents().push_back<'?'>(_X);
+					//HACK: repurposing _X_CD as a secondary buffer.
+					_X_CD.assign(target).push_back(' ');
+					_X_CD.append(_encode(xmlTextReaderConstValue(reader),_CD));
+					parent.getContents().push_back<'?'>(_X_CD);
 				}
 				else parent.getContents().push_back<'?'>(target);
 				break;
@@ -472,7 +472,7 @@ daeOK daeLibXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		l->getURI_baseless(_raw);
 		_raw.insert(daeURI_parser(_raw).getURI_uptoCP<'?'>(),".raw");
 		rawURI.setURI(_raw);
-		rawURI.setParentObject(*content.getObject());
+		rawURI.setParentObject(content.getElement());
 		_rawIO = rawReq.scope->getDOM()->getPlatform().openIO(rawI,rawO);
 		if(_rawIO==nullptr||nullptr==_rawIO->getWriteFILE())
 		{
@@ -534,7 +534,7 @@ daeOK daeLibXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 	assert(err>=0);
 	err = xmlTextWriterSetIndent(_writer,1); //Turns indentation on.
 	assert(err>=0);	
-	char *version,*encoding,*standalone;
+	const char *version,*encoding,*standalone;
 	daeIOPluginCommon::_xml_decl(content,version,encoding,standalone);	
 	err = xmlTextWriterStartDocument(_writer,version,encoding,standalone);
 	assert(err>=0);
@@ -688,7 +688,7 @@ void daeLibXMLPlugin::_writeContent2(const daeContents &content)
 		daeText &text = content[i]; 
 		if(text.getText_increment(i,_CD).empty())
 		continue;
-		const xmlChar *CDecoded = _decode(_CD,_X);
+		const xmlChar *CDecoded = _decode(_CD,_X_CD);
 		switch(text.kind())
 		{			
 		case daeKindOfText::COMMENT:
@@ -742,9 +742,9 @@ void daeLibXMLPlugin::_writeAttribute(daeAttribute &attr, const daeElement &elem
 	if(_maybeExtendedASCII(attr))
 	{
 		//This an old feature request.
-		//_CD is extended Latin. Put UTF8 into the _X buffer.
+		//_CD is extended Latin. Put UTF8 into the _X_CD buffer.
 		//It isn't said why the document isn't just written with a Latin declaration.
-		xmlTextWriterWriteString(_writer,_decode(_CD,_X));
+		xmlTextWriterWriteString(_writer,_decode(_CD,_X_CD));
 	}
 	else xmlTextWriterWriteString(_writer,(xmlChar*)_CD.data());	
 
@@ -757,16 +757,16 @@ void daeLibXMLPlugin::_writeValue(const daeElement &element)
 	if(_maybeExtendedASCII(*element.getCharDataObject()))
 	{
 		//This an old feature request.
-		//_CD is extended Latin. Put UTF8 into the _X buffer.
+		//_CD is extended Latin. Put UTF8 into the _X_CD buffer.
 		//It isn't said why the document isn't just written with a Latin declaration.
-		xmlTextWriterWriteString(_writer,_decode(_CD,_X));
+		xmlTextWriterWriteString(_writer,_decode(_CD,_X_CD));
 	}
 	else xmlTextWriterWriteString(_writer,(xmlChar*)_CD.data());	
 }
 
 void daeLibXMLPlugin::_writeRawSource(const daeElement &src, 
-#ifdef NDEBUG
-#error clone()???? clone()???? clone()???? clone()???? Don't use clone().
+#ifdef NDEBUG //GCC doesn't like apostrophes.
+#error "clone()???? clone()???? clone()???? clone()???? Don't use clone()."
 #endif									  
 const daeElement &unused_array, const daeElement &unused_technique_common)
 {
@@ -817,7 +817,7 @@ const daeElement &unused_array, const daeElement &unused_technique_common)
 	size_t i,iN = (const size_t&)count->getWRT(array);
 	
 	daeStringCP a[33] = "#";
-	COLLADA_(itoa)((int)_rawByteCount,a+1,10);
+	sprintf(a+1,"%d",(int)_rawByteCount); 
 	size_t snip = _raw.size(); _raw.append(a);
 	accessor->setAttribute("source",_raw);
 	_raw.erase(snip);	
@@ -831,7 +831,7 @@ const daeElement &unused_array, const daeElement &unused_technique_common)
 		fwrite(&(tmp=(&i0)[i]),sizeof(x),1,f);\
 	}else
 	daeCharData *arrayCD = array->getCharDataObject();
-	int atomic_type = arrayCD->getType()->per<daeAtom>().getAtomicType();	
+	int atomic_type = arrayCD->getType()->where<daeAtom>().getAtomicType();	
 	const daeAlloc<> *valArray = (daeAlloc<>*const&)arrayCD->getWRT(array);
 	COLLADA_SUPPRESS_C(4244) //possible loss of data
 	_(int,daeInt,INT)_(int,daeLong,LONG)_(float,daeFloat,FLOAT)_(float,daeDouble,DOUBLE)

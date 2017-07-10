@@ -132,6 +132,9 @@
     <ClInclude Include="..\..\include\modules\daeSTLDatabase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\WARNING.HPP">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\dae\dae.cpp">

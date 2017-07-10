@@ -76,12 +76,12 @@ struct FX::Loader::Load
 	#ifdef NDEBUG
 	#error init_from is an array.
 	#endif
-	FX::Surface *new_Surface_05(const void *ID, FX::Surface *parent)
+	FX::Surface *new_Surface_05(const void *ID, FX::Surface *parent, bool sRGB)
 	{
 		//Don't want to trigger a missing texture error if setting
 		//via a <setparam>.		
 		Collada05::const_image yy; doc->idLookup(ID,yy);
-		GLuint texId = ID==nullptr?0:FX::Loader::GetID_TexId(yy);		
+		GLuint texId = ID==nullptr?0:FX::Loader::GetID_TexId(yy,sRGB);		
 		return new FX::Surface(texId,parent);
 	}
 	#endif
@@ -93,13 +93,14 @@ struct FX::Loader::Load
 
 		for(size_t i=0;i<newparam.size();i++)
 		{
-			const T::XSD::type &newparam_i = *newparam[i];
+			const typename T::XSD::type &newparam_i = *newparam[i];
 
 			#if YY==5
 			if(!newparam_i.surface.empty())
 			{
 				c->Surfaces.push_back(std::make_pair(newparam_i.sid.data(),
-				new_Surface_05(newparam_i.surface->init_from->value->*xs::ID(),nullptr)));
+				new_Surface_05(newparam_i.surface->init_from->value->*xs::ID(),
+				nullptr,newparam_i.surface->format_hint->option->value->*FX::ColorSpace())));
 			}
 			else //15.0.1 samplers will push their <instance_image> onto c->Params.
 			#endif
@@ -128,25 +129,22 @@ struct FX::Loader::Load
 	{
 		Load_annotate(np.annotate,c);
 	}
-	template<>
 	static void _try_annotate(const DAEP::Schematic<COMMON::newparam>::type&,FX::Annotatable*)
 	{ /*NOP*/ }
 	template<class T> 
-	FX::Param *_try_connect_param(T&,FX::Paramable*){ return nullptr; }
+	FX::Param *_try_connect_param(const T&,FX::Paramable*){ return nullptr; }
 	#if YY==5 //1.5.0 appears to limit <connect_param> to IK (kinematics.)
-	template<> 
 	FX::Param *_try_connect_param(const Collada05_XSD::cg_setparam &e, FX::Paramable *c)
 	{
 		return e.connect_param.empty()?nullptr
 		#ifdef NDEBUG
 		#error If ref is a <surface> the SetParam_To is not used but its constructor adds it.
 		#endif
-		:new FX::SetParam_To(e.ref,c,e.connect_param->ref);
+		:new FX::SetParam_To(c,e.ref,e.connect_param->ref);
 	}
 	#else //8
 	template<class T> 
-	bool _try_sampler_image(T&,FX::Paramable*){ return false; }
-	template<> 
+	bool _try_sampler_image(const T&,FX::Paramable*){ return false; }
 	bool _try_sampler_image(const Collada08_XSD::instance_effect_type::local__setparam &e, FX::Paramable *c)
 	{
 		if(e.sampler_image.empty()) return false;
@@ -162,7 +160,7 @@ struct FX::Loader::Load
 	{		  
 		for(size_t i=0;i<setparam.size();i++)
 		{
-			const T::XSD::type &setparam_i = *setparam[i];
+			const typename T::XSD::type &setparam_i = *setparam[i];
 
 			#ifdef NDEBUG
 			#error And setparam_i.program? (Not in <instance_effect>.)
@@ -176,7 +174,8 @@ struct FX::Loader::Load
 				//assert(parent!=nullptr);
 
 				c->Surfaces.push_back(std::make_pair(setparam_i.ref.data(),
-				new_Surface_05(setparam_i.surface->init_from->value->*xs::ID(""),parent)));
+				new_Surface_05(setparam_i.surface->init_from->value->*xs::ID(""),
+				parent,setparam_i.surface->format_hint->option->value->*FX::ColorSpace())));
 			}
 			else
 			#else
@@ -254,7 +253,19 @@ struct FX::Loader::Load
 		
 		if(!in.texture.empty())
 		{	
-			c->Params.push_back(new FX::SetParam_To(&o.Texture,c,in.texture->texture));
+			FX::NewParam *x = nullptr;
+			c->Params.push_back(new FX::SetParam_To(&o.Texture,c,in.texture->texture,&x));
+			if(x!=nullptr) 			
+			switch(x->OwnData().GetType())
+			{
+			case CG_FLOAT3: case CG_FLOAT4:
+
+				//HACK: Colorizing the texture to pseudo-extend
+				//profile COMMON's overreliance on baked texels.
+				c->Params.push_back(new FX::SetParam_To(&o.Color,x));
+
+			default:; //-Wswitch
+			}
 			return 1;
 		}
 		else if(!in.param.empty())
@@ -383,7 +394,7 @@ struct FX::Loader::Load::Loading
 			if(params->FindNewParam(x->param->value,*o))
 			return;
 		}
-		char i[] = {'$','0'+char(x->index),'\0'};
+		char i[] = {'$',(char)('0'+x->index),'\0'};
 		FX::NewParam *p;
 		FX::MakeData(p,x,params,i,i+2); //"" semantic?
 		params->Params.push_back(*o=p);
@@ -480,8 +491,9 @@ struct FX::Loader::Load::Loading_gl_pipeline_setting : public Load::Loading
 		//(That would have to be managed manually.)
 		//COLLADA's param access may be more fine grained anyway.					
 		switch(maybe__gl_pipeline_setting->getElementType())
-		{		
-		#define i e->index->*0		
+		{
+		//Must use long (unsigned) for 64 bit platforms' xs:long.
+		#define i int(e->index->*0ULL)
 		#define _(x,y,t,z,...) \
 		case DAEP::Schematic<Lpass::z>::genus:\
 		{ Lpass::z &e = *(Lpass::z*)&element;\
@@ -713,7 +725,7 @@ inline void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 	//create and populate a FX::Technique for every technique in the cg profile	
 	for(size_t i=0;i<profile_->technique.size();i++)
 	{	
-		T::technique technique = profile_->technique[i];
+		typename T::technique technique = profile_->technique[i];
 		daeEH::Verbose<<"Technique is "<<technique->sid;
 
 		//at least one pass is needed for the technique to do anything 
@@ -735,10 +747,10 @@ inline void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 		//at least one pass is needed for the technique to do anything 
 		for(size_t i=0;i<technique->pass.size();i++)
 		{
-			T::technique::pass pass = technique->pass[i];
+			typename T::technique::pass pass = technique->pass[i];
 			//now for drawing...  that isn't cgfx...  does it fit here???
 
-			T::technique::pass _if_YY(,::evaluate) eval;
+			typename T::technique::pass _if_YY(,::evaluate) eval;
 			#if YY==5
 			eval = pass;
 			#else
@@ -765,10 +777,11 @@ inline void FX::Loader::Load::profile_(T profile_, FX::Effect *e)
 			FX::Pass *p = new FX::Pass(tech,pass->sid);
 			Load_annotate(pass->annotate,p);
 			
+
 			//Populate p->Settings via FX::MakeGlPipelineSetting().
-			//(Most of the types of children fall into this class.)				
-			pass->content->for_each_child
-			(Loading_gl_pipeline_setting(loading.Cg,p));
+			//(Most of the types of children fall into this class.)
+			Loading_gl_pipeline_setting f(loading.Cg,p);
+			pass->content->for_each_child(f);
 			
 			//TEMPLATE-META-PROGRAMMING
 			//GLES doesn't have shaders.
@@ -805,7 +818,7 @@ bool FX::Loader::Load::_profile_shaders
 	#endif
 	for(size_t i=0;i<program->shader.size();i++)
 	{
-		Lprogram::shader shader = program->shader[i];
+		typename Lprogram::shader shader = program->shader[i];
 		#if YY==8
 		if(!shader->sources.empty()) 
 		script_08 = shader->sources->content; 
@@ -849,7 +862,7 @@ bool FX::Loader::Load::_profile_shaders
 	p->World = 0; //Initializing.
 	for(size_t i=0;i<program->shader.size();i++)
 	{
-		Lprogram::shader shader = program->shader[i];
+		typename Lprogram::shader shader = program->shader[i];
 							 
 		//load the shader's parameters
 		#if YY==8
@@ -857,7 +870,7 @@ bool FX::Loader::Load::_profile_shaders
 		#endif		
 		for(size_t i=0;i<shader->bind.size();i++)
 		{
-			Lprogram::shader::bind bind = shader->bind[i];
+			typename Lprogram::shader::bind bind = shader->bind[i];
 
 			FX::ShaderParam *sp = p->FindShaderParam(bind->symbol);
 			if(sp==nullptr)
@@ -914,8 +927,8 @@ COLLADA_(public) //Previously FX::Technique
 
 	daeSIDREF SIDREF; daeName profile;
 	Loading_script(xs::const_any &_08)
-	:SIDREF("",_08),profile(_08->getNCName())
-	,sizeof_profile_script()
+	:sizeof_profile_script()
+	,SIDREF("",_08),profile(_08->getNCName())
 	{
 		EXPERIMENTAL_Cg_to_GLSL_order();
 	}
@@ -1103,7 +1116,7 @@ FX::Material *FX::Loader::Load(ColladaYY::const_material material, FX::Effect *e
 	for(size_t i=0;i<p->Passes.size();i++)
 	for(size_t j=0;j<p->Passes[i]->Shaders.size();j++)
 	//if(nullptr==p->Passes[i]->Shaders[j]->Cg)
-	if(-1==p->Passes[i]->Shaders[j]->GLSL)
+	if(0==p->Passes[i]->Shaders[j]->GLSL)
 	{
 		daeEH::Warning<<"Cg shader is unusable. Avoiding cgGL API crash by not using Cg for "<<material->id;
 		delete out; return nullptr;	

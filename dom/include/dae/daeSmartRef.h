@@ -67,6 +67,25 @@ COLLADA_(public) //daeArray traits
 		memcpy(lv,rv,iN*sizeof(daeSmartRef)); //raw-copyable style move.
 	}	
 
+	
+
+COLLADA_(public) 
+
+	//This was explicit but it's not worth adding to daeDomTypes.h
+	//(COLLADA_DOM_3__struct__daeSmartRef) so it won't be enforced.
+	//explicit
+	//class T MUST BE DEFINED.
+	/**
+	 * Basic Factory Constructor
+	 * There are pointer and smart-ref versions via _upcast_or_add.
+	 */
+	daeSmartRef(/*const*/ daeDOM &DOM)
+	{
+		COLLADA_INCOMPLETE(T) daeDOM &i = DOM;
+		T *t = i.template _add<typename daeConstOf<int,T>::type>();
+		_ptr = (daeObject*)t; _ptr->_ref();
+	}
+
 COLLADA_(public) //Funky constructors
 
   ////////////////////////////////////////////////////////////////////
@@ -101,37 +120,7 @@ COLLADA_(public) //Funky constructors
 	{
 		T *t; t = cp; new(this) daeSmartRef(t); //Doing in body, just to be safe.
 	}
-
-COLLADA_(public) //Factory constructors
-
-	//class T MUST BE DEFINED.
-	/**
-	 * @c explicit 2.5 T Factory Constructor
-	 *
-	 * @todo @a DOM will eventually be a DAEP::DOM type.
-	 */
-	explicit daeSmartRef(/*const*/ daeDOM &DOM) 
-	:_ptr((daeObject*)DOM._add<daeConstOf<int,T>::type>())
-	{
-		const DAEP::Object *upcast = (T*)nullptr; _ptr->_ref();
-	}
-	//This affords code the courtesy of not dereferencing.
-	template<class T> struct _NonDOM{ typedef daeDOM type; };
-	template<> struct _NonDOM<daeDOM>{ typedef class undefined type; };
-	template<> struct _NonDOM<const daeDOM>{ typedef class undefined type; };
-	//class T MUST BE DEFINED.
-	/**WARNING
-	 * @c explicit 2.5 T Factory Constructor
-	 *
-	 * @todo @a DOM will eventually be a DAEP::DOM type.
-	 * @warning @a DOM cannot be @c nullptr. (It's not the shared-pointer's subject.)
-	 */
-	explicit daeSmartRef(/*const*/ typename _NonDOM<T>::type *DOM) 
-	:_ptr((daeObject*)DOM->_add<daeConstOf<int,T>::type>())
-	{
-		const DAEP::Object *upcast = (T*)nullptr; _ptr->_ref();
-	}	
-
+		
 COLLADA_(public) //Non-factory constructors
 	/**
 	 * Default Constructor
@@ -154,32 +143,39 @@ COLLADA_(public) //Non-factory constructors
 	 * Constructor
 	 * @param ptr a pointer to an object of a different template type.
 	 */
-	daeSmartRef(U *ptr):_ptr((daeObject*)ptr)
+	daeSmartRef(U *ptr)
 	{
-		_upcast(ptr,(T*)nullptr); _ptr->_ref();
+		_upcast_or_add<U>(ptr,(const T*)nullptr);		
+		_ptr = (daeObject*)ptr; _ptr->_ref();
 	}			
 	/** Implements DAEP::Element branch from DAEP::Object logic. */
-	template<class U> void _upcast(U *ptr, const daeObject*)
+	template<class U> void _upcast_or_add(U *&ptr, const daeObject*)
 	{
-		daeConstOf<T,DAEP::Object>::type *upcast = ptr;
+		typename daeConstOf<T,DAEP::Object>::type *uc = ptr; (void)uc;
 	}
 	/** Implements DAEP::Element branch from DAEP::Object logic. */
-	template<class U> void _upcast(U *ptr, const daeElement*)
+	template<class U> void _upcast_or_add(U *&ptr, const daeElement*)
 	{
-		daeConstOf<T,daeElement>::type *upcast = dae(ptr);
+		typename daeConstOf<T,daeElement>::type *uc = dae(ptr); (void)uc;
 	}
-	template<class U> void _upcast(U *ptr,...)
+	/** Implements DAEP::Element branch from DAEP::Object logic. */
+	template<class> void _upcast_or_add(daeDOM* &ptr, const T*)
 	{
-		T *upcast = ptr; 
+		COLLADA_INCOMPLETE(T) daeDOM &DOM = *ptr;
+		(DAEP::Object*&)ptr = DOM.template _add<T>();
+	}
+	template<class U> void _upcast_or_add(U* &ptr,...)
+	{
+		T *uc = ptr; (void)uc; 
 	}
 	template<class U> //BOTH class T & U MUST BE DEFINED.
 	/**
 	 * Copy Constructor that will convert from one template to the other.
 	 * @param smartRef a daeSmartRef to the object to copy from.
 	 */	
-	daeSmartRef(const daeSmartRef<U> &cp) : _ptr((daeObject*&)cp)		
+	daeSmartRef(const daeSmartRef<U> &cp)		
 	{
-		_upcast((U*)nullptr,(T*)nullptr); _ptr->_ref();
+		new(this) daeSmartRef((U*)cp);
 	}
 	/**
 	 * Copy Constructor
@@ -191,22 +187,17 @@ COLLADA_(public) //Non-factory constructors
 	}
 	
 COLLADA_(public) //OPERATORS
-
-	//R is expanding this to cover daeDocRoot.
-	template<template<class> class R, class U> //BOTH class T & U MUST BE DEFINED.
 	/**
-	 * Overloaded assignment operator which will convert between template types.
-	 * @param smartRef a daeSmartRef to the object to copy from.
+	 * Overloaded assignment operator.
+	 * @param ptr a pointer to the object to copy from.  Must be of the same template type.
 	 * @return Returns a reference to this object.
-	 * 
-	 * @see @c daeElement class template specializations at the end of this file.
-	 */	
-	inline daeSmartRef &operator=(const R<U> &cp)
+	 */
+	inline daeSmartRef &operator=(T *ptr)
 	{
-		//Reminder: cp can be daeDocRoot, which converts to more than one pointer.
-		T *ptr = cp;
-		dae(ptr)->_ref(); _ptr->_release(); 
-		_ptr = (daeObject*)ptr; return *this;
+		dae(ptr)->_ref();
+		_ptr->_release();
+		_ptr = (daeObject*)ptr;
+		return *this;
 	}
 	/**C++ (REQUIRED)
 	 * Overloaded assignment operator.
@@ -221,24 +212,42 @@ COLLADA_(public) //OPERATORS
 		_ptr = ptr; return *this;
 	}
 
+	//R is expanding this to cover daeDocRoot.
+	template<template<class> class R, class U> //BOTH class T & U MUST BE DEFINED.
 	/**
-	 * Overloaded assignment operator.
-	 * @param ptr a pointer to the object to copy from.  Must be of the same template type.
+	 * Overloaded assignment operator which will convert between template types.
+	 * @param smartRef a daeSmartRef to the object to copy from.
 	 * @return Returns a reference to this object.
-	 */
-	inline daeSmartRef &operator=(T *ptr)
+	 */	
+	inline daeSmartRef &operator=(const R<U> &cp)
 	{
-		dae(ptr)->_ref();
-		_ptr->_release();
-		_ptr = (daeObject*)ptr;
-		return *this;
+		//Reminder: cp can be daeDocRoot, that converts to more than one pointer.
+		T *ptr; _maybe_any(ptr,cp);
+		dae(ptr)->_ref(); _ptr->_release(); 
+		_ptr = (daeObject*)ptr; return *this;
 	}
+	//NOTE: This is not domAny. That is a generic container. This is any element.
+	template<class TT, class U>
+	//Implement operator=() logic for non xs::any types.
+	static void _maybe_any(TT* &ptr, const U &cp){ ptr = cp; }
+	template<class U>
+	//OVERLOAD operator=() logic for non-const xs::any.
+	static void _maybe_any(daeElement* &ptr, const U &cp)
+	{
+		//Reminder: cp can be daeDocRoot, that converts to more than one pointer.
+		ptr = dae(cp);
+		//(Of course) this emits a diagnostic if cp is not a non-const smart-ref.
+		int *ncref = (typename daeConstOf<typename U::__COLLADA__T,int>::type*)0;
+	}
+	template<class U>
+	//OVERLOAD operator=() logic for const xs::any.
+	static void _maybe_any(const daeElement* &ptr, const U &cp){ ptr = dae(cp); }
 	 	
 	template<class U, int N> //BOTH class T & U MUST BE DEFINED.
 	/**
 	 * There seems to be a difference between () and = construction.
 	 */
-	daeSmartRef &operator=(dae_Array<U,N> &cp)
+	inline daeSmartRef &operator=(dae_Array<U,N> &cp)
 	{
 		return operator=((U*)cp);
 	}
@@ -246,7 +255,7 @@ COLLADA_(public) //OPERATORS
 	/**CONST-FORM
 	 * There seems to be a difference between () and = construction.
 	 */
-	daeSmartRef &operator=(const dae_Array<U,N> &cp)
+	inline daeSmartRef &operator=(const dae_Array<U,N> &cp)
 	{
 		return operator=((const U*)cp);
 	}
@@ -278,17 +287,6 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline T &operator*()const{ return (T&)*static_cast<T*>((DAEP::Object*)_ptr); }
 	
-	/**
-	 * @warning Might generate double-const warnings.
-	 * Post-2.5 implicit conversion to const reference.
-	 */
-	inline operator daeSmartRef<const T>&(){ return *(daeSmartRef<const T>*)this; }
-	/**CONST-FORM
-	 * @warning Might generate double-const warnings.
-	 * Post-2.5 implicit conversion to const reference.
-	 */
-	inline operator const daeSmartRef<const T>&()const{ return *(daeSmartRef<const T>*)this; }
-
 COLLADA_(public) //DEPRECATIONS
 
 	#ifndef COLLADA_NODEPRECATED
@@ -313,32 +311,10 @@ COLLADA_(public) //DEPRECATIONS
 
 COLLADA_(protected) //DATA-MEMBER
 
-	template<class T> friend class daeSmartRef;
+	template<class> friend class daeSmartRef;
 	/* The pointer to the element which is being reference counted. */
 	daeObject *_ptr;
 };
-template<>
-template<template<class> class R, class U>
-/**CLASS TEMPLATE-SPECIALIZATION
- * This converts from @c DAEP::Element to @c daeElement for @c xs::any.
- */	
-inline daeElementRef &daeElementRef::operator=(const R<U> &cp)
-{
-	daeElement *ptr = dae(cp);
-	dae(ptr)->_ref(); _ptr->_release(); 
-	_ptr = (daeObject*)ptr; return *this;
-}
-template<>
-template<template<class> class R, class U>
-/**CLASS TEMPLATE-SPECIALIZATION
- * This converts from @c DAEP::Element to @c daeElement for @c xs::any.
- */	
-inline const_daeElementRef &const_daeElementRef::operator=(const R<U> &cp)
-{
-	const daeElement *ptr = dae(cp);
-	dae(ptr)->_ref(); _ptr->_release(); 
-	_ptr = (daeObject*)ptr; return *this;
-}
 
 //---.
 }//<-'

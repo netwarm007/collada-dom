@@ -86,6 +86,13 @@ FX::Semantic FX::NewParam::_InitSemantic_etc()
 		return Semantic = FX::AMBIENT; 
 		break;
 
+	case 'C':
+
+		if("COLOR"==base
+		||"COLOUR"==base)
+		return Semantic = FX::COLOR;
+		break;
+
 	case 'D':
 
 		if("DIFFUSE"==base)
@@ -252,8 +259,8 @@ FX::SetParam::SetParam(FX::DataMaker<FX::SetParam> *cp)
 	if(!cp->p->FindNewParam(cp->sid,ParamToSet))
 	{
 		ParamToSet = this;
-		daeEH::Warning<<"Did not match <setparam> "<<cp->sid<<"\n"
-		"(The specification says this is a speculative and so OK.)";
+		daeEH::Verbose<<"Did not match <setparam> "<<cp->sid<<"\n"
+		"(The specification says this is a \"speculative call\" and so OK.)";
 	}
 	else if(((FX::NewParam*)ParamToSet)->IsClientData())
 	{
@@ -264,7 +271,7 @@ FX::SetParam::SetParam(FX::DataMaker<FX::SetParam> *cp)
 	}
 	else daeEH::Verbose<<"Set param "<<cp->sid;
 }
-FX::SetParam_To::SetParam_To(xs::ID ref, FX::Paramable *p, xs::token ref2)
+FX::SetParam_To::SetParam_To(FX::Paramable *p, xs::ID ref, xs::token ref2)
 {
 	SetData = nullptr;
 	Name = ref; if(ref[0]!='#') Name--;
@@ -286,13 +293,13 @@ FX::SetParam_To::SetParam_To(xs::ID ref, FX::Paramable *p, xs::token ref2)
 			return;
 		}
 
-		daeEH::Warning<<"Did not match <connect_param> "<<ref2<<"\n"
-		"(The specification says this is a speculative and so OK.)";
+		daeEH::Verbose<<"Did not match <connect_param> "<<ref2<<"\n"
+		"(The specification says this is a \"speculative call\" and so OK.)";
 	}
 	if(!p->FindNewParam(ref,ParamToSet))
 	{
-		daeEH::Warning<<"Did not match <setparam> "<<ref<<"\n"
-		"(The specification says this is a speculative and so OK.)";
+		daeEH::Verbose<<"Did not match <setparam> "<<ref<<"\n"
+		"(The specification says this is a \"speculative call\" and so OK.)";
 	}
 	else if(((FX::NewParam*)ParamToSet)->IsClientData())
 	{
@@ -302,14 +309,32 @@ FX::SetParam_To::SetParam_To(xs::ID ref, FX::Paramable *p, xs::token ref2)
 		"(Should this be a run-time option?)";
 	}
 } 
-SetParam_To::SetParam_To(FX::NewParam *COMMON, FX::Technique *tech, xs::ID ref)
-:ParamToSet(this),Param_To(this)
+SetParam_To::SetParam_To(FX::NewParam *COMMON, FX::Paramable *p, xs::ID ref, FX::NewParam **x)
+:Param_To(this),ParamToSet(this)
 {
 	Name_To = ref; if(ref[0]!='#') Name_To-=1;
 	Name = COMMON->Name-1; assert(Name[0]=='#');	
-	if(!tech->FindNewParam(ref,Param_To))
-	daeEH::Warning<<"Did not match profile_COMMON texture-or-color to <newparam> "<<ref;	
-	else ParamToSet = COMMON;
+	FX::NewParam **np = p->_FindNewParam(ref,p); if(np==nullptr)
+	{
+		daeEH::Warning<<"Did not match profile_COMMON texture-or-color to <newparam> "<<ref;		
+		return;
+	}
+	
+	ParamToSet = COMMON; Param_To = *np;
+
+	//This is not in the COLLADA specification.
+	//HACK: Return likely color multipliers to the loader?
+	if(x!=nullptr&&(void*)np!=&p->Params.back()&&np[1]->IsNewParam()
+	&&np[1]->SEMANTIC==np[0]->SEMANTIC&&np[0]->Subscript==0&&np[1]->Subscript==1)
+	*x = np[1]; 
+}
+SetParam_To::SetParam_To(FX::NewParam *COMMON, FX::NewParam *x)
+:Param_To(this),ParamToSet(this)
+{
+	Name_To = x->Name-1; 
+	Param_To = x;
+	Name = COMMON->Name-1; assert(Name[0]==Name_To[0]);	//#
+	ParamToSet = COMMON; 
 }
 
 //NEW: Most of the work for this type is being done by 

@@ -47,16 +47,16 @@ void DAEP::Object::__DAEP__Object__0()const
 	if(__DAEP__Object__refs<0) //sub-object?
 	{
 		const daeObject &op = *dae(__DAEP__Object__parent);
-		assert(this!=op&&op[this].isEmbeddedObjectWRT(op));
+		assert(this!=op&&op[this].isEmbeddedObjectWRT(&op));
 		if(__DAEP__Object__refs<=-__DAEP__Object__refs_embedding_threshold)
 		op.__DAEP__Object__0();				
 		return; //UNCONDITIONAL
 	}
 
-	#ifdef NDEBUG
+	#ifdef NDEBUG //GCC and apostrophes.
 	#error TODO? Elements are the bulk of objects. If they have
 	#error their own __DAEP__Object__0 they could use getMeta().
-	#error This one should still handle them, in case it's used.
+	#error "This one should still handle them, in case it's used."
 	#endif
 	const daeModel &model = __DAEP__Object__v1__model();
 
@@ -83,7 +83,8 @@ void DAEP::Object::__DAEP__Object__0()const
 	case daeObjectType::DOM: 
 			
 		assert(_this._isDOM());	
-		assert(dynamic_cast<const daeDOM*>(this)!=nullptr); //break;
+		assert(dynamic_cast<const daeDOM*>(this)!=nullptr);
+		//break;
 
 	case daeObjectType::DOC: //FALLING-THROUGH
 		
@@ -92,10 +93,10 @@ void DAEP::Object::__DAEP__Object__0()const
 			assert(dynamic_cast<const daeArchive*>(this)!=nullptr);				
 			daeArchive::_deleter_f f(((daeArchive*)this)->_deleter);
 			if(f!=nullptr)
-			return f(this); assert(0==_this._getPShare()); //break;
+			return f(this); assert(0==_this._getPShare());
 		}
 
-	default: return model.deleteObject(this); //FALLING-THROUGH
+	default: return model.deleteObject(this);
 	}
 	else if(type==daeObjectType::DOC)
 	{
@@ -127,7 +128,6 @@ daeOK daeObject::_reparent_element_to_element(const daeObject &cIn)
 {	
 	assert(this->_isElement());
 	daeElement *c = (daeElement*)&cIn;
-	daeElement &_this = (daeElement&)*this;		
 	assert(c!=nullptr&&c->_isData());
 	{
 		//daeElement::getDOM() looks in __DAEP__Element_data.
@@ -231,9 +231,10 @@ virtual int getLegacyProfile(){ return 0; }
 }dae_cpp_dummyPlatform;
 
 //ORDER-OF-INITIALIZATION MATTERS 
-daeDoc::daeDoc(daeDOM *DOM, int dt)
-:_link(),_current_operation(_no_op)
-,daeObject(DOM),_archive(DOM->_closedDocs)
+daeDoc::daeDoc(daeDOM *DOM, int dt):
+daeObject(DOM),_link()
+,_archive(DOM->_closedDocs),_current_operation(_no_op::value)
+,_operation_thread_id() //STFU
 { 	
 	_uri.setIsAttached();
 	_uri.__DAEP__Object__embed_subobject(this);
@@ -246,7 +247,6 @@ daeDoc::daeDoc(daeDOM *DOM, int dt)
 	//HACK: Assign daeDoc to the special 0 process-share.
 	(&_getClassTag())[3] = 0; assert(_isDoc()); 
 	//_archive(DOM->_closedDocs) assumes it is a pointer.
-	(daeArchive*)_archive;
 	if(this==DOM) _archive = DOM;
 	if(_archive!=this) //Eg. DOM or daeDOM::_closedDocs
 	{
@@ -257,6 +257,7 @@ daeDoc::daeDoc(daeDOM *DOM, int dt)
 }
 daeArchive::daeArchive(daeDOM &DOM) 
 :daeDoc(DOM,daeDocType::ARCHIVE),_deleter()
+,_whatsupDoc() //STFU
 {
 	//MUST ASSUME DOM IS UNITIALIZED HERE//
 }
@@ -286,7 +287,8 @@ COLLADA_SUPPRESS_C(4355)
 	}
 	_platform = OS;
 	
-	if(_detachDatabase=DB==nullptr)
+	_detachDatabase = nullptr==DB;
+	if(_detachDatabase)
 	_detachDatabase = nullptr!=(DB=OS->attachDB());
 	_deleteDatabase = nullptr==DB;
 	_database = _deleteDatabase?new daeDB<daeLegacyDBase>:DB;	
@@ -381,10 +383,6 @@ daeElement *daeDOM::_addElement(daeMeta &meta)
 	daeElement *obj = meta._prototype;
 	_database->_new(meta.getSize(),obj,_databaseRejoinder);	
 	meta._construct(obj,*this,*this); return obj;
-}
-domAny *daeDOM::_addAny()
-{
-	return (domAny*)_addElement(domAny::_master.meta);
 }
 
 daeDocRoot<> daeArchive::_read2(daeMeta *rootmeta, const daeIORequest &reqI, daeIOPlugin *I)
@@ -543,7 +541,8 @@ void daeArchive::_closedDoc(daeDoc *doc, daeDoc *replacement)
 	{
 		if(replacement!=nullptr) 
 		_uprootDoc(replacement,nullptr);
-		daeDOM *DOM = _removeDoc(doc,/*uprooted*/replacement);	
+		daeDOM *DOM = _removeDoc(doc,/*uprooted*/replacement);
+		(void)DOM;
 	}
 	doc->__daeDoc__v1__atomize();	
 }

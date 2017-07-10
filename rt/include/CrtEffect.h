@@ -25,6 +25,11 @@ COLLADA_(namespace)
  */
 struct Material_Data
 {
+	/**
+	 * This is a single texture for legacy/FX-free rendering.
+	 */
+	GLuint Mono_TexId;
+
 	//this is part of the Phong lighting definition 
 	//and will override the FF material setting  
 	//Again this is a first implementation and should
@@ -37,19 +42,49 @@ struct Material_Data
 	FX::Float4 Emission, Ambient, Diffuse;
 	FX::Float4 Specular, Reflective, Transparent;
 	float Shininess, Transparency, Reflectivity, RefractiveIndex;
-
-	//These are some historically defined defaults.
-	//Note that by default they are overriden by 0
-	//so that they can be filled out in <material>.
-	Material_Data(float def=0):Shininess(def*40),Transparency(1)
-	,Reflectivity(),RefractiveIndex()
-	,Emission(0,1),Ambient(def*0.25,1),Diffuse(def*0.5,1),Specular(def*0.95,1)
+	
+	/**
+	 * The defaults are for if profile_COMMON is unavailable
+	 * or the lighting is not so good or there's no material.
+	 */
+	Material_Data(float def=0):Mono_TexId()
+	,Emission(def*0.08,1),Ambient(def*0.42,1),Diffuse(def*0.42,1),Specular(def*0.72,1)
+	,Shininess(def*40),Transparency(1),Reflectivity(),RefractiveIndex()
 	{}	
+};
+
+struct Effect_Semantics
+{
+	//This list is incomplete.
+	unsigned Missing_FX:1,
+	WORLD:1,
+	WORLD_INVERSE_TRANSPOSE:1,
+	WORLD_VIEW:1,
+	WORLD_VIEW_INVERSE_TRANSPOSE:1,
+	WORLD_VIEW_PROJECTION:1;
+	void Set(FX::Semantic s)
+	{
+		switch(s)
+		{
+		#define _(x) case FX::x: x = 1; break;
+		_(WORLD)
+		_(WORLD_INVERSE_TRANSPOSE)
+		_(WORLD_VIEW)
+		_(WORLD_VIEW_INVERSE_TRANSPOSE)
+		_(WORLD_VIEW_PROJECTION)
+		#undef _
+		default:; //-Wswitch
+		}
+	}
+	
+	Effect_Semantics(){ Semantics() = 0; }
+
+	unsigned &Semantics(){ return *(unsigned*)this; }
 };
 
 struct Effect_Type
 {
-	enum{ FX=0,CONSTANT,LAMBERT,PHONG,BLINN };
+	enum{ DEFAULT=0,CONSTANT,LAMBERT,PHONG,BLINN };
 };
 
 /**
@@ -57,19 +92,22 @@ struct Effect_Type
  * just to resolve the new binding for the 1.4 specifictaion
  * between the imgaes, effects, and materials 
  */
-class Effect : public RT::Base, public RT::Material_Data
+class Effect : public RT::Base
+,
+public RT::Material_Data, public RT::Effect_Semantics
 {	
 COLLADA_(public)
 
 	using Material_Data::operator=;
-
-	std::vector<RT::Image*> Textures;	
 	
-	int Type; FX::Effect *COLLADA_FX; 
-	
-	Effect(float def=0):Material_Data(def)	
-	,Type(RT::Effect_Type::PHONG),COLLADA_FX()
-	{}
+	FX::Effect *FX; int Type;
+					  	
+	Effect(float def=0):Material_Data(def)
+	,FX(),Type(def==0?RT::Effect_Type::DEFAULT:RT::Effect_Type::BLINN)
+	{ 
+		Missing_FX = 1; 
+	}
+	~Effect(){ delete FX; } 
 };
 
 class Material : public RT::Base, public RT::Material_Data
@@ -78,14 +116,22 @@ COLLADA_(public)
 
 	using Material_Data::operator=;
 		
-	FX::Material *COLLADA_FX;
+	RT::Effect *Effect; FX::Material *FX;
 
-	RT::Effect *Effect;	
+	void Default();
 
-	Material(float def=0):Material_Data(def),Effect(),COLLADA_FX()
+	Material(float def=0):Material_Data(def),Effect(),FX()
 	{}
-	Material(RT::Effect *e):Material_Data(*e),Effect(e),COLLADA_FX()
-	{}
+	Material(RT::Effect *e):Material_Data(*e),Effect(e),FX()
+	{
+		//If profile_COMMON is not defined, give it some 
+		//material properties so it does not appear black.
+		if(e->Type==RT::Effect_Type::DEFAULT) 
+		new((RT::Material_Data*)this) RT::Material_Data(1);
+	}
+
+	//SCHEDULED FOR REMOVAL
+	~Material(){ delete FX; }
 };
 
 //-------.

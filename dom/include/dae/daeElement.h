@@ -97,7 +97,7 @@ COLLADA_(public) //These may not work.
 	{
 		return T::elementType; 
 		//This is just checking the generator's work.		
-		daeCTC<elementType==T::__DAEP__Schema__genus>();
+		daeCTC<T::elementType==T::__DAEP__Schema__genus>();
 	}
 };
 
@@ -188,10 +188,10 @@ COLLADA_(public) //non-SIDREF SID lookup
 	 */
 	inline daeSmartRef<T> &sidLookup(const S &sid, daeSmartRef<T> &match, const daeDoc *doc, enum dae_clear clear=dae_clear)const
 	{
-		static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast 
+		(void)static_cast<const daeElement*>(dae((T*)nullptr)); //up/downcast
 		if(clear!=dae_default) match = nullptr;
 		_sidLookup(daeBoundaryStringRef(*this,sid),(daeElementRef&)match,doc); 		
-		if(nullptr==dae(match)->a<T>()) match = nullptr; return match;
+		if(nullptr==dae(match)->template a<T>()) match = nullptr; return match;
 	}
 	template<class S, class T> //S is DAEP::Element or daeElement based
 	/**WARNING, LEGACY-SUPPORT
@@ -489,6 +489,7 @@ COLLADA_(public)
 	 */
 	inline size_t getAttributeCount()const{ return getMeta()->getAttributes().size(); }
 
+	//SCHEDULED FOR REMOVAL (IT WORKS, BUT???)
 	#ifdef NDEBUG
 	#error NOALIAS_LINKAGE is a problem for domAny,
 	#error -as can be holding onto daeAttribute pointers.
@@ -509,14 +510,12 @@ COLLADA_(public)
 	 * Eventually this will be obsolete, and can route through @c daeMetaElement.
 	 * At that point, none of this will matter.
 	 */
-	template<class T> inline int getAttributeIndex(const T &pseudonym)const
-	{
-		return _getAttributeIndex(daeBoundaryString2<T>::type(pseudonym));
-	}
-	#define _(x) template<> int getAttributeIndex<x>(const x &i)const{ return i; }
-	COLLADA_SUPPRESS_C(4244) //This is only for size_t. short/char will be added upon request.
-	_(signed)_(unsigned)_(signed long)_(unsigned long)_(signed long long)_(unsigned long long)
-	#undef _
+	template<class T> inline int getAttributeIndex(const T &pseudonym)const;
+	//THESE ARE MOVED OUTSIDE TO THE NAMESPACE IN ORDER TO SATISFY GCC/C++.
+	//#define _(x) template<> int getAttributeIndex<x>(const x &i)const{ return i; }
+	//COLLADA_SUPPRESS_C(4244) //This is only for size_t. short/char will be added upon request.
+	//_(signed)_(unsigned)_(signed long)_(unsigned long)_(signed long long)_(unsigned long long)
+	//#undef _
 	/** Implements @c getAttributeIndex(). */
 	NOALIAS_LINKAGE int _getAttributeIndex(daeString pseudonym)const
 	SNIPPET( return _getAttributeIndex(daeHashString(pseudonym)); )
@@ -639,7 +638,7 @@ COLLADA_(public)
 	 */
 	inline daeOK setAttribute(const S &i_or_NCName, const T &value)
 	{
-		return _setAttribute(getAttributeIndex(i_or_NCName),daeBoundaryString2<T>::type(value));
+		return _setAttribute(getAttributeIndex(i_or_NCName),typename daeBoundaryString2<T>::type(value));
 	}
 	/** Implements @c setAttribute(). */
 	LINKAGE daeOK _setAttribute(size_t,daeString);
@@ -884,7 +883,7 @@ COLLADA_(public)
 	 */
 	inline daeSmartRef<const typename T::__COLLADA__T> getAncestor()const
 	{
-		const_daeElementRef &o = getAncestor(matchMeta(daeGetMeta<T>()));
+		const const_daeElementRef &o = getAncestor(matchMeta(daeGetMeta<T>()));
 		return *(daeSmartRef<const typename T::__COLLADA__T>*)&o;
 	}
 	/**LEGACY
@@ -995,9 +994,10 @@ COLLADA_(public)
 	struct _getChildrenByType_f
 	{	
 		T &mc; daeMeta *meta;		
-		template<int> void op(daeElement *ch);
-		template<> void op<0>(daeElement *ch){ if(ch->getMeta()==meta) mc.push_back(ch); }
-		template<> void op<1>(daeElement *ch){ op<0>(ch); ch->getContents().for_each_child(*this); }
+		//Reminder: GCC/C++ can't reasonably do explicit-specialization.
+		template<int r> void op(daeElement *ch){ r==1?op_1(ch):op_0(ch); }
+		inline void op_0(daeElement *ch){ if(ch->getMeta()==meta) mc.push_back(ch); }
+		inline void op_1(daeElement *ch){ op_0(ch); ch->getContents().for_each_child(*this); }
 		void operator()(daeElement *ch){ op<recursive>(ch); }
 	};	
 	template<int op, typename T>
@@ -1022,9 +1022,9 @@ COLLADA_(public)
 	 * Use this if you really want to. It's adapted from @c daeDocument::getElementsByType().
 	 * @return Returns a recursive version of @c getChildrenByType() in an unspecified order.
 	 */	
-	inline daeArray<daeSmartRef<T>> &getDescendantsByType(daeArray<daeSmartRef<T>> &matchingElements, enum dae_clear clear=dae_clear)const
+	inline daeArray<daeSmartRef<T>> &getDescendantsByType(daeArray<daeSmartRef<T>> &matchingDescendants, enum dae_clear clear=dae_clear)const
 	{
-		if(clear) matchingChildren.clear(); _getChildrenByType_op<1>(matchingChildren); return matchingChildren;
+		if(clear) matchingDescendants.clear(); _getChildrenByType_op<1>(matchingDescendants); return matchingDescendants;
 	}	
 	
 	/**LEGACY-SUPPORT */
@@ -1067,7 +1067,7 @@ COLLADA_(public)
 		bool charDataMismatch; //true if the char data didn't match
 		bool childCountMismatch; //true if the number of children didn't match
 
-		daeElement::compare_Result::compare_Result()
+		compare_Result()
 		:compareValue(),elt1(),elt2(),nameMismatch(),attrMismatch(""),
 		charDataMismatch(),childCountMismatch(){}
 
@@ -1106,6 +1106,17 @@ COLLADA_(protected) //domAny.cpp
 COLLADA_(public)
 	enum{ xs_anyAttribute_is_still_not_implemented=1 };
 };
+//GCC/C++ want explicit specializations in the namesapce.
+template<class T>
+inline int daeElement::getAttributeIndex(const T &pseudonym)const
+{
+	return _getAttributeIndex(typename daeBoundaryString2<T>::type(pseudonym));
+}
+#define _(x) template<>\
+inline int daeElement::getAttributeIndex<x>(const x &i)const{ return i; }
+COLLADA_SUPPRESS_C(4244) //This is only for size_t. short/char will be added upon request.
+_(signed)_(unsigned)_(signed long)_(unsigned long)_(signed long long)_(unsigned long long)
+#undef _
 
 #include "../LINKAGE.HPP" //#undef LINKAGE
 

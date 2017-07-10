@@ -39,7 +39,7 @@ struct Geometry_Semantic : Collada05::const_float_array
 		const_float_array::operator=(WTF);
 	}
 
-	Geometry_Semantic():Offset(),Stride(),Index(),Dimension(){}
+	Geometry_Semantic():Stride(),Offset(),Index(),Dimension(){}
 	/**
 	 * @c Index is derived from <input offset> although it's
 	 * not the same. @c Offset is <accessor offset> verbatim.
@@ -158,10 +158,11 @@ class Spline : public RT::Geometry, public RT::Spline_Length
 
 COLLADA_(public)
 
-	Spline():Open(-1),BSPLINE_Entry()
+	Spline():
 	#ifdef _DEBUG
-	,__SamplePoints((std::vector<RT::Float>*)&SamplePoints)
+	__SamplePoints((std::vector<RT::Float>*)&SamplePoints),
 	#endif
+	Open(-1),BSPLINE_Entry()
 	{}
 	/**
 	 * The main reason this is retained (not discarded) is

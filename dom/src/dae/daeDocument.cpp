@@ -28,11 +28,14 @@ daeOK daeDocument::setMeta(daeMeta &rm)
 	}
 	else return DAE_ERR_INVALID_CALL; return DAE_OK;
 }
-template<> inline DAEP::Model &DAEP::Elemental
-<daeDocument::_PseudoElement>::__DAEP__Object__v1__model()const
+namespace DAEP //GCC refuses to disable this (erroneous) warning
 {
-	return dae(this)->getMeta()->getModel();
-}		
+	template<> inline DAEP::Model &DAEP::Elemental
+	<daeDocument::_PseudoElement>::__DAEP__Object__v1__model()const
+	{
+		return dae(this)->getMeta()->getModel();
+	}
+}
 extern const daeStringCP _daePseudoElement_[] = ":daePseudoElement:";
 daeDocument::daeDocument(daeDOM *DOM):daeDoc(DOM,daeDocType::HARDLINK)
 {	
@@ -104,19 +107,19 @@ void daeDocument::__daeDoc__v1__atomize()
 	//This should do it for the root, etc.
 	getContents().clear();
 }
-daeOK daeDoc::_doOperation(_op op, const const_daeDOMRef &DOM, const void *arg0)
+daeOK daeDoc::_doOperation(int op, const const_daeDOMRef &DOM, const void *arg0)
 {
 	daePlatform &pf = DOM->getPlatform();
 
 	daeOK OK;
 	int id = pf.threadID();
-	if(_current_operation==_no_op)
+	if(_current_operation==_no_op::value)
 	{	
 		_current_operation = op; _operation_thread_id = id;
 
 		switch(op)
 		{
-		case _close_op: //Called by daeDoc::close().
+		case _close_op::value: //Called by daeDoc::close().
 		{
 			//closeURI() isn't given empty URIs. They will be closed
 			//unconditionally. Users can clear the URI to force this.
@@ -126,14 +129,14 @@ daeOK daeDoc::_doOperation(_op op, const const_daeDOMRef &DOM, const void *arg0)
 
 			daeURIRef URI = (daeURI*)_uri;				
 			//DAE_OK is ambiguous. (_doOperation also returns DAE_OK.)
-			*(_op_arg0<_close_op>::type*)arg0 = OK = pf.closeURI(*URI);
+			*(_close_op::type*)arg0 = OK = pf.closeURI(*URI);
 			assert(!OK||isClosed());
 			//Indicates the daePlatform does not implement closeURI(). 
 			if(OK==DAE_ERR_NOT_IMPLEMENTED) 
 			OK = DAE_OK;
 			break;
 		}
-		case _setURI_op: //Called by daeURI_base::_setURI().
+		case _setURI_op::value: //Called by daeURI_base::_setURI().
 		{	
 			if(_uri==&DOM->getEmptyURI()) 
 			{
@@ -142,7 +145,7 @@ daeOK daeDoc::_doOperation(_op op, const const_daeDOMRef &DOM, const void *arg0)
 			}
 
 			//setURI() is recursive.
-			OK = _uri.setURI((_op_arg0<_setURI_op>::type*)arg0);
+			OK = _uri.setURI((_setURI_op::type*)arg0);
 			if(OK)
 			{	
 				//resolve() is recursive.
@@ -155,7 +158,7 @@ daeOK daeDoc::_doOperation(_op op, const const_daeDOMRef &DOM, const void *arg0)
 			break;
 		}}
 
-		_current_operation = _no_op;		
+		_current_operation = _no_op::value;
 	}
 	else if(id!=_operation_thread_id)
 	{
@@ -344,7 +347,7 @@ void daeDocument::_migrate_ID_or_SID(const daeDocument *destination, const daeEl
 
 //This is used to avoid graph-traversals 
 //if typeLookup has never once been called. 
-extern bool daeDocument_typeLookup_called = false;
+COLLADA_(extern) bool daeDocument_typeLookup_called = false;
 void daeDocument::_typeLookup(daeMeta &meta, daeArray<daeElementRef> &matchingElements)const
 {
 	//USERS MAY WANT TO DISABLE TYPELOOKUP BY MACRO.
@@ -446,7 +449,7 @@ inline daeCursor daeContents_base::__insert(int KoT, daeString s, size_t e, cons
 
 		memmove(p+nodes,p,(c.end()-p)*sizeof(*p));
 		c.getAU()->setInternalCounter(c.size()+nodes);
-		for(i=e;i>0;i-=span_max)
+		for(i=(int)e;i>0;i-=span_max)
 		{	
 			int extent = std::min(i,span_max);
 			int span = i>=span_max?255:nodes%255;
@@ -457,7 +460,7 @@ inline daeCursor daeContents_base::__insert(int KoT, daeString s, size_t e, cons
 			t->_.hole = KoT;
 			t->_.extent = extent;
 			t->_.span = span;
-			t->_.continued = i!=e;
+			t->_.continued = i!=(int)e;
 			t->_.continues = i>span_max;
 			t->_.reserved = 0;
 			memcpy(t->_text,s,extent*sizeof(daeStringCP)); s+=extent; p+=span;

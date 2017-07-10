@@ -124,7 +124,13 @@ COLLADA_(public) //These status APIs are new in 2.5.
 		return (_getReadFlags()&_readFlag_unmixed)!=0?true:false; 
 	}
 
-#ifdef BUILDING_COLLADA_DOM
+	enum{ __combined_size_on_client_stack=64*sizeof(void*) }; //ie. libXML & TinyXML
+
+#ifndef BUILDING_COLLADA_DOM
+
+	char __client_padding[__combined_size_on_client_stack-sizeof(daeIOPlugin)];
+
+#else
 
 COLLADA_(protected)
 		/**
@@ -141,9 +147,10 @@ COLLADA_(protected)
 			
 		//STATEFUL
 		int _readFlags;	
-		//STATELESS
-		//New, common buffers.
-		daeArray<daeStringCP> _CD,_X;
+		//STATELESS		
+		//ctype.h has #define _X 0100. (GCC)
+		//xlocinfo.h has #define _XD _HEX. (Win32; ctype related)
+		daeArray<daeStringCP> _CD,_X_CD; //_X //_XD
 		typedef std::pair<daeName,daeHashString> _attrPair;
 		std::vector<_attrPair> _attribs;		
 		//Only the LibXML loader uses these, but the reader must pass-through.
@@ -176,7 +183,7 @@ COLLADA_(protected)
 		virtual int _errorRow() = 0;
 
 		/** This parses the XML declaration. */
-		void _xml_decl(const daeContents&,char*&,char*&,char*&);
+		void _xml_decl(const daeContents&,daeString&,daeString&,daeString&);
 		/** This initializs the XML declaration. Both require special handling. */
 		void _push_back_xml_decl(daeContents&,daeName,daeName,bool);
 		
@@ -184,12 +191,8 @@ COLLADA_(protected)
 		daeElement &_beginReadElement(daePseudoElement &parent, const daeName &elementName);
 		//LEGACY
 		void _readElementText(daeElement &element, const daeHashString &text);
-#else 
-		char __client_padding[_combined_size_on_client_stack-sizeof(daeIOPluginCommon)];
 
 #endif //BUILDING_COLLADA_DOM
-
-	enum{ __combined_size_on_client_stack=64*sizeof(void*) }; //ie. libXML & TinyXML
 };
 
 #ifdef BUILDING_IN_LIBXML////////////////////

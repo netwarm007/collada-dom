@@ -48,6 +48,12 @@ bool RT::DBase::LoadCOLLADA_1_4_1(Collada05::const_COLLADA COLLADA)
 	if(COLLADA==nullptr) return false;
 	//Reminder: There might be multiple documents involved.
 	daeEH::Verbose<<"COLLADA version line is 1.4.1 (2005)";
+
+	//EXPERIMENTAL
+	daeName keywords = COLLADA->asset->keywords->value->*daeName();
+	while(!keywords.empty())
+	RT::Main.COLLADA_index_keywords.push_back(keywords.pop_first_word());
+
 	LoadCOLLADA(COLLADA); return true;
 }
 bool RT::DBase::LoadCOLLADA_1_5_0(Collada08::const_COLLADA COLLADA)
@@ -55,6 +61,12 @@ bool RT::DBase::LoadCOLLADA_1_5_0(Collada08::const_COLLADA COLLADA)
 	if(COLLADA==nullptr) return false;
 	//Reminder: There might be multiple documents involved.
 	daeEH::Verbose<<"COLLADA version line is 1.5.0 (2008)";
+
+	//EXPERIMENTAL
+	daeName keywords = COLLADA->asset->keywords->value->*daeName();
+	while(!keywords.empty())
+	RT::Main.COLLADA_index_keywords.push_back(keywords.pop_first_word());
+
 	LoadCOLLADA(COLLADA); return true;
 }
 

@@ -89,7 +89,7 @@ void RT::Physics::Reset()
 	for(btVector3 zero(0,0,0);i<iN;i++)
 	{
 		btRigidBody *rb = btRigidBody::upcast
-		(bt.dynamicsWorld->getCollisionObjectArray()[i]);
+		(bt.dynamicsWorld->getCollisionObjectArray()[(int)i]);
 		if(rb==nullptr) continue;
 
 		rb->clearForces();
@@ -187,7 +187,8 @@ namespace CrtPhysics //EXPERIMENTAL
 		}
 		transform(const transform &cp):btTransform(cp)
 		{}
-		transform(const daeContents &content)
+		template<class Content> //daeContents is ambiguous.
+		transform(const Content &content)
 		{
 			RT::Matrix &m = thisMatrix();
 			//Not sure if btTransform can handle non-rotation 
@@ -203,7 +204,7 @@ namespace CrtPhysics //EXPERIMENTAL
 			}
 			else RT::MatrixLoadAsset(m,RT::Asset.Up);
 
-			content.for_each_child(*this);			
+			content->for_each_child(*this);
 
 			RT::MatrixToBulletPhysicsOrViceVersa((RT::Float*)this);
 		}
@@ -246,11 +247,12 @@ void RT::Physics::Bind_instance_rigid_constraint
 		btRigidBody *body = RT::Main.Stack.Data[i].Physics;
 		if(body==nullptr) continue;
 
-		if((void*)constrain1==body->getUserPointer())
+		//-Wint-to-pointer-cast
+		if(constrain1==(daeOffset)body->getUserPointer())
 		{
 			many1++; body1 = body;
 		}
-		if((void*)constrain2==body->getUserPointer())
+		if(constrain2==(daeOffset)body->getUserPointer())
 		{
 			many2++; body2 = body;
 		}
@@ -380,7 +382,7 @@ void RT::Physics::Bind_instance_rigid_body(int constraint, RT::RigidBody &out, R
 
 	//This is an opaque identifier for attaching constraints.
 	//It's hierarchical.
-	body->setUserPointer((void*)constraint);
+	body->setUserPointer((void*)(daeOffset)constraint); //-Wint-to-pointer-cast
 
 	bt.dynamicsWorld->addRigidBody(body); in.Physics = body;
 }
@@ -499,9 +501,9 @@ void RT::RigidBody::_LoadShape(Collada05::const_rigid_body::technique_common &in
 				goto linked_geometry; 
 			}
 			RT::Geometry *g = nullptr;
-			RT::DBase *dbase = const_cast<RT::DBase*>(RT::Main.Data);
-			if(g05!=nullptr) g = dbase->LoadGeometry(g05);
-			if(g08!=nullptr) g = dbase->LoadGeometry(g08); //OVERLOAD
+			RT::DBase *db = const_cast<RT::DBase*>(RT::Main.DB);
+			if(g05!=nullptr) g = db->LoadGeometry(g05);
+			if(g08!=nullptr) g = db->LoadGeometry(g08); //OVERLOAD
 			if(nullptr==g) continue;
 
 			#ifdef NDEBUG
@@ -697,7 +699,7 @@ daeOK RT::Physics::Snapshot(const xs::anyURI &remote_directory)
 	if(base==remote_directory)
 	{
 		//Writing to the same directory is not done.
-		assert(0); return false; 
+		assert(0); return DAE_ERR_INVALID_CALL;
 	}
 
 	//This is really just protecting the ref-counts.
@@ -781,7 +783,7 @@ daeOK RT::Physics::Snapshot(const xs::anyURI &remote_directory)
 		URI.setIsResolved();
 
 		Collada05::COLLADA COLLADA = DOM.getDoc<Collada05::COLLADA>(i);
-		if(COLLADA==nullptr) 
+		if(COLLADA==nullptr)
 		continue;
 		
 		Collada05::contributor contributor = ++COLLADA->asset->contributor;

@@ -11,8 +11,8 @@
 
 COLLADA_(namespace)
 {
-	namespace RT
-	{//-.
+	//error: explicit qualification in declaration
+	//--.
 //<-----'
 
 void RT::MatrixMult(const RT::Matrix &LMtx1, const RT::Matrix &LMtx2, RT::Matrix &LDstMtx)
@@ -259,8 +259,8 @@ void RT::MatrixToQuat(const RT::Matrix &rotMat, RT::Quaternion &RotQuat)
 	}
 };
 
-//-------.
-	}//<-'
+//------.
+	//<-'
 }
 
 /*C1071*/

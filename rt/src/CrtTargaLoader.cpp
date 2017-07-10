@@ -39,7 +39,7 @@ template<int BITS, class T> T LittleEndian(T u){ return SwapEndianness<BITS>(u);
 template<int BITS, class T> T LittleEndian(T u){ return SameEndianness<BITS>(u); }
 #endif
   
-RT::Texture *RT::LoadTargaFromMemory(const void *buf, size_t size, RT::Texture *out)
+RT::Texture * /*C4138*//*RT::*/LoadTargaFromMemory(const void *buf, size_t size, RT::Texture *out)
 {		
 	//2016: Getting these out of "CrtTypes.h"
 	typedef unsigned char UInt8;

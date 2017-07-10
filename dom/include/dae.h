@@ -17,6 +17,17 @@ COLLADA_(namespace)
 {//-.
 //<-'
 
+/**GCC/C++ want this lifted up out of @c daeDocRoot.
+ */
+template<class S> struct daeDocRootAware
+{
+	typedef typename S::__COLLADA__T type;
+};
+template<>
+struct daeDocRootAware<void>{ typedef daeElement type; };
+template<>
+struct daeDocRootAware<void*>{ typedef daeElement type; };
+
 /**
  * @c daeDocRoot lets APIs return the doc in addition to the root.
  * Technically, @c daeDocRoot extracts the doc's XML-like root on
@@ -25,35 +36,36 @@ COLLADA_(namespace)
  */
 template<class T> struct daeDocRoot : daeDocRef, daeOK
 {
-	template<class T> 
-	struct _unvoid{ typedef typename T::__COLLADA__T type; };
-	template<> struct _unvoid<void>{ typedef daeElement type; };
-	template<> struct _unvoid<void*>{ typedef daeElement type; };
+	typedef typename daeDocRootAware<T>::type TT;
 
-	typedef typename _unvoid<T>::type TT;
+	using daeDocRef::operator=; //using daeOK::operator=; //C4522
 
-	using daeDocRef::operator=; //using daeOK::operator=; //C4522	
-	
 	//NOTE: daeConstOf is added to implement daeArchive::getDoc().
 
 	daeDocRoot(){}
 	daeDocRoot(daeOK cp):daeOK(cp){}
 	daeDocRoot(daeError cp):daeOK(cp){}
 	daeDocRoot(const daeDocRef &cp):daeDocRef(cp),daeOK(cp){}
-	daeDocRoot(const daeDocRoot<> &cp):daeDocRef(cp),daeOK(cp){}
-	template<class U>daeDocRoot&operator=(const daeDocRoot<U> &cp)
+	daeDocRoot(const daeDocRoot<> &cp):daeDocRef(cp),daeOK(cp){}		
+	template<class U>
+	daeDocRoot &operator=(const daeDocRoot<U> &cp)
 	{
-		//Allow same types or dae/DAEP type to void/void*.
-		TT &crazy_cast = *(typename daeDocRoot<U>::TT*)nullptr; 
-		daeDocRef::operator=(cp); error = cp.error; return *this; 
-	}
+		_assign((typename daeDocRootAware<U>::type*)nullptr,cp); 
+		error = cp.error; return *this;
+	}	
+	//This is letting daeDocRoot<> assign to anything.
+	//const sidesteps case where T is an xs::any type.
+	void _assign(daeElement*, const daeDocRef &cp){ *this = cp; }	
+	void _assign(const TT*, const daeDocRef &cp){ *this = cp; }
+	void _assign(...){ daeCTC<0>(); }
+
 	template<class S> operator S*()const
 	{ 
-		return (daeConstOf<T,S>::type*)_SFINAE<S>((S*)nullptr); 
+		return (typename daeConstOf<T,S>::type*)_SFINAE<S>((S*)nullptr);
 	}	
 	template<template<class> class R, class S> operator R<S>()const
 	{
-		return (daeConstOf<T,S>::type*)_SFINAE<S>((S*)nullptr); 
+		return (typename daeConstOf<T,S>::type*)_SFINAE<S>((S*)nullptr);
 	}
 	operator typename daeConstOf<T,daeDocument>::type*()const
 	{
@@ -75,7 +87,7 @@ template<class T> struct daeDocRoot : daeDocRef, daeOK
 	{ 
 		//& is used to invoke the DAEP::Element conversion
 		//to a daeElement& in order to behave like xs::any.
-		S &upcast = *(TT*)nullptr;
+		S &upcast = *(TT*)nullptr; (void)upcast;
 		if(*this==COLLADA_(nullptr)) return nullptr;
 		daeElement *root = (*this)->getDocument()->getRoot(); 
 		daeSafeCast<TT>(root); return root;
@@ -119,20 +131,20 @@ COLLADA_(public) //OPERATORS
 
 COLLADA_(private) //new/openDoc() implementation
 	
+	//These had returned the doc-root via specializations,
+	//but GCC/C++ forbid in-class explicit specialization.
 	template<class ROOT> 
 	/** Creates/recreates a @a ROOT rooted doc. */	
-	inline daeDocRoot<ROOT> _read(const daeIORequest &req, daeIOPlugin *I)
+	inline void _read(daeDocRoot<ROOT> &o, const daeIORequest &req, daeIOPlugin *I)
 	{
-		return _read2(daeGetMeta<ROOT>(),req,I);
+		o = _read2(daeGetMeta<ROOT>(),req,I);
 	}
-	template<> 
 	/**TEMPLATE-SPECIALIZATION
 	 * Creates/recreates a purely @c domAny doc. */	
-	inline daeDocRoot<domAny> _read(const daeIORequest &req, daeIOPlugin *I)
+	inline void _read(daeDocRoot<domAny> &o, const daeIORequest &req, daeIOPlugin *I)
 	{
-		return _read2(nullptr,req,I);
+		o = _read2(nullptr,req,I);
 	}
-	template<> 
 	/**TEMPLATE-SPECIALIZATION
 	 * Delegates creation/recreation of a new doc to @c daePlatform::openURI().
 	 * If @a !req.localURI->getAllowsAny(), then @c DAE_ERR_NOT_IMPLEMENTED is
@@ -140,28 +152,25 @@ COLLADA_(private) //new/openDoc() implementation
 	 * (@c daeIORequest::unfulfillRequest() is provided just for this purpose.)
 	 * (@c _read<void*>() is provided below to automatically "setAllowsAny()".)
 	 */	
-	inline daeDocRoot<void> _read(const daeIORequest &req, daeIOPlugin *I)
+	inline void _read(daeDocRoot<> &o, const daeIORequest &req, daeIOPlugin *I)
 	{
-		daeDocRoot<> doc; 
-		doc.error = _getPlatform(*getDOM()).openURI(req,I,(daeURIRef&)doc);		
-		if(doc!=COLLADA_(nullptr)&&!(doc=(daeDoc*)&doc->getParentObject())->_isDoc())
+		o.error = _getPlatform(*getDOM()).openURI(req,I,(daeURIRef&)o);
+		if(o!=COLLADA_(nullptr)&&!(o=(daeDoc*)&o->getParentObject())->_isDoc())
 		{
 			//Hate to inline this logic, but openURI() is designed so to support
 			//non-doc based URIs (in the future) and this is a doc-based routine.
-			doc = nullptr; doc.error = DAE_ERR_CLIENT_FATAL; assert(0); 
+			o = nullptr; o.error = DAE_ERR_CLIENT_FATAL; assert(0);
 		}
-		return doc;
 	}
-	template<> 
 	/**TEMPLATE-SPECIALIZATION	 
 	 * Delegates creation/recreation of a new doc to @c daePlatform::openURI(), with
 	 * further instructions to default/fallback to a @c domAny based doc if required. 
 	 * The * in "void*" is an asterisk. It's to illustrate that @c domAny isn't free.
 	 * @warning This is NOT RECOMMENDED if @a URI is part of, or bound to a document.
 	 */
-	inline daeDocRoot<void*> _read(const daeIORequest &req, daeIOPlugin *I)
+	inline void _read(daeDocRoot<void*> &o, const daeIORequest &req, daeIOPlugin *I)
 	{
-		const_cast<daeURI&>(*req.localURI).setAllowsAny(); return _read<void>(req,I); 		
+		const_cast<daeURI&>(*req.localURI).setAllowsAny(); _read(*(daeDocRoot<>*)&o,req,I);
 	}
 
 	/**
@@ -192,22 +201,21 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline daeDocRoot<ROOT> newDoc(const daeURI &URI, daeIOPlugin *I=nullptr)
 	{ 
-		return _read<ROOT>(daeIORequest(this,nullptr,&URI),I);
+		daeDocRoot<ROOT> o; _read(o,daeIORequest(this,nullptr,&URI),I); return o;
 	}	
 	//A newDoc<domAny>() version is all included for completeness.
 	template<class T>
 	/** This is a dummy to force writing "<domAny>"; and reserved. */
-	inline daeDocRoot<T> newDoc(const daeName&, const daeURI&, daeIOPlugin *I=nullptr);
-	template<>
+	inline daeDocRoot<T> newDoc(const daeName &QName, const daeURI &URI, daeIOPlugin *I=nullptr)
+	{
+		daeDocRoot<T> o; _anyDoc(o,QName,URI,I); return o;
+	}
 	/**TEMPLATE-SPECIALIZATION Creates/recreates a @c domAny rooted doc. */
-	inline daeDocRoot<domAny> newDoc<domAny>(const daeName &QName, const daeURI &URI, daeIOPlugin *I/*=nullptr*/)
+	inline void _anyDoc(daeDocRoot<domAny> &o, const daeName &QName, const daeURI &URI, daeIOPlugin *I)
 	{ 
-		#ifdef NDEBUG //CIRCULAR-DEPENDENCY?
-		#error MSVC compiles domAnyRef(getDOM()). daeDOM is undefined. It's probably a circular-dependency.
-		#endif
-		daeDocRoot<> doc = newDoc(URI,I); daeDocumentRef docu = doc->getDocument();
+		o = newDoc(URI,I); daeDocumentRef docu = o->getDocument();
 		daeDOM *DOM = const_cast<daeDOM*>(getDOM());
-		if(docu!=nullptr&&doc==DAE_OK) (docu->getRoot()=domAnyRef(DOM))->setElementName(QName); return doc;
+		if(docu!=nullptr&&o==DAE_OK) (docu->getRoot()=domAnyRef(DOM))->setElementName(QName);
 	}
 
 	template<class ROOT>
@@ -224,7 +232,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline daeDocRoot<ROOT> openDoc(const daeURI &URI, daeIOPlugin *I=nullptr)
 	{
-		return _read<ROOT>(daeIORequest(this,nullptr,&URI,&URI),I);
+		daeDocRoot<ROOT> o; _read(o,daeIORequest(this,nullptr,&URI,&URI),I); return o;
 	}
 
 	template<class ROOT> 
@@ -238,7 +246,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */	
 	inline daeDocRoot<ROOT> openDocFromMemory(const daeURI &URI, const daeHashString &string, daeIOPlugin *I=nullptr)
 	{
-		return _read<ROOT>(daeIORequest(this,string,&URI),I);
+		daeDocRoot<ROOT> o; _read(o,daeIORequest(this,string,&URI),I); return o;
 	}
 
 	/** 
@@ -246,16 +254,18 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline daeOK writeDoc(const daeURI &localURI, daeIOPlugin *O=nullptr)const
 	{
-		daeDocRef doc; getDoc(localURI,doc);
-		return doc!=nullptr?doc->write(O):DAE_ERR_DOCUMENT_DOES_NOT_EXIST;
+		const_daeDocRef doc; getDoc(localURI,doc);
+		if(doc==nullptr)
+		return DAE_ERR_DOCUMENT_DOES_NOT_EXIST; return doc->write(O);
 	}
 	/**
 	 * Writes doc of @a localURI to @a remoteURI.
 	 */
 	inline daeOK writeDocTo(const daeURI &localURI, const daeURI &remoteURI, daeIOPlugin *O=nullptr)const
 	{
-		daeDocRef doc; getDoc(localURI,doc);		
-		return doc!=nullptr?doc->writeTo(remoteURI,O):DAE_ERR_DOCUMENT_DOES_NOT_EXIST;
+		const_daeDocRef doc; getDoc(localURI,doc);		
+		if(doc==nullptr)
+		return DAE_ERR_DOCUMENT_DOES_NOT_EXIST; return doc->writeTo(remoteURI,O);
 	}
 	
 	/**
@@ -266,8 +276,9 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline daeOK closeDoc(const daeURI &URI)
 	{
-		daeDocRef doc; getDoc(URI,doc);		
-		return doc!=nullptr?doc->close():DAE_ERR_DOCUMENT_DOES_NOT_EXIST;
+		daeDocRef doc; getDoc(URI,doc);
+		if(doc==nullptr)
+		return DAE_ERR_DOCUMENT_DOES_NOT_EXIST; return doc->close();
 	}
 	
 	/** 
@@ -455,19 +466,14 @@ COLLADA_(public) //daeSmartRef<T> T factories
 	/**
 	 * Adds an orphan element to the database. 
 	 */
-	NOALIAS_LINKAGE daeElement *_addElement(daeMeta&);		
-	/**
-	 * Only here because daeGetMeta() is undefined.
-	 * It's also slightly more efficient like this.
-	 */
-	NOALIAS_LINKAGE domAny *_addAny();		
+	NOALIAS_LINKAGE daeElement *_addElement(daeMeta&);
 	/**
 	 * Implements @c daeSmartRef::daeSmartRef(daeDOM&). 
 	 */
 	template<class T> inline T *_add()const
 	{	
 		assert(this!=nullptr);
-		return const_cast<daeDOM*>(this)->_add2<T>(nullptr);
+		return const_cast<daeDOM*>(this)->_add2<T>((T*)nullptr);
 	}	
 	/**OVERLOAD Adds a generic object to the database. */
 	template<class T> inline T *_add2(...)
@@ -492,12 +498,12 @@ COLLADA_(public) //daeSmartRef<T> T factories
 		if(I==0) _add2_concrete_CTC<T,1>((T*)nullptr); 
 	}
 	/**TEMPLATE-SPECIALIZATION Adds an archive to the database. */
-	template<> inline daeArchive *_add2<daeArchive/*MSVC2010*/>(...)
+	template<class> inline daeArchive *_add2(daeArchive*)
 	{
 		return _addArchive();
 	}
 	/**TEMPLATE-SPECIALIZATION Adds a document to the database. */
-	template<> inline daeDocument *_add2<daeDocument/*MSVC2010*/>(...)
+	template<class> inline daeDocument *_add2(daeDocument*)
 	{
 		return _addDocument();
 	}
@@ -506,11 +512,6 @@ COLLADA_(public) //daeSmartRef<T> T factories
 	{
 		return (T*)_addElement(daeGetMeta<T>());
 	}
-	/**TEMPLATE-SPECIALIZATION Adds an orphan @c domAny to the database. */
-	template<> inline domAny *_add2<domAny>(domAny::__COLLADA__Element*)
-	{
-		return _addAny(); //Only here because daeGetMeta() is undefined.
-	}	
 
 COLLADA_(public) //OPERATORS
 

@@ -13,7 +13,7 @@ COLLADA_(namespace)
 
 //This is conceptually the first thing
 //that is initialized. The rest follow.
-extern daePShare DOM_process_share = 0;
+COLLADA_(extern) daePShare DOM_process_share = 0;
 
 /**128-1-1
  * Arbitrary figure, divisible by 8, 
@@ -24,7 +24,7 @@ enum{ daeStringRef_large=126 };
 
 static daeSmallStringTable<> daeStringRef_table(0);
 
-extern daeString daeStringRef_empty = daeStringRef_table.allocString("",0);
+COLLADA_(extern) daeString daeStringRef_empty = daeStringRef_table.allocString("",0);
 
 daeString daeStringRef_system(daeString cp, size_t extent)
 {
@@ -226,7 +226,7 @@ static daeType<T> &xs_best_fit()
 //THESE MUST AGREE WITH daeDomTypes.h
 //* technically should be string
 #define xs_(x,y) \
-extern daeTypewriter &daeStringRef_xs_##y = xs_best_fit<x>();
+COLLADA_(extern) daeTypewriter &daeStringRef_xs_##y = xs_best_fit<x>();
 xs_(daeStringRef,anySimpleType)
 xs_(daeStringRef,string)
 xs_(daeStringRef,normalizedString)
@@ -266,17 +266,17 @@ xs_(daeTokenRef,language)
 xs_(daeTokenRef,Name)
 xs_(daeTokenRef,NCName) 
 xs_(daeTokenRef,NMTOKEN)
-xs_(daeTokenRef,NMTOKENS)
+xs_(daeTokenRef,NMTOKENS) //I think where<daeArray> is used.
 xs_(daeTokenRef,ID)
 xs_(daeTokenRef,IDREF)
-xs_(daeTokenRef,IDREFS)		
+xs_(daeTokenRef,IDREFS) //I think where<daeArray> is used.
 xs_(daeTokenRef,ENTITY)
-xs_(daeTokenRef,ENTITIES) 
+xs_(daeTokenRef,ENTITIES) //I think where<daeArray> is used.
 #undef xs_
 //A content-typewriter is a big side project.
 //(It'd basically be an XML document "writer.")
-extern daeAlloc<daeCounter,0> daeStringRef_counterLT(0);
-extern daeTypewriter &daeStringRef_counterTW = xs_best_fit<daeCounter>();
+COLLADA_(extern) daeAlloc<daeCounter,0> daeStringRef_counterLT(0);
+COLLADA_(extern) daeTypewriter &daeStringRef_counterTW = xs_best_fit<daeCounter>();
 static XS::Schema domAny_xs(0); XS::Schema::Schema(int ps)
 {
 	__XS__Schema__construct(false, //__invisible,
@@ -295,7 +295,7 @@ static struct daeStringRef_protoDOM : daeDoc
 }protoDOM;
 //This struct is just needed for an empty URI for daeStringRef.
 //It could be a daeDOM, but that has a rather larger footprint.
-extern daeDOM &daeStringRef_protoDOM = *(daeDOM*)&protoDOM;
+COLLADA_(extern) daeDOM &daeStringRef_protoDOM = *(daeDOM*)&protoDOM;
 
 extern daeTypewriter *daeStringRef_xs_(daeName name)
 {

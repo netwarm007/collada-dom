@@ -16,7 +16,7 @@ COLLADA_(namespace)
 	{//-.
 //<-----'
 
-extern struct FX::Profile_COMMON Profile_COMMON = 0; 
+COLLADA_(extern) struct FX::Profile_COMMON Profile_COMMON = 0;
 
 extern bool cfxCOMMON_InitGLSL(GLenum stage, xs::string src, GLuint &prog, xs::ID error_name)
 {	
@@ -26,7 +26,7 @@ extern bool cfxCOMMON_InitGLSL(GLenum stage, xs::string src, GLuint &prog, xs::I
 
 	GLint st;
 	GL.GetShaderiv(sh,GL_COMPILE_STATUS,&st);
-	if(st==TRUE) 
+	if(st==GL_TRUE)
 	{				  
 		if(0==prog) prog = GL.CreateProgram();
 		
@@ -46,36 +46,6 @@ extern bool cfxCOMMON_InitGLSL(GLenum stage, xs::string src, GLuint &prog, xs::I
 
 static struct FX::Profile_COMMON::Internals //SINGLETON
 {	
-public: //Miscellaneous.
-
-	//SCHEDULED FOR REMOVAL
-	typedef std::pair<int,GLuint> Color_to_Texture;
-	std::vector<Color_to_Texture> Color_to_Textures;
-	GLuint Texture1x1(FX::Float4 &c)
-	{
-		Color_to_Texture ctt;
-		ctt.first|=(0xff&int(0xff*c.r));
-		ctt.first|=(0xff&int(0xff*c.g))<<8;
-		ctt.first|=(0xff&int(0xff*c.b))<<16;
-		ctt.first|=(0xff&int(0xff*c.a))<<24;
-
-		std::vector<Color_to_Texture>::iterator it,itt;		
-		itt = Color_to_Textures.end();
-		it = std::lower_bound(Color_to_Textures.begin(),itt,ctt);
-
-		if(it!=itt&&it->first==ctt.first) return it->second;
-
-		assert(Color_to_Textures.size()<100); //Assuming inanimate.
-
-		glGenTextures(1,&ctt.second);
-		glBindTexture(GL_TEXTURE_2D,ctt.second);
-		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,1,1,0,GL_RGBA,GL_UNSIGNED_BYTE,&ctt.first);		
-
-		Color_to_Textures.insert(it,ctt); return ctt.second; 
-	}
-
-public: //Shared uniforms.	
-
 	#ifdef NDEBUG
 	#error Remember to use layout(location=i).
 	#endif	
@@ -118,13 +88,10 @@ public: //Shared uniforms.
 	
 	std::vector<ClientData*> Lit;
 	
-	GLuint GLSL;
+	GLuint GLSL, White1x1;
 	
-	Internals():GLSL() //Stage 1.
+	Internals():GLSL(),White1x1() //Stage 1.
 	{
-		//Direct the NewParam at themselves.
-		FX::Profile_COMMON.ResetPassState();
-
 		for(int i=0;i<4;i++) 
 		Colors[i].SetParam_To
 		(GL_FLOAT_VEC4,1,&(&FX::Profile_COMMON.Emission)[i].Color);
@@ -143,23 +110,22 @@ public: //Shared uniforms.
 		for(int j=0;j<16;j++) (&w[i].Value.f00)[j] = float(j==j);
 		_(w[0],WORLD_VIEW)
 		_(w[1],WORLD_VIEW_INVERSE_TRANSPOSE)
-		_(w[2],PROJECTION)
+		_(w[2],PROJECTION) //Not technically "World" but include it.
 		
 		static FX::Profile_COMMON::Float4 v;
 		v.Value = FX::Float4(0,1);
-		FX::Profile_COMMON::View view;		
-		v.Annotations.push_back(&view); //HACK
+		static FX::Profile_COMMON::View view;		
+		v.Annotations.push_back(&view);
 		view.SAS = FX::string_Space_View;
-		view.Name = "Space"; 
+		view.Name = daeStringRef("Space"); 
 		view.DataString::Value = daeStringRef("View");		
-		unsigned &i = v.Subscript;
+
 		_(v,LIGHT_POSITION/*[0]*/)
 		while(++v.Subscript<MAX_LIGHTS) 
 		l.Copy_ClientData(&v,LIGHT_POSITION[v.Subscript].Data);
 		_(v,SPOT_DIRECTION/*[0]*/)
 		while(++v.Subscript<MAX_LIGHTS) 
 		l.Copy_ClientData(&v,SPOT_DIRECTION[v.Subscript].Data);
-		v.Annotations.clear(); //HACK
 
 		#undef _
 	}
@@ -169,6 +135,7 @@ public: //Shared uniforms.
 
 void FX::Profile_COMMON::Init_ClientData(FX::Loader &l)
 {
+	//World is also including PROJECTION.
 	static Float4x4 World[3];
 	static bool nonce = false; if(nonce)
 	{
@@ -177,7 +144,9 @@ void FX::Profile_COMMON::Init_ClientData(FX::Loader &l)
 		//effects don't have any <newparam> to speak of.
 		l.Load_ClientData(World+0);
 		l.Load_ClientData(World+1);
-		l.Load_ClientData(World+2); return;
+		//This is PROJECTION, which isn't really needed
+		//since it doesn't normally change.
+		l.Load_ClientData(World+2); return; 
 	}
 	else nonce = true;
 
@@ -205,7 +174,7 @@ void FX::Profile_COMMON::SetPassState()
 	if(0!=FX::Profile_COMMON.Load)
 	if(!cfxCOMMON.Reprogram(FX::Profile_COMMON.Load))
 	{
-		OK = false; assert(0); return; //UNUSED (HOPEFULLY)
+		OK = false; return; //UNUSED (HOPEFULLY)
 	}
 
 	GL.UseProgram(cfxCOMMON.GLSL);
@@ -218,21 +187,19 @@ void FX::Profile_COMMON::SetPassState()
 	FX::ShaderParam *q = cfxCOMMON.Textures;
 	for(;o<=&Specular;o++,p++,q++)
 	{
+		p->Apply();
+
 		if(o->Texture.IsSet())
 		{
-			q->Apply();
+			q->Apply(); 
 		}
-		else if(-1==p->GLSL)
+		else if(-1!=q->GLSL) //Bind white texture?
 		{
-			//SCHEDULED FOR REMOVAL
-			FX::Float4 c(0,1); 
-			(*p)->Load(3,CG_FLOAT,&c);
-			GL.ActiveTexture(q->Type); //Texture1x1 expects this.
-			//glEnable(GL_TEXTURE_2D);
+			GL.ActiveTexture(q->Type);
 			GL.Uniform1i(q->GLSL,q->Type-GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D,cfxCOMMON.Texture1x1(c));
-		}
-		else p->Apply();
+			glBindTexture(GL_TEXTURE_2D,cfxCOMMON.White1x1);
+			p->Apply();
+		}		
 	}
 	//This is required to get correct results.	
 	//cfxCOMMON.Shiny.Apply();
@@ -261,8 +228,8 @@ void FX::Profile_COMMON::ResetPassState()
 	GL.UseProgram(0);
 }
 
-#ifdef NDEBUG
-#error Let specular's alpha channel modify shininess?
+#ifdef NDEBUG //GCC doesn't like apostrophes.
+#error "Let specular's alpha channel modify shininess?"
 //Consider http://wiki.secondlife.com/wiki/Material_Data
 //Consider https://www.khronos.org/bugzilla/show_bug.cgi?id=97
 #endif
@@ -296,10 +263,10 @@ static const char cfxCOMMON_vp[] = COLLADA_STRINGIZE
 );
 #define cfxCOMMON_COLOR_OR_TEXTURE(x) \
 uniform vec3 x##_color;\
-uniform sampler2D x##_texture; vec3 x()\
+uniform sampler2D x##_sampler; vec3 x##_texel()\
 {\
-	if(x##_is_color==1) return x##_color; /*?: not working on Intel.*/\
-	if(x##_is_color==0) return texture2D(x##_texture,fp_texcoord).xyz;\
+	if(x##_is_color==1) return vec3(1); /*?: not working on Intel.*/\
+	if(x##_is_color==0) return texture2D(x##_sampler,fp_texcoord).xyz;\
 }
 static const char cfxCOMMON_fp[] = COLLADA_STRINGIZE
 (	
@@ -351,10 +318,10 @@ static const char cfxCOMMON_fp[] = COLLADA_STRINGIZE
 		viewdir = -normalize(fp_position);
 
 		vec3 accum = vec3(0);		
-		e = emission();
-		a = ambient();
-		d = diffuse();
-		s = specular();
+		e = emission_color*emission_texel();
+		a = ambient_color*ambient_texel();
+		d = diffuse_color*diffuse_texel();
+		s = specular_color*specular_texel();
 		vec3 L, color; float dist;
 		DLIGHT(accum+=color*white(L))
 		gl_FragColor.a = 1;
@@ -369,6 +336,10 @@ void FX::Profile_COMMON::Internals::ClientData::Light()
 }
 static void cfxCOMMON_DLIGHT(std::ostream &io, FX::Float4 &ambient, GLenum l)
 {
+	//glLight goes up to MAX_LIGHTS. It's not a limit on simultaneously
+	//enabled lights. FX must figure out some way to go over MAX_LIGHTS.
+	assert(l<GL_LIGHT0+8);
+
 	#ifdef NDEBUG
 	#error Lighting variables are animation targets.
 	#endif	
@@ -399,13 +370,11 @@ static void cfxCOMMON_DLIGHT(std::ostream &io, FX::Float4 &ambient, GLenum l)
 		cfxCOMMON.SPOT_DIRECTION[l].Light();
 		_(SPOT_EXPONENT,1)
 		//Are these two correct??
-		float cutoffCos = cos(SPOT_CUTOFF.x);
-		float cutoffExp = SPOT_EXPONENT.x;
-		io<<"color.rgb*=pow(step_x_step("<<cutoffCos<<",dot(-L,spotdir"<<l<<"),"<<cutoffExp<<");";
+		float cutoffCos = cos(SPOT_CUTOFF.x*0.017453f); //It's in degrees.
+		float cutoffExp = SPOT_EXPONENT.x; 
+		io<<"color.rgb*=pow(step_x_step("<<cutoffCos<<",dot(-L,spotdir"<<l<<")),"<<cutoffExp<<");";
 	}
-	_(CONSTANT_ATTENUATION,1)
-	_(LINEAR_ATTENUATION,1)
-	_(QUADRATIC_ATTENUATION,1)
+	_(CONSTANT_ATTENUATION,1)_(LINEAR_ATTENUATION,1)_(QUADRATIC_ATTENUATION,1)
 	#undef _
 	if(1!=CONSTANT_ATTENUATION.x
 	||0!=LINEAR_ATTENUATION.x||0!=QUADRATIC_ATTENUATION.x)
@@ -413,6 +382,8 @@ static void cfxCOMMON_DLIGHT(std::ostream &io, FX::Float4 &ambient, GLenum l)
 		//NOTE: dist could be scaled, but by what? 
 		//X? Y? Z? Length(XYZ)? Transform(Mat3x3)?
 		//NOTE: Units are always 1:1 in this case.
+		//HOWEVER the exponents are not, and it's
+		//not possible to scale OpenGL's lighting.
 
 		//WARNING: color/=A produces bad vectors?!
 		io<<"color = color/(";
@@ -515,7 +486,14 @@ bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 	DataSharingSurvey load = load_int; load_int = 0; assert(load!=0);
 
 	GL.DeleteProgram(GLSL); GLSL = 0;
-
+	 	
+	if(White1x1==0) //Generate a default white texture.
+	{
+		glGenTextures(1,&White1x1); 
+		glBindTexture(GL_TEXTURE_2D,White1x1); int white = 0xFFffFFff;
+		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,1,1,0,GL_RGBA,GL_UNSIGNED_BYTE,&white);		
+	}
+	 
 	daeArray<char,sizeof(cfxCOMMON_fp)*2> src;
 	daeOStringBuf<256> obuf(src); std::ostream o(&obuf);
 
@@ -541,15 +519,15 @@ bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 	//Shading //Shading //Shading //Shading //Shading
 
 	char Lambert = ' ';
-	if(!load.Blinn)
+	if(0==load.Blinn)
 	{
-		if(!load.Phong)
+		if(0==load.Phong)
 		{
 			Lambert = 'x';			
 		}
 		o<<_define_<<"DBLINN_OR_PHONG(x) false\n";
 	}
-	else if(!load.Phong)
+	else if(0==load.Phong)
 	{
 		o<<_define_<<"DBLINN_OR_PHONG(x) true\n";
 	}
@@ -566,10 +544,10 @@ bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 	Lit.clear();
 	o<<_define_<<"DLIGHT(ACCUMULATE) "; //...
 	FX::Float4 ambient; 	
-	#ifdef NDEBUG
-	#error CTS has a test with more than GL_MAX_LIGHTS lights.
+	#ifdef NDEBUG //GCC doesn't like apostrophes.
+	#error "Can't rely on glLight to go over 8 light sources."
 	#endif
-	for(int l=0;l<MAX_LIGHTS&&glIsEnabled(GL_LIGHT0+l);l++)
+	for(int l=0;l<8/*MAX_LIGHTS*/&&glIsEnabled(GL_LIGHT0+l);l++)
 	cfxCOMMON_DLIGHT(o,ambient,l); 
 	o<<_define_<<"DAMBIENT_LIGHT vec3("<<ambient.r<<","<<ambient.g<<","<<ambient.b<<")\n";
 	for(size_t l,i=0;i<Lit.size();i++)
@@ -666,17 +644,17 @@ bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 			assert(load.Phong==load.Blinn);
 			sp = &Blinn;
 		}
-		if(name=="emission_texture")
+		if(name=="emission_sampler")
 		{
 			//Ensure constant expressions are working.
 			assert(load.Emission==1);
 			sp = Textures+0; 			
 		}
-		if(name=="ambient_texture") 		
+		if(name=="ambient_sampler") 		
 		sp = Textures+1;
-		if(name=="diffuse_texture") 
+		if(name=="diffuse_sampler") 
 		sp = Textures+2;
-		if(name=="specular_texture") 
+		if(name=="specular_sampler") 
 		sp = Textures+3;
 		if(name=="P") 
 		sp = &PROJECTION;
@@ -695,7 +673,16 @@ bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 		sp->Type = type;
 		sp->Size = size;
 		sp->GLSL = GL.GetUniformLocation(GLSL,buf);	
-		int breapoint=1;
+	}
+
+	//Set default color multipliers to black or white.
+	{
+		const FX::Float4 b(0,1),w(1,1);	
+		FX::Profile_COMMON.Emission.Color.Value = load.Emission==0?b:w;
+		FX::Profile_COMMON.Ambient.Color.Value = load.Ambient==0?b:w;
+		FX::Profile_COMMON.Diffuse.Color.Value = load.Diffuse==0?b:w;
+		FX::Profile_COMMON.Specular.Color.Value = load.Specular==0?b:w;
+		FX::Profile_COMMON.Transparent.Color.Value = load.Transparent==0?b:w;
 	}
 
 	return true;

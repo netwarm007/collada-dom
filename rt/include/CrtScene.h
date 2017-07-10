@@ -41,9 +41,6 @@ COLLADA_(public)
 	std::vector<RT::Material*> Materials;
 	std::vector<RT::PhysicsModel*> PhysicsModels;
 
-	RT::Image *FindImage(Collada05::const_image&)const;
-	RT::Image *FindImage(Collada08::const_image&)const;
-
 COLLADA_(private) //LoadCOLLADA subroutines
 
 	friend class RT::Frame;

@@ -25,11 +25,8 @@ x(__enum__ v=(__enum__)0):__value__(v){}
 #endif
 #ifndef COLLADA_DOM_3__struct__daeSmartRef
 #define COLLADA_DOM_3__struct__daeSmartRef(x) \
-template<class T> x &operator=(T &cp){ daeSmartRef::operator=(cp); return *this; }\
-template<class T> x &operator=(T *cp){ daeSmartRef::operator=(cp); return *this; }\
 template<class T> x(T &cp):daeSmartRef(cp){}\
-template<class T> x(T *cp):daeSmartRef(cp){}\
-x(){}  x(__COLLADA__T *cp):daeSmartRef(cp){} //nullptr magic
+template<class T> x(const T &cp):daeSmartRef(cp){} x(){}
 #endif
 
 /**C-PREPROCESSOR MACRO
@@ -39,7 +36,7 @@ x(){}  x(__COLLADA__T *cp):daeSmartRef(cp){} //nullptr magic
  */
 #define COLLADA_DOM_NOTE(N,context_concern,...) \
 template<> struct __NS__<N>:DAEP::Note<>\
-{ typedef __NB__::context_concern concern; ##__VA_ARGS__ };
+{ typedef __NB__::context_concern concern; __VA_ARGS__ };
 
 COLLADA_(namespace)
 {	
@@ -133,7 +130,7 @@ COLLADA_(namespace)
 		 */
 		struct Container<long long,Unsigned>
 		{
-			typedef signed COLLADA_DOM_INT32 type; 
+			typedef daeArray<signed COLLADA_DOM_INT32> type; 
 		};
 		template<class Unsigned>
 		/**PARTIAL-TEMPLATE-SPECIALIAZTION 
@@ -143,7 +140,7 @@ COLLADA_(namespace)
 		 */
 		struct Container<unsigned long long,Unsigned>
 		{
-			typedef unsigned COLLADA_DOM_INT32 type; 
+			typedef daeArray<unsigned COLLADA_DOM_INT32> type; 
 		};
 		#endif
 
@@ -177,17 +174,26 @@ COLLADA_(namespace)
 		 * pointers into the array. There are other reasons, but this is a
 		 * strong rationale.
 		 */
-		struct Container<daeURI,Unsigned>{ typedef daeTokenRef type; };
+		struct Container<daeURI,Unsigned>
+		{
+			typedef daeArray<daeTokenRef> type; 
+		};
 		template<class Unsigned>
 		/**PARTIAL-TEMPLATE-SPECIALIAZTION 
 		 * @see @c daeURI specialization's Doxygentation.
 		 */
-		struct Container<daeIDREF,Unsigned>{ typedef daeTokenRef type; };
+		struct Container<daeIDREF,Unsigned>
+		{
+			typedef daeArray<daeTokenRef> type; 
+		};
 		template<class Unsigned>
 		/**PARTIAL-TEMPLATE-SPECIALIAZTION 
 		 * @see @c daeURI specialization's Doxygentation.
 		 */
-		struct Container<daeSIDREF,Unsigned>{ typedef daeTokenRef type; };
+		struct Container<daeSIDREF,Unsigned>
+		{
+			typedef daeArray<daeTokenRef> type; 
+		};
 
 		template<int ID, class CC, typename CC::_ PtoM>
 		/**TEMPLATE-SPECIALIZATION
@@ -195,7 +201,7 @@ COLLADA_(namespace)
 		 */
 		class Value<ID,daeURI,CC,PtoM> : public DAEP::InnerValue<ID,daeURI,CC,PtoM,daeStringRef>
 		{
-		COLLADA_(public) using InnerValue::operator=; //C2679
+		COLLADA_(public) using InnerValue<ID,daeURI,CC,PtoM,daeStringRef>::operator=; //C2679
 		};
 		template<int ID, class CC, typename CC::_ PtoM>
 		/**TEMPLATE-SPECIALIZATION
@@ -203,7 +209,7 @@ COLLADA_(namespace)
 		 */
 		class Value<ID,daeIDREF,CC,PtoM> : public DAEP::InnerValue<ID,daeIDREF,CC,PtoM,daeTokenRef>
 		{
-		COLLADA_(public) using InnerValue::operator=; //C2679
+		COLLADA_(public) using InnerValue<ID,daeIDREF,CC,PtoM,daeTokenRef>::operator=; //C2679
 		};
 		template<int ID, class CC, typename CC::_ PtoM>
 		/**TEMPLATE-SPECIALIZATION
@@ -211,7 +217,7 @@ COLLADA_(namespace)
 		 */
 		class Value<ID,daeSIDREF,CC,PtoM> : public DAEP::InnerValue<ID,daeSIDREF,CC,PtoM,daeTokenRef>
 		{
-		COLLADA_(public) using InnerValue::operator=; //C2679
+		COLLADA_(public) using InnerValue<ID,daeSIDREF,CC,PtoM,daeTokenRef>::operator=; //C2679
 		};
 	}
 	//IT SEEMS USING DAEP::Container BELOW MAKES THESE DEPENDENT ON THE ABOVE SPECIALIZATIONS
@@ -233,12 +239,12 @@ COLLADA_(namespace)
 	typedef daeString NOTATION;	
 	typedef daeString ID;	
 	typedef daeIDREF IDREF;
-	typedef daeArray<DAEP::Container<daeIDREF>::type> IDREFS;
+	typedef daeArray<DAEP::Container<daeIDREF>::type::value_type> IDREFS;
 	typedef daeString ENTITY;
-	typedef daeArray<DAEP::Container<ENTITY>::type> ENTITIES;
+	typedef daeArray<DAEP::Container<ENTITY>::type::value_type> ENTITIES;
 	typedef daeString NCName;	
 	typedef daeString NMTOKEN;
-	typedef daeArray<DAEP::Container<NMTOKEN>::type> NMTOKENS;
+	typedef daeArray<DAEP::Container<NMTOKEN>::type::value_type> NMTOKENS;
 	typedef daeString Name;	
 	typedef daeString token;	
 	typedef daeString string;	

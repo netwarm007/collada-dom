@@ -188,7 +188,7 @@ COLLADA_(public) //ACCESSORS
 	 */
 	inline daeAttribute *getAttribute(const T &pseudonym)const
 	{
-		return _getAttribute(daeBoundaryString2<T>::type(pseudonym)); 
+		return _getAttribute(typename daeBoundaryString2<T>::type(pseudonym));
 	} 
 	/** Implements @c getAttribute(). */
 	NOALIAS_LINKAGE daeAttribute *_getAttribute(daeString pseudonym)const
@@ -248,7 +248,7 @@ COLLADA_(public) //CONTENT-MODEL
 	{
 		return const_cast<daeMetaElement*>(this)->_jumpIntoTOC(i); 
 	}
-	template<>
+	//template<> //Not worth moving into namespace for GCC/C++.
 	/**TEMPLATE-SPECIALIZATION, OVERLOAD
 	 * In case there is any confusion, this specialization explicitly converts a child-ID into its name.
 	 */
@@ -517,7 +517,8 @@ COLLADA_(public) //daeElement "WRT" APIs (with-respect-to)
 	 */
 	inline typename daeConstOf<T,daeContents>::type &getContentsWRT(T &e)const
 	{
-		const daePseudoElement *upcast = e;	return daeOpaque(e)[getContentsOffset()];
+		const daePseudoElement *upcast = e;	(void)upcast;
+		return daeOpaque(e)[getContentsOffset()];
 	}
 	template<class This> //DAEP::Element
 	/**OVERLOAD
@@ -527,7 +528,8 @@ COLLADA_(public) //daeElement "WRT" APIs (with-respect-to)
 	 */
 	inline typename daeConstOf<This,daeContents>::type &getContentsWRT(This *e)const
 	{
-		const daePseudoElement *upcast = e; return daeOpaque(e)[getContentsOffset()];
+		const daePseudoElement *upcast = e; (void)upcast;
+		return daeOpaque(e)[getContentsOffset()];
 	}
 
 	template<class E>
@@ -591,10 +593,12 @@ COLLADA_(private) //GENERATOR-SIDE APIs
 	 */
 	inline XS::Attribute &addAttribute(T &nul, daeClientStringCP (&typeQName)[M], daeClientStringCP (&pseudonym)[N])
 	{
-		typedef T::underlying_type VT;
-		typedef XS::List::Item<VT>::type atom;
-		typedef daeAlloc<>&(*lt_void)(daeAllocThunk&);
-		typedef daeAlloc<atom>&(*lt_atom)(daeAllocThunk&);
+		typedef typename T::underlying_type VT;
+		//Not pretty. Quick fix to build with GCC/C++.
+		//typedef typename XS::List::Item<VT>::type atom;
+		typedef COLLADA_NCOMPLETE(N) XS::List::template Item<VT>::type atom;
+		typedef daeAlloc<> &(*lt_void)(daeAllocThunk&);
+		typedef daeAlloc<atom> &(*lt_atom)(daeAllocThunk&);
 		XS::Attribute &o = _addAttribute(nul.feature(),nul.offset(),
 		(lt_void)static_cast<lt_atom> //Want to be sure lt/ltT are correct.
 		(daeAlloc<atom>::locateThunk),typeQName,N<=1?daeHashString(nullptr,0):pseudonym);
@@ -766,7 +770,7 @@ COLLADA_(private) //MODEL SETUP IMPLEMENTATION
 	 */
 	static void __placement_new(DAEP::Object *e)
 	{			
-		new(e) daeTypic<T::__DAEP__Schema__g1__is_abstract,__abstract_1,T>::type;
+		new(e) typename daeTypic<T::__DAEP__Schema__g1__is_abstract!=0,__abstract_1,T>::type;
 	}
 	/**C++98/03 support */
 	struct __abstract_1{ __abstract_1(){ assert(!"Constructing abstract type?!"); } };

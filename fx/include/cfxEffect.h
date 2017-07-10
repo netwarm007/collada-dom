@@ -169,12 +169,14 @@ COLLADA_(public)
 	}	
 };
 
+struct Profile_COMMON; //SINGLETON
+extern Profile_COMMON Profile_COMMON; //SINGLETON
 /**SINGLETON
  * The @c FX::Loader framework is tailored to loading
  * resources; and it looks awfully strange repurposed
  * like this.
  */
-extern struct Profile_COMMON
+struct Profile_COMMON
 {
 COLLADA_(public)
 
@@ -233,8 +235,8 @@ COLLADA_(public) //RT query API.
 	{
 		Sampler() //HACK: Plug nonzero pointers.
 		{
-			(void*&)Value.Params = 
-			(void*)&FX::Profile_COMMON.Surfaces; 
+			const_cast<const FX::Paramable*&>
+			(Value.Params) = &FX::Profile_COMMON.Surfaces;
 		}
 		inline operator GLuint()
 		{
@@ -252,8 +254,16 @@ COLLADA_(public) //RT query API.
 		//to OpenGL's single-texture (mono) models.
 		inline void Mono(FX::Float4 &c, GLuint &t)
 		{
-			if(!Texture.IsSet()) c = Color;
-			else{ c = 1; if(t==0) t = Texture; }
+			//This is getting more and more complicated
+			//since introducing the texture*color model.
+			if(Texture.IsSet())
+			{
+				#ifdef NDEBUG
+				#error Multiply with 1x1 mipmap if t!=0.
+				#endif
+				c = Color; if(t==0) t = Texture;
+			}
+			else c = !Color.IsSet()?FX::Float4(0,1):Color;
 		}
 
 		inline void Apply(){ Color.Apply(); Texture.Apply(); }
@@ -300,8 +310,7 @@ COLLADA_(private) //INTERNALS
 		//UNUSED, but initialize them nonetheless.
 		Transparent.Apply(); Transparency.Apply();
 	}
-
-}Profile_COMMON; //SINGLETON
+};
 
 typedef FX::Profile_COMMON::Data DataProfile_COMMON;
 

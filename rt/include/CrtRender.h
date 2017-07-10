@@ -9,6 +9,7 @@
 #define __COLLADA_RT__RENDER_H__  
 		 
 #include "CrtNode.h"
+#include "CrtEffect.h"
 #include "CrtCamera.h"
 #include "CrtPhysics.h"
 #include "CrtTexture.h"
@@ -18,7 +19,13 @@ COLLADA_(namespace)
 	namespace RT
 	{//-.
 //<-----'
-   
+
+/**
+ * Clients can use this to get a running system time.
+ * It supports Windows, Linux and PlayStation 3 time.
+ */
+RT::Float Time();
+
 /**
  * Previously "CrtOrient/CrtNode."
  * This class implements complex instancing of <node>.
@@ -73,7 +80,9 @@ COLLADA_(public) //RT::Stack usese these.
  * When the <skeleton> of a <skin> is equal it's passed over.
  * EVENTUALLY SORTING SHOULD DO A THIRD CHECK TO ENSURE THIS.
  */
-struct Stack_Draw : std::pair<RT::Geometry*,RT::Controller*>
+struct Stack_Draw : RT::Effect_Semantics
+,
+std::pair<RT::Geometry*,RT::Controller*>
 {
 	RT::Stack_Data *Data; void *Instance;
 
@@ -223,13 +232,18 @@ COLLADA_(public) //EXPERIMENTAL
 		
 	}VBuffer1,VBuffer2;
 
-COLLADA_(public) //old "CrtRender" APIs
+COLLADA_(public)
 
-	//OBSOLETE
+	RT::Stack_Draw *CurrentDraw;
+
 	RT::Material *CurrentMaterial;	
-				
-	void SetMaterial(RT::Material *mat);
+
+	static RT::Material DefaultMaterial;
 	
+	void SetMaterial(RT::Material *mat);
+
+	void ResetMaterial(RT::Material *mat=&DefaultMaterial);
+
 	//SCHEDULED FOR REMOVAL
 	//This is keeping old/lousy code from breaking.
 	RT::Stack_Data &FindAnyLight(),*_FoundAnyLight;
@@ -259,7 +273,7 @@ COLLADA_(public)
 	/** 
 	 * Sets up the camera instance to be rendered from.
 	 */
-	void _ResetCamera(); RT::Matrix _View;
+	void _ResetCamera();
 
 	inline RT::Stack_Data *FindData(RT::Node *p)
 	{
@@ -268,92 +282,91 @@ COLLADA_(public)
 	}
 };
 
-/**UNUSED?
- * Getting this out of @c RT::Frame ("CrtRender.")
- */
-struct Frame_ShadowMap
-{	
-	GLuint Id; int Width, Height;
-
-	bool Use, RenderingTo, RenderingWith, Initialized;	
-
-	Frame_ShadowMap():Width(512),Height(512),Id()
-	,Use(),RenderingTo(),RenderingWith(),Initialized()
-	{}
-
-	void Init();
-	void PushRenderingToShadowMap();
-	void PopRenderingToShadowMap();	
-};
-
 /**
  * Getting this out of @c RT::Frame ("CrtRender.:)
  * @see CrtCommongCg.cpp
  */
-struct Frame_Cg
+class Frame_FX : public FX::Loader
 {
-	bool Use, Initialized; 
-	
-	CGcontext Context;
-
 COLLADA_(public)
-	/**NEW
-	 * This is taken from "CrtGeometry.cpp" and so named
-	 * because "fc->resetEffectPassState()" must be done
-	 * after drawing/switching materials.
+
+	bool Use, Initialized; 
+		
+	/**
+	 * Updates global FX parameters except VIEW and VIEW_INVERSE
+	 * which are used in the camera set up.
 	 */
-	void SetPassState(FX::Material*,int);
+	void Reset_Context();
 
-COLLADA_(public) //old "CrtRender" APIs
+	/**
+	 * Updates the WORLD family of parameters unless they are in
+	 * the argument list in the case of the WORLD and WORLD_VIEW.
+	 */
+	bool SetWorld(RT::Effect_Semantics,RT::Matrix&,RT::Matrix&);
 
-	void Init();
-	void Reset();
-	void Destroy(bool=false);
-	//UNUSED //UNUSED //UNUSED //UNUSED
-	void EnableProfiles(),DisableProfiles(); 
-	
-	//The rest is mostly clutter.
+COLLADA_(private) //old "CrtRender" APIs
 
-  #ifdef NDEBUG
-  #error Are the "Set" APIs client APIs?
-  #endif
+	friend class RT::Frame;
+	friend class RT::Stack;
+	void (*RestoreGL)();
+	void Init(),Reset(),Destroy(bool=false);
 
-  //UNUSED //UNUSED //UNUSED //UNUSED //UNUSED
+	Frame_FX(){ RT::MatrixLoadIdentity(IDENTITY.Value); }
 
-	bool LoadProgram(int&,const char *fileName, CGprofile);
-
-	int SkinDefaultProgramId;
-	int StaticDefaultProgramId;
-	int PhongFragmentProgramId;		
-
-	int SkinShadowProgramId;
-	int StaticShadowProgramId;
-	int PhongFragmentShadowProgramId;
-									
-	int StaticNormalMapId;
-	int SkinNormalMapId; //UNIMPLEMENTED
-	int FragmentNormalMapId; 
-	
-	bool SetDefaultStaticProgram();
-	bool SetDefaultSkinProgram();		
-	bool SetDefaultFragmentProgram()
+COLLADA_(public) //FX::Loader API.
+	 
+	enum{ LIGHT_MAX=16 };
+	struct World_or_View
 	{
-		SetPhongFragmentProgram();
+		FX::DataFloat4 World,View;
+	};
+	FX::DataType<RT::Matrix> IDENTITY;	
+	World_or_View LIGHT_POSITION[LIGHT_MAX];
+	FX::DataType<RT::Matrix> PROJECTION;	
+	World_or_View SPOT_DIRECTION[LIGHT_MAX];
+	FX::DataType<RT::Float> TIME;
+	FX::DataType<RT::Matrix> VIEW;
+	FX::DataType<RT::Matrix> VIEW_INVERSE;
+	FX::DataType<RT::Matrix> WORLD;
+	FX::DataType<RT::Matrix> WORLD_INVERSE_TRANSPOSE;
+	FX::DataType<RT::Matrix> WORLD_VIEW;
+	FX::DataType<RT::Matrix> WORLD_VIEW_INVERSE_TRANSPOSE;
+	FX::DataType<RT::Matrix> WORLD_VIEW_PROJECTION;
+	template<int MAX>
+	void Load_Slot(World_or_View (&v)[MAX], FX::NewParam *p)
+	{
+		World_or_View *el = v+p->Subscript; 
+		if(el<v+MAX)
+		p->ClientData = &(p->Space_IsView()?el->View:el->World);
 	}
-	bool SetPhongFragmentProgram();
-	
-	bool SetShadowMapStaticProgram();
-	bool SetShadowMapSkinProgram();
-	bool SetShadowMapFragmentProgram();
-	
-	bool SetNormalMapStaticProgram();
-	bool SetNormalMapSkinProgram();
-	bool SetNormalMapFragmentProgram();
-
-  //NO IDEA //NO IDEA //NO IDEA //NO IDEA //NO IDEA 
-	
-	//SCHEDULED FOR REMOVAL
-	RT::Matrix *_WorldMatrix,_InverseViewMatrix;
+	virtual void Load_ClientData(FX::NewParam *p)
+	{
+		switch(p->Semantic)
+		{
+		#define _(x) case FX::x: p->ClientData = &x; break;		
+		case FX::LIGHT_POSITION: Load_Slot(LIGHT_POSITION,p); 
+		break;
+		_(PROJECTION)
+		_(TIME)
+		case FX::SPOT_DIRECTION: Load_Slot(SPOT_DIRECTION,p);
+		break;		
+		_(VIEW)
+		_(VIEW_INVERSE)
+		_(WORLD)
+		_(WORLD_INVERSE_TRANSPOSE)
+		_(WORLD_VIEW)
+		_(WORLD_VIEW_INVERSE_TRANSPOSE)
+		_(WORLD_VIEW_PROJECTION)		
+		#undef _
+		default:; //-Wswitch
+		}
+		_Loading_Connect.Set(p->Semantic);
+	}
+	void Load_Connect(RT::Effect *mint)
+	{
+		std::swap(mint->Semantics(),_Loading_Connect.Semantics());
+	}
+	RT::Effect_Semantics _Loading_Connect;
 };
 
 /**
@@ -376,7 +389,7 @@ COLLADA_(public)
 
 COLLADA_(public)
 
-	Camera_State():Parent(),Camera(),X(),Y(),Z(),Pan(),Tilt(),Zoom()
+	Camera_State():Parent(),Camera(),Pan(),Tilt(),X(),Y(),Z(),Zoom()
 	{}
 
 COLLADA_(public) //See CrtRender.cpp.
@@ -405,11 +418,9 @@ COLLADA_(public) //See CrtRender.cpp.
  */
 struct Frame_State : RT::Camera_State
 {	
-	int Width,Height;	
+	int Left,Top,Width,Height;	
 
-	//Add these two.
-	//bool UseCg;
-	//bool UseShadowMap;
+	//bool UseCg;	
 	bool UseVBOs;	
 	bool UseRender;
 	bool UsePhysics;
@@ -421,6 +432,7 @@ struct Frame_State : RT::Camera_State
 	bool LoadGeometry;
 	bool ShowGeometry;	
 	bool ShowHierarchy;
+	bool ShowCOLLADA_FX;
 	int ShowTextures_Mask;
 	
 
@@ -479,9 +491,12 @@ struct Frame_Asset
 	 */
 	inline void operator=(const E *cp)
 	{
-		_operator_YY(dae(cp),DAEP::Schematic<E>::schema()); 
+		_operator_YY(dae(cp),typename DAEP::Schematic<E>::schema());
 	}
-	#ifdef PRECOMPILING_COLLADA_RT
+	//HACK: __NB__ is DAEP::Schematic<ColladaYY::COLLADA>::schema.
+	void _operator_YY(const daeElement*,Collada05_XSD::__NB__ schema);
+	void _operator_YY(const daeElement*,Collada08_XSD::__NB__ schema);
+	#ifdef PRECOMPILING_COLLADA_RT //asset is incomplete.
 	inline void operator=(const Collada05_XSD::asset *cp)
 	{
 		Up = cp->up_axis->value->*Up;
@@ -492,9 +507,7 @@ struct Frame_Asset
 		Up = cp->up_axis->value->*Up;
 		Meter = cp->unit->meter->*Meter;
 	}	
-	void _operator_YY(const daeElement*,Collada05_XSD::__NB__);
-	void _operator_YY(const daeElement*,Collada08_XSD::__NB__);	
-	#endif			 	 
+	#endif
 	template<class T>
 	/** 
 	 * Implements @c operator=().
@@ -520,20 +533,34 @@ COLLADA_(public)
 	 * This had been "CrtScene *Scene;" 
 	 * It should be a daeDB<RT::DBase>.
 	 */
-	const RT::DBase *const Data; 
+	const RT::DBase *const DB; 
 	/**
 	 * This will be resolved, and it depends on the document.
 	 */
-	const daeName URL; const daeDOM DOM;
+	const RT::Name URL; const daeDOM DOM;
+
+	/**
+	 * This is a makeshift way of recording samples/ options.
+	 */
+	std::vector<daeName> COLLADA_index_keywords;
 
 	/**INTERNAL
 	 * @c Stack houses the low-level rendering, etc. elements. 
 	 */
 	RT::Stack Stack; 	
 
-	/**INTERNAL
+	/**INTERNALS
+	 * @c Asset changes inside subroutines. 
+	 * @c Scene is a pseudo node at the root of the selection.
 	 */
-	RT::Frame_Asset Asset; RT::Node Scene; RT::Physics Physics;
+	RT::Frame_Asset Asset; RT::Node Scene; 
+	
+	/**INTERNAL
+	 * The PlayStation 3 viewer has some code that plays with
+	 * gravity.
+	 * @see @c SetGravity().
+	 */
+	RT::Physics Physics;
 
 	#ifdef NDEBUG
 	#error Implement RT::Frame_State logic.
@@ -544,26 +571,26 @@ COLLADA_(public)
 	 */
 	bool Refresh();
 
-	/**UNUSED?
-	 */
-	RT::Frame_Cg Cg; RT::Frame_ShadowMap ShadowMap;	
-
 	/**
-	 * Set up @c COLLADA_FX.platform_Filter to target
+	 * Set up @c FX.platform_Filter to target
 	 * only specific FX platforms. The default is "PC"
 	 * but the FX component prior to 2017 used PC-OGL.
 	 * Post-2017 if unset all platform strings are go.
 	 */
-	FX::Loader COLLADA_FX; RT::Image Missing_Image;
+	RT::Frame_FX FX; RT::Image Missing_Image;
+
+	//SCHEDULED FOR REMOVAL
+	static GLuint Missing_Image_TexId();
 		
 	//SCHEDULED FOR REMOVAL
-	void Init(),_InitData(),_InitMembers(),_Destroy();	
+	void Init(void RestoreGL());
+	void _InitDB(),_InitMembers(),_Destroy();	
 	/**
 	 * Singleton Constructor
 	 * It will be a project to support multiple objects
 	 * of this type.
 	 */
-	Frame():Loading(),Data(),URL(""),Missing_Image("default.tga")
+	Frame():DB(),URL(""),Missing_Image("default.tga"),Loading()
 	{
 		assert(this==&RT::Main); _InitMembers(); 
 	}
@@ -597,6 +624,9 @@ COLLADA_(public) //old camera management APIs
 	#error Merge this with Camera_State.
 	#endif
 	RT::RangeFinder SetRange;
+	/**
+	 * Negative values get closer. Kind of confusing.
+	 */
 	inline void ZoomIn(RT::Float zoom)
 	{
 		Zoom+=SetRange.Zoom*0.2f*zoom;

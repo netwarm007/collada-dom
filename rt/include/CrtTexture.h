@@ -29,9 +29,9 @@ struct Texture
 	/**2017
 	 * @c RT::Image::Refresh() deletes @c Data after calling glTexImage2D.
 	 */
-	const void *Data;		
+	const void *Data; FX::ColorSpace sRGB;
 
-	Texture():Data(),Width(),Height(),Format(){}
+	Texture():Width(),Height(),Format(),Data(),sRGB(){}
 
 	~Texture(){ COLLADA_RT_array_delete(Data); }
 };
@@ -56,7 +56,7 @@ COLLADA_(public)
 	/**
 	 * This loads an embedded image. E.g. <hex> images.
 	 */
-	void Init(daeName format, const daeBinary<> &image)
+	void Init(RT::Name format, const daeBinary<> &image)
 	{
 		//Just trying to build right now.
 		#ifdef NDEBUG
@@ -74,6 +74,26 @@ COLLADA_(public)
 	 * This called "CrtRender::DeleteTexture."
 	 */
 	void DeleteTexture();
+
+	#ifdef PRECOMPILING_COLLADA_RT //INTERNAL
+	template<class T> void _SetURL_or_hex_COLLADA_1_5_0(T &init_from)
+	{
+		if(init_from.empty()) return;
+
+		if(!init_from->hex.empty())
+		{
+			Collada08::const_image::init_from::hex 
+			hex = init_from->hex;
+			if(!hex->value->empty())
+			{
+				if(hex->value->size()>1)
+				daeEH::Warning<<"Using only the first data-block in multi-block <hex> image "<<Id;
+				Init(hex->format,hex->value[0]);
+			}
+		}
+		else URL = init_from->ref->value->*"";	
+	}
+	#endif
 };
 
 //SCHEDULED FOR REMOVAL?

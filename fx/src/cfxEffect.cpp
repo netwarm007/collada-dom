@@ -38,7 +38,7 @@ FX::Effect::~Effect()
 }
 
 FX::Technique::Technique(FX::Paramable *parent, xs::ID  sid, void *profile_CG)
-:Paramable(parent),Sid(sid),Generate(),Cg()
+:Paramable(parent),Sid(sid),Cg(),Generate()
 {
 	//Reminder: The effect may use Cg, yet this technique may not.
 	if(profile_CG!=nullptr) Cg = cgCreateTechnique(parent->FindEffect()->Cg,Sid);

@@ -25,7 +25,7 @@ COLLADA_(public)
 
 COLLADA_(public)
 
-	Controller():Source(),Geometry(){}
+	Controller():Geometry(),Source(){}
 	virtual ~Controller(){}
 							
 	virtual void Update_VBuffer2(RT::Stack_Data**) = 0;
@@ -60,7 +60,7 @@ COLLADA_(public)
 		
 	virtual ~Skin(){}
 							
-	RT::Node *FindJointNode(RT::Node*,daeName);
+	RT::Node *FindJointNode(RT::Node*,RT::Name);
 
 	virtual void Update_VBuffer2(RT::Stack_Data**);
 };

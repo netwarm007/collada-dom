@@ -29,7 +29,7 @@ void FX::Pass::Link()
 	if(Cg!=nullptr&&Linked_Cg==nullptr&&GLSL==0)
 	{	
 		CGprogram programs[3]; 
-		int programsN = std::min<int>(3,Shaders.size());
+		int programsN = std::min(3,(int)Shaders.size());
 		assert(programsN<=3);
 		for(int i=0;i<programsN;i++)
 		programs[i] = Shaders[i]->Unlinked_Cg;
@@ -59,7 +59,12 @@ void FX::Pass::Link()
 		//cgSetPassState(Cg);
 		//glGetIntegerv(GL_CURRENT_PROGRAM,(GLint*)&GLSL);
 		//cgResetPassState(Cg);
-		GLSL = cgGLGetProgramID(Linked_Cg); assert(GLSL!=0);
+		GLSL = cgGLGetProgramID(Linked_Cg); 
+		
+		//This happens when using an X Server in indirect mode.
+		//GLX only goes up to OpenGL 1.4. 		
+		if(GLSL==0) daeEH::Error //assert(GLSL!=0);
+		<<"Shader did not link. This is normal indirect X servers.";
 
 		//These are UNUSED, but are filled out just for
 		//completeness sake.
@@ -68,7 +73,7 @@ void FX::Pass::Link()
 		for(int s,i=0;i<programsN;i++)	
 		{
 			GL.GetShaderiv(shaders[i],GL_SHADER_TYPE,&s);
-			for(int i=0;i<programsN;i++) if(s==Shaders[i]->Stage) 
+			for(int i=0;i<programsN;i++) if(s==(int)Shaders[i]->Stage)
 			Shaders[i]->GLSL = shaders[i];
 		}
 	}
@@ -249,6 +254,7 @@ void FX::Shader::_InitCg(CGGLenum stage, xs::ID prof, xs::string args, xs::ID f,
 	case CG_GL_VERTEX: Stage = GL_VERTEX_SHADER; break;
 	case CG_GL_FRAGMENT: Stage = GL_FRAGMENT_SHADER; break;
 	case CG_GL_GEOMETRY: Stage = GL_GEOMETRY_SHADER; break;
+	default:; //-Wswitch
 	}
 
 	//This had been an UNUSED data member.
@@ -274,6 +280,8 @@ void FX::Shader::_InitCg(CGGLenum stage, xs::ID prof, xs::string args, xs::ID f,
 	case CG_GL_VERTEX: profile = CG_PROFILE_GLSLV; break;
 	case CG_GL_GEOMETRY: profile = CG_PROFILE_GLSLG; break;
 	case CG_GL_FRAGMENT: profile = CG_PROFILE_GLSLF; break;
+	default:;/**/ //-Wswitch
+	profile = CG_PROFILE_UNKNOWN; //-Wmaybe-uninitialized
 	}
 	
 	//"" emits a warning?!
@@ -359,6 +367,7 @@ void FX::Shader::_InitCg(CGGLenum stage, xs::ID prof, xs::string args, xs::ID f,
 		{
 			#ifdef _DEBUG
 			const char *name = cgGetParameterName(q);
+			(void)name; //-Wunused-variable
 			#endif
 			const char *sem = cgGetParameterSemantic(q);
 			if(sem!=nullptr) switch(sem[0])

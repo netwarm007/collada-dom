@@ -133,7 +133,7 @@ COLLADA_(public)
 			it = itt; return false;
 		}
 		Controller->Update_VBuffer2(it); 
-		it+=Joints.size(); return true;
+		it+=Joints.size()-Skeletons; return true;
 	}
 };
 

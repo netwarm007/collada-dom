@@ -85,7 +85,7 @@ COLLADA_(public)
 	 * This avoids confusion between shared/unshared inputs.
 	 * @return Returns <input semantic> if the array exists.
 	 */
-	daeName bind(const input &in)
+	RT::Name bind(const input &in)
 	{
 		accessor = document->idLookup<source>
 		(in->source)->technique_common->accessor;
@@ -116,7 +116,7 @@ COLLADA_(public)
 	#define COLLADA_RT_ACCESSOR_i_s_iN(x) \
 	size_t i = accessor->offset;\
 	size_t s = accessor->stride;\
-	size_t iN = i+accessor->count*s; assert(s>=x);\
+	size_t iN = i+accessor->count*s; assert(s>=x); (void)iN;\
 	Adaptor<T> array_value(src_array);
 	template<class T> struct Adaptor
 	{	
@@ -132,7 +132,7 @@ COLLADA_(public)
 	template<class S> void get(S &dst)
 	{
 		if(*this!=nullptr) 
-		get(dst,operator->()->value);
+		get(dst,array::operator->()->value);
 	}
 	template<class S, class T>
 	void get(std::vector<S> &dst, const T &src_array)
@@ -147,7 +147,7 @@ COLLADA_(public)
 	template<class S> void get16(S &dst)
 	{
 		typename source::float_array fa =
-		dae(*this)->a<typename source::float_array>();
+		dae(*this)->template a<typename source::float_array>();
 		if(fa!=nullptr) get16(dst,fa->value);
 	}
 	template<class S, class T>
@@ -172,7 +172,7 @@ COLLADA_(public)
 	template<class S> int get1at(size_t at, S &dst)
 	{
 		assert(*this!=nullptr);
-		return get1at(at,dst,operator->()->value);
+		return get1at(at,dst,array::operator->()->value);
 	}
 	template<class S, class T>
 	int get1at(size_t at, S &dst, const T &src_array)

@@ -26,6 +26,7 @@ COLLADA_(namespace)
 enum Semantic
 {
 	AMBIENT,		
+	COLOR,
 	DIFFUSE,
 	EMISSION,
 	LIGHT_POSITION,
@@ -86,7 +87,7 @@ COLLADA_(public)
 	virtual ~Param(){ /*UNUSED*/ }
 
 	typedef xs::ID arg2;
-	Param():Name(Name),SetData(SetData)
+	Param():SetData(SetData),Name(Name)
 	{ /*NOP*/ }
 
 	bool operator<(const FX::Param &cmp)const;
@@ -264,16 +265,22 @@ COLLADA_(public)
 		for(FX::Param *out;FindNewParam(sid,out);)
 		return out->SetData; return nullptr;
 	}
-	bool FindNewParam(xs::ID sid, FX::Param* &out)
+	FX::NewParam **_FindNewParam(xs::ID sid, FX::Paramable* &out)
 	{
 		for(size_t i=Params.size();i-->0;)		
 		if(sid==Params[i]->Name)		
 		{
-			out = Params[i]; return true;
+			out = this; return (NewParam**)&Params[i]; 
 		}
 		if(Parent_Paramable!=nullptr) 
-		return Parent_Paramable->FindNewParam(sid,out);
-		return false;
+		return Parent_Paramable->_FindNewParam(sid,out);
+		return nullptr;
+	}
+	bool FindNewParam(xs::ID sid, FX::Param* &out)
+	{
+		FX::Paramable *o2; FX::NewParam **o = _FindNewParam(sid,o2);		
+		if(o==nullptr) return false; 
+		out = (FX::Param*)*o; return true; //NewParam* is undefined.
 	}
 	bool FindNewParam(xs::ID sid, FX::NewParam* &out)
 	{
@@ -352,6 +359,7 @@ COLLADA_(public)
 		case WORLD_VIEW_INVERSE_TRANSPOSE:
 		case WORLD_VIEW_PROJECTION: 
 		return true;
+		default:; //-Wswitch
 		}
 		return false;
 	}
@@ -438,13 +446,18 @@ COLLADA_(public)
 
 	FX::Param *Param_To, *ParamToSet; 
 
-	SetParam_To(xs::ID,FX::Paramable*,xs::ID); 
-	SetParam_To(FX::NewParam*COMMON,FX::Technique*,xs::ID);	
+	SetParam_To(FX::Paramable*,xs::ID,xs::ID); 
 
 	/**
 	 * This is sensitive to the order of the settings.
 	 */
 	virtual void Apply(){ ParamToSet->SetData = Param_To->SetData; }
+
+COLLADA_(public) //profile_COMMON support
+
+	//x is a color multiplier, going off specification or a liberal interpretation.
+	SetParam_To(FX::NewParam*COMMON,FX::Paramable*,xs::ID,FX::NewParam**x=nullptr);	
+	SetParam_To(FX::NewParam*COMMON,FX::NewParam*x);
 };
 
 /**
@@ -494,7 +507,10 @@ COLLADA_(public)
 	{
 		SetData = nullptr;
 	}
-	~ShaderParam(){ delete SetData; }
+	~ShaderParam()
+	{
+		delete (void*)SetData; //-Wdelete-non-virtual-dtor
+	}
 
 	void SetParam_To(FX::Pass*,xs::ID);	
 	void SetParam_To(GLenum t, char s, FX::Param *to)

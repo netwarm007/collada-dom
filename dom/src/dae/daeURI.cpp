@@ -52,7 +52,7 @@ daeOK daeURI_base::_setURI(daeString URI, const daeURI *baseURL)
 		//_setURI_op is protecting against recursive calls and
 		//returns DAE_NOT_NOW if it's called on another thread.
 		const_daeDOMRef DOM = doc->getDOM();
-		daeOK OK = doc->_doOperation<doc->_setURI_op>(DOM,URI);
+		daeOK OK = doc->_doOperation<daeDoc::_setURI_op>(DOM,URI);
 		switch(OK.error)
 		{
 		default: return OK; //Failed.
@@ -111,7 +111,8 @@ empty_base: //// RESUME THE REGULAR ALGORITHM ////
 	slashed = false; //goto slash;
 
 	_00(); //Unset placemarkers are to be filled in.
-	for(daeString q,pp,p=URI;;) switch(toslash(*p++))
+	//-Wmaybe-uninitialized
+	for(daeString q=0,pp=0,p=URI;;) switch(toslash(*p++))
 	{		  
 	case '.': //../
 		//Note, ./ is not handled.
@@ -135,7 +136,7 @@ empty_base: //// RESUME THE REGULAR ALGORITHM ////
 		if(_authority==0)
 		if('/'==toslash(p[0])&&'/'==toslash(p[1]))
 		{
-			p+=2; _authority = p-URI; goto nonquery;
+			p+=2; _authority = char(p-URI); goto nonquery;
 		}
 		else //Skip "hierarchical-part" to be clear.
 		{
@@ -146,11 +147,11 @@ empty_base: //// RESUME THE REGULAR ALGORITHM ////
 		else //The password or communication port number.
 		{
 			pp = p; while(*p!='@'&&'/'!=toslash(*p)&&*p!='\0') p++;
-			(*p=='@'?_authority_password:_authority_port) = pp-URI;
+			(*p=='@'?_authority_password:_authority_port) = short(pp-URI);
 		}
 		break;
 	
-	case '@': _authority_host = pp-URI; break; //host	
+	case '@': _authority_host = short(pp-URI); break; //host	
 	case '/':
 	
 		//Even though could be a double slash,
@@ -185,7 +186,7 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 			}
 			else assert(_path==0&&_rel_half==0); 
 		}
-		else _path = p-1-URI; 		
+		else _path = short(p-1-URI); 		
 
 		slashed = true; //Note the path is present.
 		
@@ -193,12 +194,12 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 		q = p-1; if(toslash(*q)=='/') continue; //explicit directory
 		else while(q>=URI) switch(toslash(*q--)) //easier to read this way
 		{
-		case '.': if(0==_path_extension) _path_extension = q+2-URI; break;
+		case '.': if(0==_path_extension) _path_extension = short(q+2-URI); break;
 		//long break
-		case '/': _path_filename = q+2-URI; q = URI; goto hidden_file;
+		case '/': _path_filename = short(q+2-URI); q = URI; goto hidden_file;
 		}
 		hidden_file: //?
-		if(_path_filename==_path_extension-1) _path_extension = p-URI;
+		if(_path_filename==_path_extension-1) _path_extension = short(p-URI);
 		break;
 	
 	case '?': case '#': case '\0':
@@ -207,11 +208,11 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 	
 		switch(p[-1])
 		{
-		case '?': _query = p-URI; while(*p!='#'&&*p!='\0') p++; break;
+		case '?': _query = short(p-URI); while(*p!='#'&&*p!='\0') p++; break;
 	
-		case '#': _fragment = p-URI; while(*p!='\0') p++; break;
+		case '#': _fragment = short(p-URI); while(*p!='\0') p++; break;
 	
-		case '\0': _size = p-URI; goto long_break;		
+		case '\0': _size = short(p-URI); goto long_break;		
 		}
 	}
 	long_break: //This algorithm fills in unset placemarkers.
@@ -220,8 +221,11 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 		short *z = 0==_path?&_path_extension:&_authority_password; 				
 		for(short *x=&_fragment;x>=z;x--) 
 		if(*x==0){ *x = x[1]-nz; nz = 0; }else nz = 1;		
+
 		//HACK: The above algorithm is heuristical.
-		if(*z<_authority) for(;z<&_path;z++) *z+=1;
+		for(;z<&_path;z++) if(*z==_path-1) *z+=1;
+		if(_authority_host==_path) 
+		_authority_host = _authority_password = _authority;
 	}
 	assert(slashed||URI[0]=='\0');
 	assert(_size>0);
@@ -646,13 +650,13 @@ void daeURI_base::_docHookup(daeArchive &a, daeDocRef &reinsert)const
 	}
 	else a._whatsupDocInsert(reinsert);
 } 
-void daeURI_base::_docLookup(const daeArchive &a, const_daeDocRef &result)const
+void daeURI_base::_docLookup(const daeArchive &a, daeDocRef &result)const
 {
-	_docHookup<1>(const_cast<daeArchive&>(a),(daeDocRef&)result);
+	_docHookup<1>(const_cast<daeArchive&>(a),result);
 }
 
-#ifdef NDEBUG
-#error Don't neglect to test this. (The RAW resolver.)
+#ifdef NDEBUG //GCC doesn't like aprostrophes.
+#error "Don't neglect to test this. (The RAW resolver.)"
 #endif
 ////// RAW RESOLVER //////////////////////////////////////////////////////////////////
 //This is old, crusty, legacy code. It's never been entirely sound, but is maintained.
@@ -726,7 +730,7 @@ daeOK daeRawResolver::_resolve_exported(const daeElementRef &hit, const daeURI &
 			daeRefView fragment;
 			uri.getURI_fragment(fragment); daeStringCP *end;
 			long byteOffset = strtol(fragment.view,&end,10); 
-			if(end-fragment.view!=fragment.extent)
+			if(end-fragment.view!=(daeOffset)fragment.extent)
 			{
 				daeEH::Error<<
 				"daeRawResolver - URI does not have a numeric fragment.\n"
@@ -769,7 +773,7 @@ daeOK daeRawResolver::_resolve_exported(const daeElementRef &hit, const daeURI &
 			long_count*=(const daeULong&)stride->getWRT(accessor);			
 		
 			daeCharData *arrayCD = array->getCharDataObject();
-			int atomic_type = arrayCD->getType()->per<daeAtom>().getAtomicType();			
+			int atomic_type = arrayCD->getType()->where<daeAtom>().getAtomicType();			
 			fseek(rawFile,byteOffset,SEEK_SET); assert(long_count<COLLADA_UPTR_MAX);
 			daeURI_write_RAW_file_data_args args = { arrayCD->getWRT(array),(size_t)long_count,rawFile };
 

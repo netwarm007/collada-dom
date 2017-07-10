@@ -7,4 +7,8 @@
  */
 #include <FX.pch.h> //PCH
 
+#ifdef __GNUC__ //STFU
+#include "../../dom/include/WARNING.HPP"
+#endif
+
 //This file only builds a precompiled header.

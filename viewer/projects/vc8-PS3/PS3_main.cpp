@@ -5,6 +5,8 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+#include "viewer_base.pch.h" //PCH (glext.h via FX.pch.h)
+
 #include <stdlib.h>
 #include <string>
 #include <sys/paths.h>

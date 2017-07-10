@@ -205,24 +205,27 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 #define COLLADA_DOM_TOSLASH(CP) (CP=='\\')
 #endif
 
-#ifdef _WIN32
+//This is detecting compilers. Not platforms.
+//#if defined(_WIN32)
+#if defined(_MSC_VER) 
 //Read this as Visual Studio.
 #include "daeWin32Platform.h"
-#elif defined(__GCC__)
+#elif defined(__GNUC__) //These are defined???
 //Read this as GNU compilers.
 #include "daeGCCPlatform.h"
 #else
+//GCC forbids ' in #error.
 #ifndef COLLADA_DOM_EXPORT //__declspec(dllexport)
-#error exotic platform hasn't #define COLLADA_DOM_EXPORT in daePlatform.h
+#error "exotic platform hasn't #define COLLADA_DOM_EXPORT in daePlatform.h"
 #endif
 #ifndef COLLADA_DOM_IMPORT //__declspec(dllimport)
-#error exotic platform hasn't #define COLLADA_DOM_IMPORT in daePlatform.h
+#error "exotic platform hasn't #define COLLADA_DOM_IMPORT in daePlatform.h"
 #endif
 #ifndef COLLADA_DEPRECATED //__declspec(deprecated)
-#error exotic platform hasn't @define COLLADA_DEPRECATED in daePlatform.h
+#error "exotic platform hasn't @define COLLADA_DEPRECATED in daePlatform.h"
 #endif
 #ifndef COLLADA_ALIGN //__declspec(align)
-#error exotic platform hasn't @define COLLADA_ALIGN in daePlatform.h
+#error "exotic platform hasn't @define COLLADA_ALIGN in daePlatform.h"
 #endif
 #endif
 
@@ -258,15 +261,17 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 #else
 #define COLLADA_DOM_SNIPPET(...) ;
 #endif
-					
+
+#include <typeinfo> //typeid
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <iostream>
 #include <iomanip>
 #include <assert.h>
 #include <wchar.h>
-#include <climits>
-#include <cstring>
+#include <limits.h>
+#include <string.h>
 #include <string>
 #include <map> //ref caches
 #include <algorithm>
@@ -276,9 +281,11 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 #include <vector>
 #endif //BUILDING_COLLADA_DOM
 
-//Microsoft prefixes these nonstandard APIs
-#ifndef COLLADA__itoa__
-#define COLLADA__itoa__ itoa
+//Assuming this is set by the CMake build script.
+#ifdef COLLADA_DOM_NEED_NULLPTR
+#ifndef nullptr
+#define nullptr 0 //C++98 support.
+#endif
 #endif
 
 //daeStringMap will use one or the other or will not be emitted.
@@ -312,15 +319,15 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 //This is a non-C++11 alternative to "static_assert".
 //Compile-Time-Check with number of letters as assert.
 //Replaces "int compile[N]; (void)compile; //quiet the warning"
-template<int N> struct daeCTC{ char compile[N>0?1:-1]; daeCTC(const void*_=0){} };
+template<int N> struct daeCTC{ char compile[N>0?1:/*-1*/N-1]; daeCTC(const void*_=0){} };
 
 //Disable access-control in Release builds, or if they are causing problems.
 //This is because The C++ Standard allows implementations to reorder layouts.
 //This permits librarians to not have to think in terms of an extra dimension!
 #if defined(COLLADA_NOACCESS) || defined(NDEBUG)
-#define COLLADA__public__
-#define COLLADA__private__
-#define COLLADA__protected__
+#define COLLADA__public__ public:
+#define COLLADA__private__ public:
+#define COLLADA__protected__ public:
 #else
 #define COLLADA__public__ public:
 #define COLLADA__private__ private:
@@ -341,6 +348,16 @@ template<int N> struct daeCTC{ char compile[N>0?1:-1]; daeCTC(const void*_=0){} 
 //https://connect.microsoft.com/VisualStudio/feedback/details/3101668
 #define COLLADA_(keyword,...) COLLADA__##keyword##__##__VA_ARGS__
 
+#ifndef COLLADA__extern__
+/**GCC STFU
+ * This silences warning: initialized and declared 'extern'
+ * 'extern' variables should be used sparingly and so need
+ * to be marked.
+ */
+#define COLLADA__extern__
+#endif
+
+//SCHEDULED FOR REMOVAL?
 #ifndef COLLADA__nullptr__
 /**COLLADA_(nullptr)
  * It's not clear if this is a bug or portable, but MSVC2010
@@ -359,10 +376,12 @@ template<int N> struct daeCTC{ char compile[N>0?1:-1]; daeCTC(const void*_=0){} 
 #endif
 
 //The generator will do:
-//COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace) 
-//The client must have done:
-//#define COLLADA__http_www_collada_org_2008_03_COLLADASchema__namespace \
-//COLLADA_DOM_NICKNAME(COLLADA_1_5_0,http_www_collada_org_2008_03_COLLADASchema)
+/**warning: multi-line comment [-Wcomment]
+ * COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace) 
+ * The client must have done:
+ * #define COLLADA__http_www_collada_org_2008_03_COLLADASchema__namespace \
+ * COLLADA_DOM_NICKNAME(COLLADA_1_5_0,http_www_collada_org_2008_03_COLLADASchema)
+ */
 //Or:
 //namespace http_www_collada_org_2008_03_COLLADASchema
 #define COLLADA_DOM_NICKNAME(nick,name) \
@@ -431,6 +450,7 @@ COLLADA_(namespace)
 
 	#define COLLADA__float__precision 1
 	#define COLLADA__double__precision 2 
+	//GCC won't use ##__precision nor )__precision.
 	/**C-PREPROCESSOR MACRO
 	 * This macro is for external package configuration.
 	 * ~~~~~~~~~~~~~~~~~~~~~~~~~{.C++}
@@ -439,7 +459,7 @@ COLLADA_(namespace)
 	 * #endif 
 	 */
 	#define COLLADA_DOM_PRECISION \
-	COLLADA_TOKENIZE(COLLADA__,COLLADA_DOM_DOUBLE)##__precision
+	COLLADA_TOKENIZE(COLLADA_TOKENIZE(COLLADA__,COLLADA_DOM_DOUBLE),__precision)
 
 	//Check that char is signed and types meet XML Schema widths.
 	//daeByte should be signed char if char is an unsigned value.

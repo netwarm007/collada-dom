@@ -87,10 +87,14 @@ foreach($synthetics as $k =>& $ea)
 		echo applyTemplate('class-h-def',$ea0[0]), "\n";
 	}}
 if($synth) echoCode("
-//-------.
-	}//<-'
 #define COLLADA_target_namespace \
 COLLADA::$target_namespace
+//-------.
+	}//<-'	
+	
+	namespace DAEP //GCC
+	{//-.
+//<-----'
 #ifndef COLLADA_DOM_LITE");	
 if($synth) foreach($synthetics as $k =>& $ea)
 {
@@ -103,10 +107,8 @@ if($synth) echoCode("
 #endif //!COLLADA_DOM_LITE");
 if(2!==$COLLADA_DOM) 
 if($synth) echoCode("
-//------.
-    //<-'
-	namespace DAEP //WYSIWYG
-	{
+//----------.
+		//<-'	
         COLLADA_($target_namespace,namespace)
         {//-.
 //<---------'");
@@ -124,7 +126,7 @@ if($synth) echoCode("
 	}");
 if($synth) echoCode("
 #undef COLLADA_target_namespace");
-	
+
 if(2==$COLLADA_DOM)
 {
 	if($synth) echo "		
@@ -146,13 +148,14 @@ namespace {$namespace}_TYPE //deprecated
 }";
 }
 
+//Reminder: GCC must quote #error with apostrophes.  
 global $COLLADA_DOM_GENERATION;
 echoCode("
 $1}	
 //This is at the end because some code highlighters
 //(e.g. NetBeans) gray-out text that follows #error.
 #if $COLLADA_DOM_GENERATION != COLLADA_DOM_GENERATION
-#error Generator COLLADA_DOM_GENERATION doesn't match.
+#error \"Generator COLLADA_DOM_GENERATION doesn't match.\"
 #endif
 #endif //__$2_ELEMENTS_H__$include_guard",
 $synth&&2!==$COLLADA_DOM?'':'}',strtoupper($prefix));

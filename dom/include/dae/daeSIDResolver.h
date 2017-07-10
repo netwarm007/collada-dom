@@ -95,6 +95,9 @@ COLLADA_(public) //FORWARDING CONSTRUCTORS
 	 */
 	daeSIDREF_size(const daeSIDREF_size &cp){ daeIDREF_base::operator=(cp); }
 
+	#ifdef NDEBUG
+	#error Does this need to not be explicit and use DAEP::NoValue?
+	#endif
 	//Marking explcit, just to be safe.
 	template<class T>
 	/** Single Argument Forwarded Constructors */
@@ -257,7 +260,7 @@ COLLADA_(public) //SIDREF HELP
 						//THIS IN THE FUTURE, AND THESE ARE
 						//THGE ONLY TWO THAT MAYBE SHOULD BE
 						//"GRANDFATHERED-IN."
-						size_t digit = e[2]-'0';
+						int digit = e[2]-'0';
 						assert(isdigit(digit)&&e[4]=='\0');						
 						switch(NCName[0])
 						{

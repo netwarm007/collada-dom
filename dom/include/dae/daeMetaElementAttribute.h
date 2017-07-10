@@ -79,16 +79,17 @@ COLLADA_(public)
 
 #ifdef BUILDING_COLLADA_DOM
 
-friend class daeCM;
+	friend class COLLADA::daeCM;
+
 COLLADA_(protected) //daeCM methods		
 	/**INVISIBLE
-	 * @c value is 1, or @c true, meaning that order is specified.
+	 * @return Returns @c true, meaning that order is specified.
 	 */
-	template<class,class> struct __placed_between{ enum{ value=1 }; };
-	/**TEMPLATE-SPECIALIZATION
-	 * @c value is 0, or @c false, meaning that order is unspecified.
+	static bool __placed_between(...){ return true; }
+	/**INVISIBLE
+	 * @return Returns @c false, meaning that order is unspecified.
 	 */
-	template<> struct __placed_between<void*,void*>{ enum{ value=0 }; };
+	static bool __placed_between(void*,void*){ return false; };
 	
 	//C should only be daeContents, but is required to be syntactically compatible.
 	template<class A, class B, class C>
@@ -242,7 +243,8 @@ COLLADA_(public)
 	 */
 	~Choice(){ for(size_t i=0;i<_solutions.size();i++) delete[] _solutions[i].keys; }
 
-friend class daeCM;
+	friend class COLLADA::daeCM;
+
 COLLADA_(protected) //daeCM methods		
 	template<class A, class B, class C>
 	/**INVISIBLE
@@ -300,7 +302,7 @@ COLLADA_(protected) //INVISIBLE
 	 */
 	mutable std::vector<_solution> _solutions;
 
-	friend class daeParentCM;
+	friend class COLLADA::daeParentCM;
 	/**
 	 * Called by @c daeCM::_prepareContentModel().
 	 */
@@ -318,12 +320,13 @@ class Element : public daeElementCM
 {
 COLLADA_(private)
 
-	friend class domAny;
 	friend class XS::Schema;
 	friend class XS::Choice;
-	friend class daeDocument;
-	friend class daeMetaElement;	
-	template<class> friend class daeCM_Demotion;
+	friend class COLLADA::domAny;
+	friend class COLLADA::daeDocument;
+	friend class COLLADA::daeMetaElement;
+	template<class>
+	friend class COLLADA::daeCM_Demotion;
 	//This is so daeMetaElement's arrays store objects v. pointers.
 	//NOTE: ALL OF XS::Element's MEMBERS SHOULD GO INSIDE _Element.
 	struct _Element 
@@ -595,7 +598,8 @@ COLLADA_(public)
 
 #ifdef BUILDING_COLLADA_DOM
 
-friend class daeCM;
+	friend class COLLADA::daeCM;
+
 COLLADA_(protected) //daeCM methods		
 
 	template<class CM>
@@ -660,7 +664,7 @@ COLLADA_(public) //GENERATOR-SIDE APIs
 
 COLLADA_(private) //Implementation details 
 
-	friend class daeMetaElement;
+	friend class COLLADA::daeMetaElement;
 	/** Implements setGroup(). */
 	COLLADA_DOM_LINKAGE void _setGroup(daeMeta&);
 	/** Implements addChild(). */
@@ -682,15 +686,15 @@ COLLADA_(protected)
 
 	friend class XS::Choice;
 	/**
+	 * This is the group's CM graph.
+	 */
+	const daeCM *_groupCM;
+	/**
 	 * This is a jump-table that maps local names to the group's namespace.
 	 * @note The actual memory is located at @c this+1. The pointer is not
 	 * to @c this+1, but somewhere inside. Only the valid names are set up.
 	 */
 	short *_groupNames;
-	/**
-	 * This is the group's CM graph.
-	 */
-	const daeCM *_groupCM;	
 
 friend class daeCM;
 COLLADA_(protected) //daeCM methods	
@@ -746,7 +750,8 @@ COLLADA_(public)
 
 #ifdef BUILDING_COLLADA_DOM
 
-friend class daeCM;
+	friend class COLLADA::daeCM;
+
 COLLADA_(protected) //daeCM methods
 
 	template<class A, class B, class C>

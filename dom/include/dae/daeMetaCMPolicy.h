@@ -32,7 +32,7 @@ COLLADA_(public) //"vptr" DATA-MEMBER
 	/**
 	 * Default Constructor
 	 */
-	daeCM():_meta(),_parentCM(),_maxOrdinals(){}
+	daeCM():_maxOrdinals(),_meta(),_parentCM(){}
 	#endif
 	/**
 	* Virtual Destructor
@@ -256,9 +256,10 @@ COLLADA_(public) //ABSTRACT INTERFACE
 	 */
 	daeCM *_prepareContentModel()
 	{
-		#ifdef NDEBUG //UNIMPLEMENTED
-		#error Don't "return this;" Many CMs have redundancies that can be skipped.
-		#error For instance, domAny has an <xs:sequence> that's strictly pro-forma.
+		//UNIMPLEMENTED
+		#ifdef NDEBUG //GCC and quotes/apostrophes.
+		#error "Don't \"return this;\" Many CMs have redundancies that can be skipped."
+		#error "For instance, domAny has an <xs:sequence> that\'s strictly pro-forma."
 		#endif
 		_prepareContentModel2(); return this; //UNIMPLEMENTED
 	}
@@ -321,7 +322,7 @@ COLLADA_(protected) //INVISIBLE
 	 * @param test enforces a standard nesting pattern onto
 	 * generators; @c setChild() calls @c _deepCM_push_back().
 	 */
-	inline void _deepCM_push_back(int i, const daeCM *test)
+	inline void _deepCM_push_back(size_t i, const daeCM *test)
 	{
 		size_t item = _CM.size()-1; assert(test==_CM[item]);
 		size_t j = _deepCM[i].size();

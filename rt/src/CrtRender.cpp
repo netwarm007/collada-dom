@@ -14,56 +14,30 @@
 #include "CrtRender.h"
 
 COLLADA_(namespace)
-{
-	//See cfxPCH.h
-	struct GL GL; //extern
-	//See cfxLoader.h
-	//SCHEDULED FOR REMOVAL
-	GLuint FX::Loader::GetID_TexId(Collada05::const_image image)
-	{
-		if(image!=nullptr)
-		{
-			int out = RT::Main.Data->FindImage(image)->TexId;
-			if(out!=0) return out;
-		}		
-		static bool nonce = false; if(!nonce)
-		{
-			nonce = true;
-			RT::Main.Missing_Image.Refresh();
-			daeEH::Warning<<(0!=RT::Main.Missing_Image.TexId
-			?"Using missing image texture: "
-			:"Missing image image is missing: ")<<RT::Main.Missing_Image.URL;
-		}
-		return RT::Main.Missing_Image.TexId;
-	}
-	GLuint FX::Loader::GetID_TexId(Collada08::const_image image)
-	{
-		//This only has to pass a viable element pointer.
-		return GetID_TexId(COLLADA_RT_cast(image,image));
-	}
-	RT::Image *RT::DBase::FindImage(Collada05::const_image &e)const
-	{
-		assert(RT::Main.Loading); //Delayed loading?
-		return const_cast<RT::DBase*>(this)->LoadImage(e);
-	}
-	RT::Image *RT::DBase::FindImage(Collada08::const_image &e)const
-	{
-		assert(RT::Main.Loading); //Delayed loading?
-		return const_cast<RT::DBase*>(this)->LoadImage(e);
-	}
-
+{	
 	namespace RT
 	{//-.
 //<-----'
 
-
+//GCC won't generate these if needed.
+const int RT::Up::X_UP,Up::Y_UP,Up::Z_UP;
+		
 //SCHEDULED FOR REMOVAL
 extern std::vector<char> CrtTexture_buffer;
 
-//!!!GAC temporary WINDOWS ONLY for performance timing
-#ifdef _WIN32 
-LARGE_INTEGER update_time,render_time;
-#endif
+//SCHEDULED FOR REMOVAL
+GLuint RT::Frame::Missing_Image_TexId()
+{
+	static bool nonce = false; if(!nonce)
+	{
+		nonce = true;
+		RT::Main.Missing_Image.Refresh();
+		daeEH::Warning<<(0!=RT::Main.Missing_Image.TexId
+		?"Using missing image texture: "
+		:"Missing image image is missing: ")<<RT::Main.Missing_Image.URL;
+	}
+	return RT::Main.Missing_Image.TexId;
+}
 
 //#ifdef SN_TARGET_PS3
 //#include <sys/raw_spu.h>
@@ -71,8 +45,10 @@ LARGE_INTEGER update_time,render_time;
 //#elif !defined(_WIN32)
 //#include <sys/time.h>
 //#endif
-static RT::Float CrtRender_timer()
+RT::Float /*RT::*/Time()
 {
+	//TODO? WinMain had used clock(). It is not portable?
+	
 	#ifdef SN_TARGET_PS3
 	{
 		system_time_t t = sys_time_get_system_time();
@@ -82,12 +58,12 @@ static RT::Float CrtRender_timer()
 	{
 		return timeGetTime()*RT::Float(0.001);
 	}
-	#else
+	#else //Wraps around at midnight?
 	{
 		struct timeval LTV;
 		struct timezone LTZ;
 
-		if(gettimeofday(&LTV,&LTZ)!= -1)
+		if(-1!=gettimeofday(&LTV,&LTZ))
 		{
 			long long LTime = LTV.tv_sec;
 
@@ -106,12 +82,12 @@ static void CrtRender_UpdateDelta()
 	//this function should be called once per frame 	
 	static RT::Float fps = 0;
 	static RT::Float time = 0;
-	static RT::Float oldTime = CrtRender_timer();
+	static RT::Float oldTime = RT::Time();
 	static int nbrFrames = 0;
 	static bool UpdatedOnce = false;
 	const RT::Float updateTime = 1;
 
-	time = CrtRender_timer();
+	time = RT::Time();
 
 	nbrFrames++;
 
@@ -130,13 +106,6 @@ static void CrtRender_UpdateDelta()
 		#if 0 
 		daeEH::Verbose<<"FPS is "<<fps<<", Time is "<<time;
 		#endif
-		#ifdef _WIN32  //!!!GAC temporary windows only performance timing code
-		LARGE_INTEGER frequency;
-		QueryPerformanceFrequency(&frequency);
-		//daeEH::Verbose<<"update "<<(double)update_time.QuadPart/(double)frequency.QuadPart<<
-		//", render "<<(double)render_time.QuadPart/(double)frequency.QuadPart<<
-		//", frequency "<<frequency.QuadPart;
-		#endif
 	}
 
 	//until first update delta = 0;
@@ -146,7 +115,7 @@ static void CrtRender_UpdateDelta()
 //This is a table of <up_axis> & <unit> value pairs.
 static std::vector<RT::Up_Meter> 
 CrtRender_Up_Meter(1,std::make_pair(RT::Up::Y_UP,1.0f));
-const RT::Up_Meter &RT::GetUp_Meter(size_t i)
+const RT::Up_Meter &/*RT::*/GetUp_Meter(size_t i)
 {
 	return CrtRender_Up_Meter[i];
 }
@@ -165,16 +134,17 @@ RT::Asset_Index::Asset_Index()
 void RT::Frame::Unload()
 {
 	Missing_Image.DeleteTexture();
+	COLLADA_index_keywords.clear();
 	Physics.Clear(); Scene.Clear(); 	
 	Stack.Select();
-	delete Data; _InitData(); 
+	delete DB; _InitDB(); 
 	const_cast<daeDOM&>(DOM).clear_of_content();
-	Cg.Reset();
+	FX.Reset();
 	UsePhysics = true;
 }
 void RT::Frame::_Destroy()
 {
-	Unload(); Cg.Destroy();
+	Unload(); FX.Destroy();
 
 	#ifdef IL_VERSION
 	ilShutDown();
@@ -185,10 +155,10 @@ void RT::Frame::_Destroy()
 
 bool RT::Frame::Load(const xs::anyURI &URI)
 {
-	Unload(); assert(nullptr==Data);
+	Unload(); assert(nullptr==DB);
 
 	//Create a new scene and name it the same as the file being read.
-	(void*&)Data = COLLADA_RT_new(RT::DBase);
+	(void*&)DB = COLLADA_RT_new(RT::DBase);
 	
 	//in case of multithreaded loading 
 	const_cast<bool&>(Loading) = true;
@@ -198,11 +168,9 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 	if(UseRender)
 	{
 		//try and initialize cg if we can as set the default shaders 
-		if(Cg.Use) Cg.Init();
-
-		if(ShadowMap.Use) ShadowMap.Init();
+		if(FX.Use) FX.Init();
 	}
-	else Cg.Use = UseVBOs = ShadowMap.Use = false;
+	else FX.Use = UseVBOs = false;
 
 	daeEH::Verbose<<"COLLADA_DOM Load Started.";	
 
@@ -217,7 +185,7 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 		"\n"<<URI.getURI();			
 		return const_cast<bool&>(Loading) = false;
 	}
-	else const_cast<daeName&>(URL) = res->getDocURI().getURI(); 
+	else const_cast<RT::Name&>(URL) = res->getDocURI().getURI(); 
 
 	daeEH::Verbose<<"COLLADA_DOM Runtime database initialized from:"
 	"\n"<<URL;
@@ -227,11 +195,11 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 	daeDocument *doc = res->getDocument();
 	if(doc!=nullptr) any = doc->getRoot();
 	if(any==nullptr
-	||!const_cast<RT::DBase*>(Data)->LoadCOLLADA_1_4_1(any->a<Collada05::COLLADA>())
-	&&!const_cast<RT::DBase*>(Data)->LoadCOLLADA_1_5_0(any->a<Collada08::COLLADA>()))
+	||!const_cast<RT::DBase*>(DB)->LoadCOLLADA_1_4_1(any->a<Collada05::COLLADA>())
+	&&!const_cast<RT::DBase*>(DB)->LoadCOLLADA_1_5_0(any->a<Collada08::COLLADA>()))
 	daeEH::Warning<<"Loaded document is not a COLLADA resource.";	
 	
-	CrtTexture_buffer.swap(std::vector<char>());
+	std::vector<char> swap_idiom; CrtTexture_buffer.swap(swap_idiom);
 	
 	//in case of multithreaded loading 
 	const_cast<bool&>(Loading) = false;
@@ -240,7 +208,7 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 
 	Time = RT::Asset.TimeMin; return true;
 }
-RT::Stack::Stack():CurrentMaterial()
+RT::Stack::Stack():CurrentMaterial(&DefaultMaterial)
 {
 	Data.resize(1); 
 	Data[0].Parent = nullptr;
@@ -252,73 +220,69 @@ RT::Stack::Stack():CurrentMaterial()
 
 bool RT::Frame::Refresh()
 {
-	if(Data==nullptr) return false;
-		   
-	//daeEH::Verbose<<"Rendering Data."; 
+	if(DB==nullptr) return false;
+
+	//HACK: This is the client application's job.
+	//Just don't know where to do it viewer-side.
+	if((!FX.Initialized //Cg only for now.
+	 ||!FX::Profile_COMMON.OK) //profile_COMMON only.
+	 &&RT::Main.ShowCOLLADA_FX) //And GLSL?
+	{
+		static bool once = false; if(!once)
+		{
+			once = true; RT::Main.ShowCOLLADA_FX = false;
+			daeEH::Error<<"The profile_COMMON GPU program failed to build...\n"
+			//Mimicking the viewer's 'L' keyboard input.
+			"[L]egacy OpenGL mode enabled. FX disabled.";
+		}
+	}
+
+	bool animate = AnimationOn&&!AnimationPaused;
 
 	//Update the scene, this traverses all the nodes and makes sure the transforms are up-to-date
 	//It also sets up the hardware lights from the light instances in the scene.  (note the hardware
 	//lights aren't used if you're rendering using Cg shaders.
-	#ifdef _WIN32  //!!!GAC temporary windows only performance timing code
-	LARGE_INTEGER temp_time;
-	QueryPerformanceCounter(&temp_time);
-	#endif
-	{	
-		bool reset = false;
-		//set not to use the animation if 
-		//animation is turned off 
-		if(!AnimationOn) 
-		{
-			reset = Time!=-1; Time = -1;
-		}
-		else if(Time==-1) Time = Asset.TimeMin;
-
-		for(size_t i=0;i<Data->Animations.size();i++)
-		{
-			RT::Animation *a = Data->Animations[i];
-			if(Time>=a->TimeMin&&Time<=a->TimeMax+Delta)
-			{
-				a->NowPlaying = !AnimationPaused;
-			}
-			else a->NowPlaying = false;
-		}	
-
-		if(!AnimationPaused&&AnimationOn)
-		{
-			if(UsePhysics)
-			Physics.Update(Delta);		
-		}
-		Stack.Update(reset);
-
-		//too keep animation playback stable
-		//no matter the frame rate 
-		CrtRender_UpdateDelta();
 		
-		#ifdef NDEBUG
-		#error This is old code, sorely in need of review.
-		#endif
-		//update animation if not paused 
-		if(!AnimationPaused&&AnimationOn)
-		{
-			Time+=Delta;
-			if(Time>RT::Asset.TimeMax)
-			Time = RT::Asset.TimeMin+(Time-RT::Asset.TimeMax);
-		}
+	bool reset = false;
+	//set not to use the animation if 
+	//animation is turned off 
+	if(!AnimationOn) 
+	{
+		reset = Time!=-1; Time = -1;
 	}
-	#ifdef _WIN32  //!!!GAC temporary windows only performance timing code
-	QueryPerformanceCounter(&update_time);
-	update_time.QuadPart = update_time.QuadPart-temp_time.QuadPart;
-	QueryPerformanceCounter(&temp_time);
-	#endif
+	else if(Time==-1) Time = Asset.TimeMin;
+
+	for(size_t i=0;i<DB->Animations.size();i++)
+	{
+		RT::Animation *a = DB->Animations[i];
+		if(Time>=a->TimeMin&&Time<=a->TimeMax+Delta)
+		{
+			a->NowPlaying = animate;
+		}
+		else a->NowPlaying = false;
+	}	
+
+	if(!AnimationPaused&&AnimationOn)
+	{
+		if(UsePhysics)
+		Physics.Update(Delta);		
+	}
+	Stack.Update(reset);
+
+	//too keep animation playback stable
+	//no matter the frame rate 
+	CrtRender_UpdateDelta();
+		
+	//update animation if not paused 
+	if(!AnimationPaused&&AnimationOn)
+	{
+		Time+=Delta;
+		if(Time>RT::Asset.TimeMax)
+		Time = RT::Asset.TimeMin+(Time-RT::Asset.TimeMax);		
+	}
 
 	if(UseRender) Stack.Draw();
-
-	//!!!GAC temporary windows only performance timing code
-	#ifdef _WIN32  
-	QueryPerformanceCounter(&render_time);
-	render_time.QuadPart = render_time.QuadPart-temp_time.QuadPart;
-	#endif
-
+		  
 	return true;
 }
 
@@ -329,38 +293,26 @@ bool RT::Frame::Refresh()
 //!!!GAC shouldn't be called twice.  To fix the problem I split the init function so the constructor
 //!!!GAC now only initializes members and Init initializes members and Cg, this avoids the need to
 //!!!GAC change every sample that calls Init.  I will clean this up later.
-void RT::Frame::_InitData()
+void RT::Frame::_InitDB()
 {
-	const_cast<daeName&>(URL) = "";	
-	const_cast<RT::DBase*&>(Data) = nullptr; 
+	const_cast<RT::Name&>(URL) = "";	
+	const_cast<RT::DBase*&>(DB) = nullptr; 
 }
 void RT::Frame::_InitMembers()
 {
-	_InitData(); //2017
+	_InitDB(); //2017
 
-	Cg.Use = false;
 	UseVBOs = false;
 	UseRender = true;
 	UsePhysics = true;
-	  
-	Cg.Initialized = false;
-	Cg.Context = nullptr;
-
-	Cg.SkinDefaultProgramId = -1;
-	Cg.StaticDefaultProgramId = -1;
-	Cg.PhongFragmentProgramId = -1;
-
-	Cg.SkinShadowProgramId = -1;
-	Cg.StaticShadowProgramId = -1;
-	Cg.PhongFragmentShadowProgramId = -1;
-
-	Cg.StaticNormalMapId = -1;
-	Cg.SkinNormalMapId = -1;
-	Cg.FragmentNormalMapId = -1;
-
+	FX.Use = false;	  
+	FX.Initialized = false;
+	FX.Cg = nullptr;
+	
+	Left = Top = 0;
 	Width = 640;
 	Height = 480;
-	Delta = 0.03f;
+	Delta = 0.03f; //A nonzero initial value?
 
 	Asset.Up = RT::Up::Y_UP; Asset.Meter = 1;
 
@@ -370,6 +322,7 @@ void RT::Frame::_InitMembers()
 	LoadGeometry = true;
 	ShowGeometry = true;
 	ShowHierarchy = false;
+	ShowCOLLADA_FX = true;
 	ShowTextures_Mask = -1;
 
 //2017: Moved from old CrtScene
@@ -384,20 +337,32 @@ void RT::Frame::_InitMembers()
 	AnimationLinear = false;
 }
 
-void RT::Frame::Init()
+extern GLDEBUGPROC CrtCommonGL_DEBUGPROC;
+
+void RT::Frame::Init(void RestoreGL())
 {	
 	_InitMembers();
 			   
 	#ifdef IL_VERSION
 	ilInit();
 	#endif
-
-	//!!!GAC The new crt render path requires Cg to be initialized before anything is loaded
-	Cg.Init(); 
 	
+	//GCC may not be compiling GL?
+#ifdef __GNUC__
+	int bp = 1; (void)bp; 
+#endif
 	//FX needs this but cannot initialize it.
 	//Reload the extensions one time just in case the DLLs are loaded in a funky order.
-	new(&GL) struct COLLADA::GL;
+	new(&GL) struct ::COLLADA::GL;
+	#ifdef _DEBUG
+	GL.DebugMessageCallbackARB(CrtCommonGL_DEBUGPROC,nullptr);
+	#endif
+	
+
+	//!!!GAC The new crt render path requires Cg to be initialized before anything is loaded
+	FX.Init();
+	//SCHEDULED FOR REMOVAL (cgSetPassState workaround)
+	FX.RestoreGL = RestoreGL;
 	
 	//SCHEDULED FOR REMOVAL
 	//Unload is about to call Init regardless.
@@ -406,7 +371,7 @@ void RT::Frame::Init()
 	DOM.~daeDOM(); new(const_cast<daeDOM*>(&DOM)) daeDOM;
 
 	#ifdef SN_TARGET_PS3
-	COLLADA_FX.platform_Filter.push_back("PS3");
+	FX.platform_Filter.push_back("PS3");
 	#endif
 
 	daeEH::Verbose<<
@@ -481,7 +446,7 @@ RT::Stack_Data &RT::Stack::FindAnyLight()
 	if(0==ambient)
 	{
 		static RT::Stack_Data position;
-		static RT::Light default_light[6];		
+		static RT::Light default_light[6];
 		for(int i=0;i<6;i++)
 		{
 			default_light[i].Id = "COLLADA_RT_default_light";
@@ -533,6 +498,8 @@ void RT::Stack::Select_AddData_DrawData(void *g, void *c, RT::Stack_Data *d)
 	if(g!=nullptr) draw.first = ((RT::Geometry_Instance*)g)->Geometry;
 	if(c!=nullptr) draw.second = ((RT::Controller_Instance*)c)->Controller;
 	if(c!=nullptr) draw.first = draw.second->Geometry;
+	for(size_t i=0;i<draw.GetMaterials().size();i++)
+	draw.Semantics()|=draw.GetMaterials()[i].Material->Effect->Semantics();
 	DrawData.push_back(draw);
 }
 void RT::Stack::Select_AddData_Controllers_and_finish_up()
@@ -605,7 +572,7 @@ void RT::Stack::Select_AddData_Controllers_and_finish_up()
 			ShowHierarchy_Splines.push_back((int)i);
 		}
 		if(ShowHierarchy_Splines.size()%2==1)
-		ShowHierarchy_Splines.push_back(DrawData.size());
+		ShowHierarchy_Splines.push_back((int)DrawData.size());
 	}
 }
 
@@ -675,7 +642,8 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 	//These are for matrix/lookat/skew.
 	RT::Matrix lm; RT::Float *pd;
 
-	RT::Float x,y,z;	
+	RT::Float x,y,z;
+	x=y=z=0; //-Wmaybe-uninitialized
 	RT::MatrixCopy(Parent->Matrix,Matrix);
 	for(size_t i=0;i<Node->Transforms.size();i++,td+=tf->Size)
 	{
@@ -703,13 +671,12 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 
 		case RT::Transform_Type::SCALE:
 
-			if(up!=RT::Up::Y_UP)
+			if(up!=RT::Up::Y_UP) //DEFICIENT
 			{
 				#ifdef NDEBUG
-				#error Try to detect/respect negative scale?
+				#error Make this work like <matrix> does.
 				#endif
-				//Don't know if this is technically correct
-				//but negative scaling makes everything off.
+				//THIS WORKS UNLESS MIRRORING IS DESIRED.
 				x = fabs(x); z = fabs(z);
 			}
 			RT::MatrixScale(Matrix,x,y,z);
@@ -748,9 +715,9 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 				//But should factor it into their translation component.
 				if(up!=RT::Up::Y_UP)
 				{	
-					#ifdef NDEBUG
-					#error Try to understand/document this.
-					#error It's not swapping/flipping basis vectors.
+					#ifdef NDEBUG //GCC does not like apostrophes.
+					#error "Try to understand/document this."
+					#error "It's not swapping/flipping basis vectors."
 					#endif
 					RT::Matrix xz;
 					RT::MatrixLoadAsset(xz,up);
@@ -759,7 +726,11 @@ RT::Float *RT::Stack_Data::Update_Matrix(RT::Float *td)
 				//by X_UP and Z_UP cause scaling issues in matrices and
 				//so must be cancelled out somehow. This was determined
 				//to work experimentally. Like using abs() with <scale> 
-				//it may or may not be correct.					
+				//it may or may not be correct.		
+				//UPDATE:
+				//I later found this, very similar code, when trying to
+				//find a way to insert normals into COLLADA-CTS's files.
+				//https://sourceforge.net/p/colladarefinery/code/HEAD/tree/COLLADA_Refinery/trunk/src/conditioners/axisconverter_core.cpp
 				std::swap(xz[M10],xz[M01]); std::swap(xz[M21],xz[M12]);
 				{
 					//Two multiplies translates into a coordinate system
@@ -900,8 +871,8 @@ void RT::Camera_State::Matrix(RT::Matrix *view, RT::Matrix *inverseview)const
 	if(inverseview==nullptr) inverseview = view;
 	RT::MatrixCopy(Parent->Matrix,*inverseview);	
 
-	#ifdef NDEBUG
-	#error This isn't really understood.
+	#ifdef NDEBUG //GCC does not like apostrophes.
+	#error "This isn't really understood."
 	#endif
 	//This works to make the camera interactive.
 	RT::Matrix &i = *inverseview;

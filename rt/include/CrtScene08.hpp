@@ -11,6 +11,8 @@
 #error CrtScene.hpp is included by CrtScene.h.
 #endif
 
+COLLADA_(private) 
+
 	void LoadCOLLADA(ColladaYY::const_COLLADA&);
 	struct LoadTargetable_of;	
 	struct LoadLight_technique_common;
@@ -23,7 +25,7 @@
 	friend struct RT::RigidBody;
 	struct LoadGeometry_technique_common;
 	RT::Geometry *LoadGeometry(ColladaYY::const_geometry&);
-	RT::Image *LoadImage(ColladaYY::const_image&);
+	RT::Image *LoadImage(ColladaYY::const_image&,bool sRGB=false);
 	struct LoadAnimation_channel;
 	void LoadAnimation(ColladaYY::const_animation&);		
 	struct LoadInstances_of;
@@ -37,7 +39,9 @@
 	struct LoadScene_Physics;	
 	void LoadScene(ColladaYY::const_scene&);		
 
-COLLADA_(public)				   
+COLLADA_(public)	
+
+	RT::Image *FindImage(ColladaYY::const_image&,bool)const;
 
 	//SCHEDULED FOR REMOVAL
 	#ifdef PRECOMPILING_COLLADA_RT

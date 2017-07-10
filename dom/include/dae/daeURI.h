@@ -52,17 +52,32 @@ template<int size_on_stack>
  * @c daeURI is a fixed size @c typedef of @c daeURI_size.
  * @tparam size_on_stack can be any size; 0 is fully dynamic.
  * (UPDATE: 0 is not fully dynamic, although this might change.)
- *
- * COMPILING ISSUES??? MSVC2013 WON'T BUILD	IF daeURI_base HAS
- * PREVIOUSLY BEEN USED IN friend-DECLATIONS. HOPEFULLY THIS IS
- * A BUG. IF THIS IS NOT PORTABLE, THIS CLASS WILL BE HARD TO DO.
  */
-class daeURI_size : public daeURI_base
+class daeURI_size 
+: 
+//public daeURI_base
+
+//NOTE: On Visual Studio this was not required even though
+//daeContents_size did require it, and they seem identical.
+//Still MSVC2015's IntelliSense would not show daeURI_base.
+//It's probably moot because GCC would not accept it alone.
+
+//daeURI_base is an incomplete type at this stage. So
+//this bit of C++ trickery makes compilers treat it like a
+//template parameter without having to input the parameter.
+
+//Visual Studio says "typename ignored in base class" then
+//classifies this as an error; even though it says ignored.
+//public COLLADA_NCOMPLETE(size_on_stack) daeURI_base
+public COLLADA::NCOMPLETE<size_on_stack>::daeURI_base
 {	
 	friend class daeDOM;
 	friend class daeURI_base;
 	template<int> friend class daeURI_size;
 	
+	//This way GCC/C++ can delay evaluation of some types.
+	typedef COLLADA::NCOMPLETE<size_on_stack> _incomplete;
+
 COLLADA_(protected) //DATA-MEMBER
 	/** 
 	 * Multi-representational string. 
@@ -73,7 +88,7 @@ COLLADA_(public) //NON-STRING CONSTRUCTORS
 	/**
 	 * Default Constructor
 	 */
-	daeURI_size(){ _00(); }	
+	daeURI_size(){ this->_00(); }
 
 	//These two constructors require templates to tell them
 	//apart. The second form combines a base & relative URI.
@@ -87,7 +102,7 @@ COLLADA_(public) //NON-STRING CONSTRUCTORS
 	 */
 	daeURI_size(const C_str &URI, const DAEP::Object *c):daeURI_base(c)
 	{
-		_setURI(daeBoundaryStringIn(URI).c_str); 
+		this->_setURI(daeBoundaryStringIn(URI).c_str);
 	}
 	template<int N> //See notes above the two-argument ctor.
 	/**LEGACY-SUPPORT
@@ -101,7 +116,7 @@ COLLADA_(public) //NON-STRING CONSTRUCTORS
 	daeURI_size(const daeURI_size<N> &baseURI, daeBoundaryStringIn URI)	
 	:daeURI_base(&baseURI.getParentObject())
 	{
-		_setURI(URI.c_str,(daeURI*)&baseURI); 
+		this->_setURI(URI.c_str,(daeURI*)&baseURI);
 	}
 	 									
 COLLADA_(protected) //PROTECTED daeURI_parser CONSTRUCTOR
@@ -112,7 +127,7 @@ COLLADA_(protected) //PROTECTED daeURI_parser CONSTRUCTOR
 	//Call the view-constructor on dummy class daeURI_parser_view.
 	:daeURI_base(c),_refString(&(daeStringCP&)URI)
 	{
-		_setURI(&(daeStringCP&)URI,nullptr); //Won't overwrite itself.
+		this->_setURI(&(daeStringCP&)URI,nullptr); //Won't overwrite itself.
 	}
 
 COLLADA_(public) //STRING CONSTRUCTORS
@@ -124,20 +139,36 @@ COLLADA_(public) //STRING CONSTRUCTORS
 	 * the constructors are defined in terms of @c operator=().
 	 * @c remarks Under C++11 these could be deleted and this wouldn't
 	 * be necessary as these would default to @c daeURI_base's.
+	 *
+	 * UPDATE: I don't know if the default agument is reasonably C++98
+	 * anymore. But it's required with GCC and probably most compilers.
+	 * The only other way is to define all constructors.
 	 */
-	daeURI_size(const T &cp){ daeURI_base::operator=(cp); }
+	daeURI_size(const T &cp, typename DAEP::NoValue<T>::type SFINAE=0)
+	{
+		this->daeURI_base::operator=(cp); (void)SFINAE;
+	}
 	/** C++ Non-Default Copy Constructor */
-	daeURI_size(const daeURI_size &cp){ daeURI_base::operator=(cp); }
-	/** This is in support of the const daeObject &c constructor. */
-	daeURI_size(const daeURI_base &cp){ daeURI_base::operator=(cp); }
+	daeURI_size(const daeURI_size &cp){ this->daeURI_base::operator=(cp); }
+
+	template<int ID, class CC, typename CC::_ PtoM>
+	/**
+	 * Because SFINAE is used above to prevent implicit conversion, so
+	 * the DAEP Value's conversion operator can take precedence, it is
+	 * necessary to allow explicit construction.
+	 */
+	explicit daeURI_size(const DAEP::Value<ID,daeURI,CC,PtoM> &cp)
+	{
+		this->daeURI_base::operator=(cp);
+	}
 
 	template<class T>
 	COLLADA_SUPPRESS_C(4522)
 	/** Pass-through Assignment Operator */
-	daeURI &operator=(const T &cp){ return daeURI_base::operator=(cp); }	
+	daeURI &operator=(const T &cp){ return this->daeURI_base::operator=(cp); }
 	COLLADA_SUPPRESS_C(4522)
 	/** C++ Non-Default Assignment Operator */
-	daeURI &operator=(const daeURI_size &cp){ return daeURI_base::operator=(cp); }	
+	daeURI &operator=(const daeURI_size &cp){ return this->daeURI_base::operator=(cp); }
 
 COLLADA_(public) //LAZY EVALUATION 
 	/**
@@ -146,7 +177,8 @@ COLLADA_(public) //LAZY EVALUATION
 	 */
 	inline bool referencesDoc(const daeDoc *doc)const
 	{	
-		return referencesURI(doc->getDocURI());
+		const typename _incomplete::daeDoc *i = doc;
+		return this->referencesURI(i->getDocURI());
 	}
 	/**
 	 * @c daeDoc is an incomplete type.
@@ -154,7 +186,8 @@ COLLADA_(public) //LAZY EVALUATION
 	 */	
 	inline bool transitsDoc(const daeDoc *doc)const
 	{	
-		return transitsURI(doc->getDocURI());
+		const typename _incomplete::daeDoc *i = doc;
+		return this->transitsURI(i->getDocURI());
 	}
 
 	/**LEGACY
@@ -164,8 +197,9 @@ COLLADA_(public) //LAZY EVALUATION
 	 */
 	inline daeDocumentRef getReferencedDocument()const
 	{
-		daeDocRef doc; const daeDOM *DOM = getDOM(); 
-		if(DOM!=nullptr) docLookup2(*DOM,doc); return doc->getDocument(); 
+		const daeDOM *DOM = this->getDOM();
+		const typename _incomplete::daeDocRef doc;
+		if(DOM!=nullptr) this->docLookup2(*DOM,doc); return doc->getDocument();
 	}
 };
 
@@ -339,9 +373,9 @@ COLLADA_(public) //OPERATORS
 	 */
 	inline daeURI &operator=(const daeURI_base &cp)
 	{
-		if(!getIsAttached()) _reparent(cp->getParentObject());
+		if(!getIsAttached()) _reparent(cp.getParentObject());
 		daeArray<daeStringCP,260> rel; 
-		return operator=(cp->getURI_baseless(rel).data());		
+		return operator=(cp.getURI_baseless(rel).data());		
 	}
 
 	template<int ID, class CC, typename CC::_ PtoM>
@@ -358,16 +392,23 @@ COLLADA_(public) //OPERATORS
 		return operator=((daeString)cp);		
 	}
 	
-COLLADA_(public) //daeSafeCast() SHORTHANDS
+COLLADA_(public) //Pass-throughs?? for????
 
-	/** Follows style of daeElement::a(). */
-	template<class T> T *a();
+	//SCHEDULED FOR REMOVAL?
+	#ifdef NDEBUG
+	#error Why is this here? And not in other references?
+	#endif
 	/** Pass-Through; Follows style of daeElement::a(). */
-	template<> daeURI *a(){ return (daeURI*)this; }
+	template<class T> T *a()
+	{
+		//UNFINISHED. Instead of failing to compile this
+		//class of APIs is supposed to return nullptr.
+		return (daeURI*)this;
+	}
 	/**CONST-FORM Following style of daeElement::a(). */
 	template<class T> const T *a()const
 	{
-		return const_cast<daeURI*>(this)->a<T>();
+		return const_cast<daeURI_base*>(this)->a<T>();
 	}
 
 COLLADA_(public) //ACCESSORS & MUTATORS
@@ -412,9 +453,8 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline daeOK setParentObject(const DAEP::Object *c)
 	{
-		assert(c!=nullptr);
-		daeOK OK(getIsAttached()?DAE_ERR_INVALID_CALL:_reparent(dae(*c)));
-		return OK;
+		if(getIsAttached())
+		return DAE_ERR_INVALID_CALL; return _reparent(dae(*c));
 	}
 	#ifndef COLLADA_NODEPRECATED
 	COLLADA_DEPRECATED("setParentObject")
@@ -662,7 +702,7 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 	 */
 	inline CP getURI_terminatorCP()const{ return _size-1; }
 
-	template<char X> //X can be '://', '@', ':', '/', '.', '?', or '#'.
+	template<int X> //X can be '://', '@', ':', '/', '.', '?', or '#'.
 	/**LOW-LEVEL
 	 * @see getURI_upto(), which this parallels.
 	 * @note / is equivalent to @c getURI_pathCP().
@@ -802,7 +842,7 @@ COLLADA_(public) //COMPONENT ACCESSORS & MUTATORS
 		return io;
 	};
 
-	template<char X, class T> 
+	template<int X, class T>
 	/**
 	 * Gets ill-defined component groups to a @a T. 
 	 * @tparam X can be ':', '/', '.', '?', or '#'.
@@ -850,23 +890,33 @@ COLLADA_(public) //UTILITIES
 	 * This API sets up @c daeArchive::_whatsupDoc so that the library's
 	 * classes can retrace the lookup. This is less so to accelerate the
 	 * library, and more so to avoid reimplementing the lookup procedure.
+	 *
+	 * AUTOMATIC-RESOLUTION
+	 * ====================
+	 * There had been a docLookup2 API that tried unresolved and
+	 * then tried again resolved, but it's clumsy and so if that
+	 * is what the user wants they can use setIsResolved instead.
 	 */
-	inline T &docLookup(const daeArchive &archive, T &matchingDoc, enum dae_clear clear=dae_clear)const
+	inline T &docLookup(const daeArchive *archive, T &matchingDoc, enum dae_clear clear=dae_clear)const
 	{
 		if(clear!=dae_default) matchingDoc = nullptr;
-		_docLookup(archive,matchingDoc); return matchingDoc;
+		const daeDoc *upcast = matchingDoc; (void)upcast;		
+		_docLookup(*archive,(daeDocRef&)matchingDoc); return matchingDoc;
 	}
 	template<class T> //T is daeDocRef or const_daeDocRef
 	/**
 	 * Does a lookup, and failing that, resolves & retries.
 	 * @see docLookup().
 	 */
-	inline T &docLookup2(const daeArchive &archive, T &matchingDoc)const
+	inline T &docLookup2(const daeArchive *archive, T &matchingDoc)const
 	{
-		matchingDoc = nullptr;
-		_docLookup(archive,matchingDoc); 
-		if(matchingDoc==nullptr&&DAE_OK==resolve(*archive.getDOM()))
-		_docLookup(archive,matchingDoc); return matchingDoc;
+		docLookup(archive,matchingDoc);
+		if(matchingDoc==nullptr&&!getIsResolved())
+		{
+			if(DAE_OK==resolve(((daeObject*)archive)->getDOM()))
+			docLookup(archive,matchingDoc,dae_default);
+		}
+		return matchingDoc;
 	}
 
 	/**SCOPED-ENUM 
@@ -1009,7 +1059,7 @@ COLLADA_(private) //INTERNAL SUBROUTINES
 	 */
 	inline void _docHookup(daeArchive&, daeDocRef &reinsert)const;
 	/** Implements @c docLookup() */
-	LINKAGE void _docLookup(const daeArchive&,const_daeDocRef&)const;
+	LINKAGE void _docLookup(const daeArchive&,daeDocRef&)const;
 		
 COLLADA_(public) //daeRef_support traits
 

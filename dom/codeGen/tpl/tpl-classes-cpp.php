@@ -33,8 +33,10 @@ else if($meta['parent_meta']===NULL)
 "#define COLLADA_target_namespace \
 COLLADA::$target_namespace
 COLLADA_(namespace)
-{//-.
-//<-'
+{
+	namespace DAEP //GCC
+	{//-.
+//<-----'
 #ifndef COLLADA_DOM_LITE
 ";
 }
@@ -129,10 +131,8 @@ if(inline_CM&&$meta['parent_meta']===NULL)
 	if(2!==$COLLADA_DOM)
 	{
 		echo "
-//------.
-    //<-'
-	namespace DAEP //WYSIWYG
-	{
+//----------.
+		//<-'			
         COLLADA_($target_namespace,namespace)
         {//-.
 //<---------'

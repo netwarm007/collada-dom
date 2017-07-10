@@ -44,14 +44,14 @@ struct DataMaker
 	bool Emplace(...){ return false; }
 	bool Emplace(FX::ShaderParam*){ return true; }
 };	  
-extern void MakeData05(DataMaker<FX::Annotate>&);
-extern void MakeData05(DataMaker<FX::NewParam>&);
-extern void MakeData05(DataMaker<FX::SetParam>&);
-extern void MakeData05(DataMaker<FX::ShaderParam>&);
-extern void MakeData08(DataMaker<FX::Annotate>&);
-extern void MakeData08(DataMaker<FX::NewParam>&);
-extern void MakeData08(DataMaker<FX::SetParam>&);	
-extern void MakeData08(DataMaker<FX::ShaderParam>&);	
+extern void MakeData05(FX::DataMaker<FX::Annotate>&);
+extern void MakeData05(FX::DataMaker<FX::NewParam>&);
+extern void MakeData05(FX::DataMaker<FX::SetParam>&);
+extern void MakeData05(FX::DataMaker<FX::ShaderParam>&);
+extern void MakeData08(FX::DataMaker<FX::Annotate>&);
+extern void MakeData08(FX::DataMaker<FX::NewParam>&);
+extern void MakeData08(FX::DataMaker<FX::SetParam>&);
+extern void MakeData08(FX::DataMaker<FX::ShaderParam>&);
 
 template<class T>
 struct DataTraits
@@ -132,14 +132,7 @@ COLLADA_(public) //UTILITIES
 		T t[1] = {}; //0 or default initialize it.
 		FX::DataType<T>::Load(this,*t); return *t;
 	}
-	template<> inline daeName To<daeName>()
-	{
-		//THIS ASSUMES ALL STRINGS ARE STRING-REFS.
-		daeName ref; ref.string = To<xs::string>();
-		if(ref.string!=nullptr)
-		ref.extent = ((daeStringRef*)&ref.string)->size();
-		return ref;
-	}
+	//template<> daeName To<daeName>(); //GCC/C++
 
 	template<class T> inline bool Is()
 	{
@@ -149,18 +142,28 @@ COLLADA_(public) //UTILITIES
 	{
 		return dynamic_cast<FX::DataType<T>*>(this);
 	}
-	template<> inline  FX::DataType<FX::Sampler> *As()
-	{
-		switch(GetType())
-		{
-		case CG_SAMPLER1D: case CG_SAMPLERCUBE:
-		case CG_SAMPLER2D: case CG_SAMPLERRECT:
-		case CG_SAMPLER3D: case CG_UNKNOWN_TYPE: 
-		return (FX::DataType<FX::Sampler>*)this;
-		}
-		return nullptr;
-	}
+	//template<> FX::DataType<FX::Sampler> *As(); //GCC/C++
 };
+template<> inline  FX::DataType<FX::Sampler> *FX::Data::As()
+{
+	switch(GetType())
+	{
+	case CG_SAMPLER1D: case CG_SAMPLERCUBE:
+	case CG_SAMPLER2D: case CG_SAMPLERRECT:
+	case CG_SAMPLER3D: case CG_UNKNOWN_TYPE:
+	return (FX::DataType<FX::Sampler>*)this;
+	default:; //-Wswitch
+	}
+	return nullptr;
+}
+template<> inline daeName FX::Data::To<daeName>()
+{
+	//THIS ASSUMES ALL STRINGS ARE STRING-REFS.
+	daeName ref; ref.string = To<xs::string>();
+	if(ref.string!=nullptr)
+	ref.extent = ((daeStringRef*)&ref.string)->size();
+	return ref;
+}
 
 template<class T, CGtype E> 
 /**
@@ -224,6 +227,8 @@ COLLADA_(public) //Make <annotate> etc. easy to work with.
 				if(E!=p->GetType())
 				*(xs::string*)&t = "Nonstring Data"; 
 				else break; return false;
+
+			default:; //-Wswitch
 			}
 			t = ((DataType*)p)->Value; return true;
 		}
@@ -235,11 +240,12 @@ COLLADA_(public) //Make <annotate> etc. easy to work with.
 	}
 	virtual bool Load(size_t iN, CGtype u, void *t)
 	{	
-		return _Load2<Size>(iN,u,(char*)t);
+		//daeFig is because GCC/C++ won't facilitate explicit-specialization.
+		return _Load2(daeFig<Size>(),iN,u,(char*)t);
 	}
-	template<int> bool _Load2(size_t iN, CGtype u, char *t)
+	template<int Size> bool _Load2(daeFig<Size>, size_t iN, CGtype u, char *t)
 	{	
-		iN = std::min(iN,Size);
+		iN = std::min<size_t>(iN,Size); daeCTC<Size!=0>();
 		for(size_t i=0;i<iN;i++) 
 		{
 			Unit &p = ((Unit*)&Value)[i]; switch(u)
@@ -248,11 +254,12 @@ COLLADA_(public) //Make <annotate> etc. easy to work with.
 			case CG_##x: *(y*)t = (y)p; t+=sizeof(y); break;
 			_(BOOL,bool)_(INT,int)_(FLOAT,float)_(DOUBLE,double)
 			#undef _
+			default:; //-Wswitch
 			}
 		}
 		return true;
 	}
-	template<> bool _Load2<0>(size_t iN, CGtype u, char *t)
+	bool _Load2(daeFig<0>, size_t iN, CGtype u, char *t)
 	{
 		if(E!=CG_STRING) return false;		
 		xs::string hack = *(xs::string*)&Value;
@@ -266,6 +273,7 @@ COLLADA_(public) //Make <annotate> etc. easy to work with.
 			case CG_##x: src>>*(y*)t; t+=sizeof(y); break;
 			_(BOOL,bool)_(INT,int)_(FLOAT,float)_(DOUBLE,double)
 			#undef _
+			default:; //-Wswitch
 			}
 			if(src.fail()) return i!=0;
 		}

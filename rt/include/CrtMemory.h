@@ -96,9 +96,10 @@ struct Memory
 		void delete_p(){ ((void(*)(void*))deleter)(p); }		
 
 		//THIS IS JUST TO WORK AROUND BUGGY DESTRUCTORS.
-		template<class T> static void _destruct(T *p){ p->~T(); }
-		template<> static void _destruct(btDiscreteDynamicsWorld*)
-		{
+		template<class T> static void _destruct(const T *p){ p->~T(); }
+		//This problem persists even after building new libraries.
+		static void _destruct(const btDiscreteDynamicsWorld*)
+		{				  
 			//This destructor is crashing. The library will have to be
 			//built to get to the bottom of it.
 			#ifdef NDEBUG
@@ -108,14 +109,16 @@ struct Memory
 	};
 	std::vector<ptr> Nuke;
 	#define _(x,y,...) \
-	template<class S##__VA_ARGS__> S *New##x\
+	template<class S __VA_ARGS__> S *New x\
 	{\
 		S *p = (S*)operator new(sizeof(S)+8);\
-		Nuke.push_back(p); return new(Nuke.back().p) S##y;\
+		Nuke.push_back(p); return new(Nuke.back().p) S y;\
 	}
+	//TODO? C++98 is not really a requirement for RT & FX.
+	//HACK: GCC wants &&. Maybe in C++98 mode & would work.
 	_((),(),)
-	_((T&t),(t),, class T)
-	_((T&t,U&u),(t,u),, class T, class U)
+	_((T&&t),(t),, class T)
+	_((T&&t,U&&u),(t,u),, class T, class U)
 	_((T&t,U&u,V&v),(t,u,v),, class T, class U, class V)
 	_((T&t,U&u,V&v,W&w),(t,u,v,w),, class T, class U, class V, class W)
 	_((T&t,U&u,V&v,W&w,X&x),(t,u,v,w,x),, class T, class U, class V, class W, class X)

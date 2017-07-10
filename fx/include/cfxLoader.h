@@ -17,6 +17,19 @@ COLLADA_(namespace)
 	{//-.
 //<-----'
 
+struct ColorSpace
+{
+	bool sRGB;
+	operator bool()const{ return sRGB; }
+
+	ColorSpace(bool sRGB=false):sRGB(sRGB){}
+	ColorSpace(daeName space){ sRGB = space=="sRGB"; }
+	ColorSpace(Collada05_XSD::fx_surface_format_hint_option_enum e)
+	{
+		sRGB = e==e.SRGB_GAMMA;
+	}
+};
+
 class Loader
 {
 COLLADA_(public)
@@ -61,8 +74,8 @@ COLLADA_(public)
 	//SCHEDULED FOR REMOVAL
 	//SCHEDULED FOR REMOVAL
 	//SCHEDULED FOR REMOVAL
-	static GLuint GetID_TexId(Collada05::const_image);
-	static GLuint GetID_TexId(Collada08::const_image);
+	static GLuint GetID_TexId(Collada05::const_image,FX::ColorSpace=false);
+	static GLuint GetID_TexId(Collada08::const_image,FX::ColorSpace=false);
 };
 
 //-------.

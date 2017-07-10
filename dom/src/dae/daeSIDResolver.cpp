@@ -31,14 +31,14 @@ typedef struct //daeSIDResolver_cpp
 		if(name[0]=='i'&&name.extent>9&&0==memcmp(&name,"instance_",9))
 		{
 			//Should <instance_material> be targetable?
-			#ifdef NDEBUG
-			#error Sometimes it's "target" instead. E.g. <instance_material>
+			#ifdef NDEBUG //GCC doesn't like apostrophes.
+			#error "Sometimes it's \"target\" instead. E.g. <instance_material>"
 			#endif
 			daeName url = scope->getAttribute("url");			
 			if(!url.empty())
 			{
 				daeURI_parser URI(url,scope);
-				daeElementRef e = URI.getTargetedFragment();
+				const_daeElementRef e = URI.getTargetedFragment();
 				if(e!=nullptr)
 				{
 					//Found the URL: Now resolve the leftover part.
@@ -129,8 +129,8 @@ daeOK daeDefaultSIDREFResolver::_resolve_exported
 		daeStringRef *it = NCNames.begin();
 		if(dot_slashed)
 		{
-			#ifdef NDEBUG
-			#error The manual doesn't define this. But do it I guess.
+			#ifdef NDEBUG //GCC doesn't like apostrophes.
+			#error "The manual doesn't define this. But do it I guess."
 			#endif
 			/*https://github.com/KhronosGroup/OpenCOLLADA/issues/507
 			"The parent scope of  "./"  is defined by the first parent

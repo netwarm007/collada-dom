@@ -58,20 +58,8 @@ __pragma(warning(disable:4351))
 #define COLLADA_H(h) __pragma(message("COLLADA-DOM: In " COLLADA_STRINGIZE(h) " ..."))
 #endif
 
-//Microsoft prefixes these nonstandard APIs
-#define COLLADA__itoa__ COLLADA_SUPPRESS_C(4996) _itoa
-
-/**
- * Define the system fopen hook for @c daeCRT. 
- */
-#ifndef COLLADA_DOM_FOPEN
-#define COLLADA_DOM_FOPEN(dae_fopen)\
-typedef FILE*(*const dae_fopen##_f)(const wchar_t*,const wchar_t*,int);\
-static dae_fopen##_f dae_fopen = _wfsopen;
-#endif
-#ifndef COLLADA_DOM_FILENO
-#define COLLADA_DOM_FILENO _fileno
-#endif
+//Visual Studio doesn't complain about mixing extern with initialization.
+#define COLLADA__extern__ extern
 
 #endif //__COLLADA_DOM__DAE_WIN32_PLATFORM_H__
 /*C1071*/

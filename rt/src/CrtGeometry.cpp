@@ -185,16 +185,17 @@ void RT::Spline::Generate_Positions()
 		
 	size_t i = ElementBuffer.size();
 	ElementBuffer.resize(Vertices);
-	while(++i<Vertices) ElementBuffer[i] = i;
+	while(++i<Vertices) ElementBuffer[i] = (GLuint)i;
 }
 
 //SCHEDULED FOR REMOVAL
 static RT::Effect CrtGeometry_Effect = 1;
-static RT::Material CrtGeometry_Material = &CrtGeometry_Effect;
+RT::Material RT::Stack::DefaultMaterial = &CrtGeometry_Effect;
 void RT::Geometry::Draw_VBuffer(float *p, std::vector<RT::Material_Instance> &materials)
-{   	
-	FX::Material *fx = nullptr;
-	xs::string symbol = nullptr;
+{   
+	//RT::Spline is using nullptr.
+	//xs::string symbol = nullptr;
+	xs::ID symbol = (xs::ID)~intptr_t();
 	const int format2 = GetFormat();
 	int format = -1, stride = 0, first=0; //RTC
 	for(size_t i=0;i<Elements.size();i++)
@@ -204,28 +205,19 @@ void RT::Geometry::Draw_VBuffer(float *p, std::vector<RT::Material_Instance> &ma
 		{
 			symbol = e.Material_Instance_Symbol;
 
-			//Restore the old material state
-			if(fx!=nullptr) 
-			{
-				fx->ResetPassState(0);
-				fx = nullptr;
-			}
-
 			RT::Material *m = nullptr;
 			for(size_t i=0;i<materials.size();i++)						
 			if(symbol==materials[i].Symbol)
 			{
-				m = materials[i].Material;
+				m = materials[i].Material; 
 				goto have_m;
 			}
 			//<spline> has no symbol to speak of.			
 			if(!materials.empty()) m = materials[0].Material;
 			//<bind_material> is optional.
-			if(materials.empty()) m = &CrtGeometry_Material;			
-			have_m: 
-			fx = m->COLLADA_FX;
-			if(fx==nullptr) RT::Main.Stack.SetMaterial(m);
-			if(fx!=nullptr) RT::Main.Cg.SetPassState(fx,0);
+			if(materials.empty()) m = &RT::Stack::DefaultMaterial;			
+
+			have_m: RT::Main.Stack.SetMaterial(m);			
 		}
 
 		if(format!=e.GetFormat())
@@ -255,10 +247,8 @@ void RT::Geometry::Draw_VBuffer(float *p, std::vector<RT::Material_Instance> &ma
 			else glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 		}
 		//OpenGL SPECIFIC
-		glDrawArrays(e.Mode,first,e.Width); first+=e.Width;
-	}
-	//Restore the old material state
-	if(fx!=nullptr) fx->ResetPassState(0);
+		glDrawArrays(e.Mode,first,(GLsizei)e.Width); first+=(GLsizei)e.Width;
+	}	
 }
 
 template<int Fill> 
@@ -347,8 +337,8 @@ struct CrtGeometry_fill
 	const RT::Up up; const float _1up;
 	float *b,*o; RT::Geometry &g; xs::string m;
 	CrtGeometry_fill(float *b, RT::Geometry &g, xs::string m)
-	:b(b),o(b),g(g),m(m),up(RT::GetUp_Meter(g.Asset).first)
-	,_1up(float(up==RT::Up::Y_UP?1:-1)){}
+	:up(RT::GetUp_Meter(g.Asset).first)
+	,_1up(float(up==RT::Up::Y_UP?1:-1)),b(b),o(b),g(g),m(m){}
 };
 size_t RT::Geometry::Size_VBuffer()
 {

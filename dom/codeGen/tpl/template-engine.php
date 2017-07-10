@@ -220,7 +220,11 @@ function echoCode($code)
 	for($i=1;$i<$argc;$i++)
 	{ $rep[] = "$$i"; $sub[] = func_get_arg($i); }	
 	$lines = explode("\n",str_replace($rep,$sub,$code));
-	if(!empty($lines[0])) die("die(for consistenty begin on the next line/rtrim)");
+	if(!empty($lines[0])) //breakpoint
+	{
+		//\r chars can get sucked in if saved on Windows :(
+		die("die(CR-LF? for consistenty begin on the next line/rtrim)");
+	}
 	$linec = count($lines);	
 	for($i=1;$i<$linec;$i++) echo $tabs, $lines[$i], "\n";
 }
@@ -551,7 +555,7 @@ function echoNoNameCPP($name='extra_schema',$doc='/')
 	 * These elements are invalid according to the schema. They may be user-defined 
 	 * additions and substitutes.
 	 *$doc
-	DAEP::Child<1,xs::any,_,(_::_)&_::_N> {$name}__unnamed;");
+	DAEP::Child<1,xs::any,_,(_::_)&_::_Z> {$name}__unnamed;");
 }
 function echoAnyEtcCPP()
 {
@@ -588,14 +592,14 @@ public: //Elements");
 		}
 		else if($k==-1) 
 		{
-			$_ = '_N'; 
+			$_ = '_Z'; 
 			
 			$i-=$elementsPtoMs;
 			$singles = count($lo)-$i; $odd = $i&1;
 		
 			if($i) echo "\n";
 			echoCode("
-	COLLADA_DOM_N($N) union //NO-NAMES & ONLY-CHILDS
+	COLLADA_DOM_Z($N) union //NO-NAMES & ONLY-CHILDS
 	{",ceil($singles/32)-$odd);
 			if($any) echoAnyEtcCPP(); else echoNoNameCPP();		
 		}
@@ -610,7 +614,7 @@ public: //Elements");
 		$i-=$elementsPtoMs;
 		if($i) echo "\n";
 		echoCode("
-	COLLADA_DOM_N($N) $1",$i?'//NO-NAMES':'');
+	COLLADA_DOM_Z($N) $1",$i?'//NO-NAMES':'');
 		if($any) echoAnyEtcCPP(); else echoNoNameCPP();		
 	}
 	else echoCode("

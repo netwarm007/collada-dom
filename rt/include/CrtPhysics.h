@@ -73,31 +73,7 @@ struct RigidBody
 	 * <instance_rigid_body><technique_common> are 
 	 * compatible with <shape> but ONLY WITH SHAPE.
 	 */
-	inline bool OverrideWith(T &in, xs::anyURI &URI)
-	{
-		//The schema requires this element, but it's very often empty.
-		if(!in.technique_common.empty())
-		{
-			const T::local__technique_common *tc = in.technique_common;
-			Sid = in.sid;
-			if(!tc->mass.empty())
-			Mass = tc->mass->value;
-			if(!tc->dynamic.empty()) 
-			Dynamic = tc->dynamic->value;
-			ColladaYY::const_physics_material yy;
-			if(!tc->physics_material.empty())
-			yy = tc->physics_material;			
-			else if(!tc->instance_physics_material.empty())
-			{
-				URI = tc->instance_physics_material->url;
-				yy = URI.get<ColladaYY::physics_material>();
-			}
-			if(yy!=nullptr)
-			Material = COLLADA_RT_cast(physics_material,yy);
-			_LoadShape(COLLADA_RT_cast(rigid_body::technique_common,tc));
-		}
-		return Shape!=nullptr;
-	}
+	inline bool OverrideWith(T &in, xs::anyURI &URI);
 	void _LoadShape(Collada05::const_rigid_body::technique_common&);
 	#endif
 };

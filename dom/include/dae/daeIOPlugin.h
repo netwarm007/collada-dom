@@ -14,11 +14,29 @@
 COLLADA_(namespace)
 {//-.
 //<-'
-
+	
+//THIS IS NOT COMPILER SPECIFIC. But do GCC/Clang use Win32 APIs?
+#ifdef _WIN32
+#ifndef _MSC_VER
+#error Seen _WIN32 on non Visual Studio compiler. How to proceed?
+#endif
 /**
  * Define the system fopen hook for @c daeCRT. 
  */
 #ifndef COLLADA_DOM_FOPEN
+#define COLLADA_DOM_FOPEN(dae_fopen)\
+typedef FILE*(*const dae_fopen##_f)(const wchar_t*,const wchar_t*,int);\
+static dae_fopen##_f dae_fopen = _wfsopen;
+#endif
+#ifndef COLLADA_DOM_FILENO
+#define COLLADA_DOM_FILENO _fileno
+#endif
+#endif //_WIN32
+
+#ifndef COLLADA_DOM_FOPEN
+/**
+ * Define the system fopen hook for @c daeCRT. 
+ */
 #define COLLADA_DOM_FOPEN(dae_fopen)\
 typedef FILE*(*const dae_fopen##_f)(const char*,const char*);\
 static dae_fopen##_f dae_fopen = fopen;
@@ -66,9 +84,8 @@ static struct daeCRT
 
 		void *_reserved;
 
-		FILE():_reserved()
-		,fopen(dae_fopen),fclose(::fclose),fread(::fread),fwrite(::fwrite)
-		,_stat(_stat_f){}
+		FILE():fopen(dae_fopen),fclose(::fclose),fread(::fread),fwrite(::fwrite)
+		,_stat(_stat_f),_reserved(){}
 
 	private:
 		/**
@@ -79,6 +96,7 @@ static struct daeCRT
 			#ifndef COLLADA_DOM_FILENO
 			#define COLLADA_DOM_FILENO fileno
 			#endif
+			//If you hit an error here, try -std=gnu++11.
 			p->fd = ::COLLADA_DOM_FILENO(f);
 			fseek(f,0,SEEK_END); 					
 			p->size = ftell(f); fseek(f,0,SEEK_SET); return sizeof(*p);
@@ -279,13 +297,14 @@ COLLADA_(public) //daePlatform::openURI() support
 	/**HELPER Helps @c daePlatform::openURI(). */
 	inline void fulfillRequestI(daeIOPlugin *I, daeDocRoot<> &doc)const 
 	{
-		assert(!isEmptyRequest()); doc = scope->_read<ROOT>(*this,I);
+		return fulfillRequestI(daeGetMeta<ROOT>(),this,doc);
 	}
 	template<class LAZY>
 	/**HELPER Helps @c daePlatform::openURI(). */
 	inline void fulfillRequestI(daeMeta *meta, daeIOPlugin *I, daeDocRoot<LAZY> &doc)const 
 	{
-		assert(!isEmptyRequest()); doc = scope->_read2(meta,*this,I);
+		const COLLADA_INCOMPLETE(LAZY) daeArchive *a = scope; assert(!isEmptyRequest());
+		doc = a->_read2(meta,*this,I);
 	}
 };
 

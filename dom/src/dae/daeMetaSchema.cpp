@@ -141,7 +141,7 @@ void daeMetaObject::_feature_complete(daeFeatureID fID)
 		if(1==f->_flags.subobject)
 		{
 			int i = -(int)fID-1; 
-			assert(i<sizeof(_subobjectsMask)*CHAR_BIT);			
+			assert(i<(int)sizeof(_subobjectsMask)*CHAR_BIT);
 			_subobjectsMask|=1<<i;			
 		}
 		if(1==f->_flags.atomizing) _features_atomize = 1;
@@ -244,7 +244,7 @@ XS::SimpleType &XS::Schema::_addList(daeTypewriter *writ, daeName base_or_item, 
 	//Note, _addAtom() inherits "itemType" if <xs:list> based.
 	if(base_or_item==nullptr) out._itemType = base;
 	assert(out.hasList()||out.getRestriction()); 
-	out._value_typewriter = out._value_typewriter->per<daeArray>(); return out;
+	out._value_typewriter = out._value_typewriter->where<daeArray>(); return out;
 }
 
 XS::SimpleType &XS::Schema::_addEnum

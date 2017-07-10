@@ -169,10 +169,10 @@ $singles = $count_lo-$i;
 //alignN is optional-unless there are "plural"
 //children involved. (they must factor alignN into
 //their IDs regardless.) 0 means add the alignment
-//see COLLADA_DOM_N in the C++ sources for details
+//see COLLADA_DOM_Z in the C++ sources for details
 $wordsN = ceil($singles/32); $alignN = $i+$wordsN&1;
 $N = $i?'1,'.($wordsN+($alignN^1)):"$alignN,$wordsN";
-echo "COLLADA_DOM_N($N)\n";
+echo "COLLADA_DOM_Z($N)\n";
 
 $i = $_No+($singles==0?0:1/*0 ID*/)+$singles+1; 
 $contentID = $i; //save for later
@@ -181,7 +181,7 @@ $elementPtoMs = $extent_of_values;
 //dae_Array<> has pointer alignment logic 
 //which COLLADA_DOM_PRECURSOR understands
 echoCode("
-	DAEP::Value<$_No,dae_Array<$1_N; enum{ _No=$_No };
+	DAEP::Value<$_No,dae_Array<$1_Z; enum{ _No=$_No };
 	DAEP::Value<$i,daeContents> content; typedef __NS__<$notes> notestart;
 	}_;
 ",$_globals['>> ']); //support C++98/03 double-angle-bracket rules
@@ -232,7 +232,7 @@ if(!empty($value))
 //TECHNICALLY THIS IS CORRECT, HOWEVER THERE SHOULDN'T BE ELEMENTS
 //WHEN THERE IS A VALUE, AND SO THE //Content SECTION SHOULD MERGE.
 //Reminder:
-//NOW THIS OUTPUTS COLLADA_DOM_N(X) union{ int:0; }; //USER-CHILDS
+//NOW THIS OUTPUTS COLLADA_DOM_Z(X) union{ int:0; }; //USER-CHILDS
 echoElementsCPP($meta,$elementPtoMs,$N,$any);
 //CONTENT
 if(!$el_less) 

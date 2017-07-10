@@ -8,6 +8,8 @@
 #ifndef __COLLADA_FX__PCH_H__
 #define __COLLADA_FX__PCH_H__
 
+#include <math.h>
+#include <float.h>
 #include <vector>
 
 #ifdef _WIN32 
@@ -21,20 +23,40 @@
 #undef RGB
 #endif
 
+//This keeps some gl.h from including a
+//glext.h file until the versions can be
+//#undef below.
+//glext.h doesn't define the GLtype types
+//so it cannot be included before gl.h is.
+#define GL_GLEXT_LEGACY
+
 //2017: Trying to simplify Cg/OpenGL set up.
-#include <Cg/cgGL.h> 
+#include <Cg/cgGL.h>
 #ifdef SN_TARGET_PS3
 //Can't say what these all do without a PS3.
-#define GL_GLEXT_PROTOTYPES
 #include <PSGL/psgl.h>
 #include <GLES/gl.h>
-#include <GLES/glext.h>
-#elif defined(__APPLE__)
+#endif
+
+#ifndef _WIN32
 #define GL_GLEXT_PROTOTYPES
+#endif
+//The Cygwin gl.h header is missing most of
+//the function prototypes. If these macros
+//are set glext.h doesn't emit their APIs.
+#pragma push_macro("GL_VERSION_1_2")
+#pragma push_macro("GL_VERSION_1_3")
+#undef GL_VERSION_1_2
+#undef GL_VERSION_1_3 //And possibly more?
+#ifdef SN_TARGET_PS3
+#include <GLES/glext.h> //Or GLES_VERSION?
+#elif defined(__APPLE__)
 #include <OpenGL/glext.h>
 #else
-#include <gl/glext.h>
+#include <GL/glext.h>
 #endif
+#pragma pop_macro("GL_VERSION_1_2")
+#pragma pop_macro("GL_VERSION_1_3")
 
 //SCHEDULED FOR REMOVAL
 //This is because the old Bullet-Physics library is compiled to use float.
@@ -53,20 +75,25 @@
 #include "../../xmlns/http_www_collada_org_2005_11_COLLADASchema/config.h"
 #include "../../xmlns/http_www_collada_org_2008_03_COLLADASchema/config.h"
    
+#define COLLADA_DOM_LITE
 #ifdef PRECOMPILING_COLLADA_FX
 #if COLLADA_DOM_GENERATION!=1
 #error The below inclusion guards expect COLLADA_DOM_GENERATION to be equal to 1.
 #endif
-#define COLLADA_DOM_LITE
-#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(effect))
-#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema,(material))
-#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(effect_type))
-#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(image_type))
-#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema,(material_type))
-#undef COLLADA_DOM_LITE
+//Blocking off to shave off of dog-slow *Nix world build-times/document support.
+//#define __profile_GLES_h__http_www_collada_org_2005_11_COLLADASchema__ColladaDOM_g1__
+//#define __profile_GLES_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+#define __profile_GLES2_type_h__http_www_collada_org_2008_03_COLLADASchema__ColladaDOM_g1__
+//These can do (x(y)) but GCC won't accept degenerate token-pasting.
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema)(effect)
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema)(material)
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema)(effect_type)
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema)(image_type)
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema)(material_type)
 #else 
 COLLADA_(namespace)
 {
+	//FX::Collada05
 	COLLADA_(http_www_collada_org_2005_11_COLLADASchema,namespace){}
 	COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace){}
 	namespace DAEP
@@ -75,7 +102,12 @@ COLLADA_(namespace)
 	COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace){}
 	}
 }
+//FX::ColorSpace
+#include COLLADA_(http_www_collada_org_2005_11_COLLADASchema)(http_www_collada_org_2005_11_COLLADASchema)
+//__NB__ in CrtRender.h (it could be omitted, but may as well do this for both schemas.)
+#include COLLADA_(http_www_collada_org_2008_03_COLLADASchema)(http_www_collada_org_2008_03_COLLADASchema)
 #endif
+#undef COLLADA_DOM_LITE
 
 COLLADA_(namespace)
 {
@@ -93,28 +125,20 @@ COLLADA_(namespace)
 	{
 		template<class R, class F, F def()> struct Ext
 		{
+			#ifndef GL_GLEXT_PROTOTYPES		
 			F ptr;
 			Ext():ptr(def()){}			
-			R operator()(){ return ptr!=nullptr?ptr():(R)0; }
-			template<class S>
-			R operator()(S s){ return ptr!=nullptr?ptr(s):(R)0; }
-			template<class S, class T>
-			R operator()(S s, T t){ return ptr!=nullptr?ptr(s,t):(R)0; }
-			template<class S, class T, class U>
-			R operator()(S s, T t, U u){ return ptr!=nullptr?ptr(s,t,u):(R)0; }
-			template<class S, class T, class U, class V>
-			R operator()(S s, T t, U u, V v){ return ptr!=nullptr?ptr(s,t,u,v):(R)0; }
-			template<class S, class T, class U, class V, class W>
-			R operator()(S s, T t, U u, V v, W w){ return ptr!=nullptr?ptr(s,t,u,v,w):(R)0; }
-			template<class S,class T,class U,class V,class W,class X,class Y>
-			R operator()(S s,T t,U u,V v,W w, X x,Y y){ return ptr!=nullptr?ptr(s,t,u,v,w,x,y):(R)0; }
+			inline operator F(){ return ptr; }
+			#else
+			inline operator F(){ return def(); }
+			#endif
 		};		
 		#ifdef GL_GLEXT_PROTOTYPES		
-		#define __(s,t) \
-		static t _##s(){ return gl##s; }
+		#define __(t,u) \
+		static u _##t(){ return gl##t; }
 		#elif defined(_WIN32)
-		#define __(s,t) \
-		static t _##s(){ return (t)wglGetProcAddress("gl"#s); } 
+		#define __(t,u) \
+		static u _##t(){ return (u)wglGetProcAddress("gl"#t); }
 		#else
 		//#error Is your system unrepresented?
 		#endif		
@@ -153,11 +177,7 @@ COLLADA_(namespace)
 		//Cg uses these instead.
 		_(void,Uniform2fv,PFNGLUNIFORM2FVPROC)		
 		_(void,Uniform3fv,PFNGLUNIFORM3FVPROC)		
-		_(void,Uniform4fv,PFNGLUNIFORM4FVPROC)		
-		//RT client-data support.		
-		_(void,Uniform1d,PFNGLUNIFORM1DPROC)
-		_(void,UniformMatrix4dv,PFNGLUNIFORMMATRIX4DVPROC)
-		_(void,Uniform4dv,PFNGLUNIFORM4DVPROC)		
+		_(void,Uniform4fv,PFNGLUNIFORM4FVPROC)			
 		#ifdef COLLADA_GL_INCLUDE
 		#include COLLADA_GL_INCLUDE
 		#endif

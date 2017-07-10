@@ -27,7 +27,7 @@ struct daeTinyXMLPlugin::Value : daeHashString
 	}
 };
 template<class T>
-static T *daeTinyXMLPlugin::setValue(T *io, const daeHashString &v)
+T *daeTinyXMLPlugin::setValue(T *io, const daeHashString &v)
 {
 	const_cast<TIXML_STRING&>(io->ValueTStr()).assign(v.string,v.extent);
 	return io;
@@ -184,7 +184,7 @@ daeOK daeTinyXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 
 	TiXmlDocument doc; _err = &doc;
 
-	char *version,*encoding,*standalone;
+	const char *version,*encoding,*standalone;
 	daeIOPluginCommon::_xml_decl(content,version,encoding,standalone);	
 	doc.LinkEndChild(new TiXmlDeclaration(version,encoding,standalone));
 

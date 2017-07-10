@@ -98,8 +98,8 @@ public: //Parameters
 	_20; DAEP::Child<6,library_kinematics_scenes_type>
 	_21; DAEP::Child<5,library_formulas_type>
 	_22; DAEP::Child<4,extra_type>
-	_23; COLLADA_DOM_N(1,2)
-	DAEP::Value<26,dae_Array<>> _N; enum{ _No=26 };
+	_23; COLLADA_DOM_Z(1,2)
+	DAEP::Value<26,dae_Array<>> _Z; enum{ _No=26 };
 	DAEP::Value<30,daeContents> content; typedef __NS__<5752> notestart;
 	}_;
 
@@ -231,18 +231,18 @@ public: //Elements
 	 */
 	DAEP::Child<4,extra_type,_,(_::_)&_::_23> extra;
 
-	COLLADA_DOM_N(1,2) union //NO-NAMES & ONLY-CHILDS
+	COLLADA_DOM_Z(1,2) union //NO-NAMES & ONLY-CHILDS
 	{
 	/**NO-NAMES
 	 * These elements are invalid according to the schema. They may be user-defined 
 	 * additions and substitutes.
 	 */
-	DAEP::Child<1,xs::any,_,(_::_)&_::_N> extra_schema__unnamed;
+	DAEP::Child<1,xs::any,_,(_::_)&_::_Z> extra_schema__unnamed;
 	/**
 	 * The COLLADA element must contain an asset element.
 	 * @see XSD @c asset_type
 	 */
-	DAEP::Child<-1,asset_type,_,(_::_)&_::_N> asset;
+	DAEP::Child<-1,asset_type,_,(_::_)&_::_Z> asset;
 	/**
 	 * The scene embodies the entire set of information that can be visualized
 	 * from the contents of a COLLADA resource. The scene element declares the
@@ -251,7 +251,7 @@ public: //Elements
 	 * as created by the authoring tools.
 	 * @see XSD @c local__scene
 	 */
-	DAEP::Child<-2,local__scene,_,(_::_)&_::_N> scene;
+	DAEP::Child<-2,local__scene,_,(_::_)&_::_Z> scene;
 	};
 
 public: //Content
@@ -283,8 +283,8 @@ public: //Parameters
 		DAEP::Child<6,instance_with_extra_type>
 	_0; DAEP::Child<5,instance_kinematics_scene_type>
 	_1; DAEP::Child<4,extra_type>
-	_2; COLLADA_DOM_N(1,2)
-	DAEP::Value<5,dae_Array<>> _N; enum{ _No=5 };
+	_2; COLLADA_DOM_Z(1,2)
+	DAEP::Value<5,dae_Array<>> _Z; enum{ _No=5 };
 	DAEP::Value<8,daeContents> content; typedef __NS__<5783> notestart;
 	}_;
 
@@ -309,20 +309,20 @@ public: //Elements
 	 */
 	DAEP::Child<4,extra_type,_,(_::_)&_::_2> extra;
 
-	COLLADA_DOM_N(1,2) union //NO-NAMES & ONLY-CHILDS
+	COLLADA_DOM_Z(1,2) union //NO-NAMES & ONLY-CHILDS
 	{
 	/**NO-NAMES
 	 * These elements are invalid according to the schema. They may be user-defined 
 	 * additions and substitutes.
 	 */
-	DAEP::Child<1,xs::any,_,(_::_)&_::_N> extra_schema__unnamed;
+	DAEP::Child<1,xs::any,_,(_::_)&_::_Z> extra_schema__unnamed;
 	/**
 	 * The instance_visual_scene element declares the instantiation of a COLLADA
 	 * visual_scene resource. The instance_visual_scene element may only appear
 	 * once.
 	 * @see XSD @c instance_with_extra_type
 	 */
-	DAEP::Child<-1,instance_with_extra_type,_,(_::_)&_::_N> instance_visual_scene;
+	DAEP::Child<-1,instance_with_extra_type,_,(_::_)&_::_Z> instance_visual_scene;
 	};
 
 public: //Content
@@ -362,8 +362,10 @@ public: //Content
 #define COLLADA_target_namespace \
 COLLADA::http_www_collada_org_2008_03_COLLADASchema
 COLLADA_(namespace)
-{//-.
-//<-'
+{
+	namespace DAEP //GCC
+	{//-.
+//<-----'
 #ifndef COLLADA_DOM_LITE
 template<>
 COLLADA_(inline) DAEP::Model& DAEP::Elemental
@@ -434,10 +436,8 @@ COLLADA_(inline) DAEP::Model& DAEP::Elemental
 	el.addContentModel<4,1>(cm,toc); return *om;
 }
 #endif //!COLLADA_DOM_LITE
-//------.
-    //<-'
-	namespace DAEP //WYSIWYG
-	{
+//----------.
+		//<-'			
         COLLADA_(http_www_collada_org_2008_03_COLLADASchema,namespace)
         {//-.
 //<---------'

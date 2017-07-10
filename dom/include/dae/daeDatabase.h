@@ -95,7 +95,7 @@ COLLADA_(private) //VIRTUAL METHOD TABLE
 	{
 		/*if(_vN_>=0)*/ return _v1_delete(AU,obj);
 	}	
-
+	
 	template<class Change> //DAEP::Change
 	friend Change &daeNoteChange(Change&,daeAttribute*);
 
@@ -132,6 +132,23 @@ COLLADA_(public) //OPERATORS
 	inline operator daeDatabase*(){ return (daeDatabase*)this; }
 	inline operator daeDatabase&(){ return *(daeDatabase*)this; }		
 	inline daeDatabase *operator->(){ return (daeDatabase*)this; }
+	
+	template<class T>
+	/**WORKAROUND
+	 * "error: invalid use of incomplete type."
+	 * @see @c daeDB.
+	 */
+	static void _destruct(T &inclomplete_type){ inclomplete_type.~T(); }
+	
+	template<class T>
+	/**WORKAROUND
+	 * "error: invalid use of incomplete type."
+	 * @see @c daeDB.
+	 */
+	static daeElement &_element_of_change(T &note)
+	{
+		return dae(*note.element_of_change);
+	}
 };
 
 /**
@@ -223,8 +240,9 @@ COLLADA_(public)
 	/**
 	 * Constructor
 	 */
-	daeDBaseString(size_t _pool, daeShort refs, daeString fragmentless, daeInt len)
-	:pool((unsigned short)_pool),refs(refs),fragmentN(len+1),fragmentCP('#')
+	daeDBaseString(size_t _pool, int refs, daeString fragmentless, size_t len)
+	:pool((unsigned short)_pool)
+	,refs((unsigned short)refs),fragmentN((unsigned int)len+1),fragmentCP('#')
 	{
 		assert(0==size_t(fragment)%2); assert(pool==_pool);
 		((daeStringCP*)memcpy(fragment+1,fragmentless,len))[len] = '\0';		
@@ -284,7 +302,7 @@ COLLADA_(private)
 	 * Just doing sizeof is dicey, but needs no infrastructure.
 	 * @see @c daeDBaseOK.
 	 */
-	#define _(x,y) (*(_##x*)((char*)&y-sizeof(_##x)+sizeof(y)))
+	#define _(x,y) (*(_##x*)((char*)&y-sizeof(_##x)+sizeof(COLLADA_INCOMPLETE(DBase) dae##x))) //sizeof(y)
 	/**TODO?
 	 * @todo Inheritance had to be abandoned. This does no checks
 	 * to guarantee that the object is the last member in the data
@@ -299,9 +317,9 @@ COLLADA_(private)
 		#endif
 		return sizeof(S)-sizeof(T); daeCTC<(sizeof(S)>=sizeof(T))>();
 	}
-
-	virtual ~daeDB(){ int breakpoint=1; /*NOP*/ }
-
+	
+	virtual ~daeDB(){ /*NOP*/ }
+	
 	virtual void **_v1_userptrptr(const daeObject &obj)
 	{
 		//Here the DB can supply a user-data pointer.
@@ -344,7 +362,7 @@ COLLADA_(private)
 	virtual void _v1_delete(const daeObject &obj)
 	{
 		//Here the DB destructs its parts of its memory block.
-		DBase::_destructing(_(Object,obj)); obj.~daeObject(); 
+		DBase::_destructing(_(Object,obj)); _destruct(obj); //obj.~daeObject();
 		//Here the DB deallocates its memory block from before.
 		DBase::_destructed(_(Object,obj)); 
 	}
@@ -365,7 +383,7 @@ COLLADA_(private)
 	virtual void _v1_delete(const daeElement &elem)
 	{
 		//See the instructions of the daeObject form.
-		DBase::_destructing(_(Element,elem)); elem.~daeElement(); 
+		DBase::_destructing(_(Element,elem)); _destruct(elem); //elem.~daeElement();
 		DBase::_destructed(_(Element,elem)); 
 	}
 	virtual void _v1_new(size_t chars, daeDocument* &obj, void* &rejoinder)
@@ -378,7 +396,7 @@ COLLADA_(private)
 	virtual void _v1_delete(const daeDocument &doc)
 	{
 		//See the instructions of the daeObject form.
-		DBase::_destructing(_(Document,doc)); doc.~daeDocument(); 
+		DBase::_destructing(_(Document,doc)); _destruct(doc); //doc.~daeDocument();
 		DBase::_destructed(_(Document,doc));
 	}	
 	virtual	daeAlloc<> &_v1_new(size_t &newT, const daeAlloc<> &AU, const daeObject &obj)
@@ -395,11 +413,12 @@ COLLADA_(private)
 	}
 	virtual void _v1_note(const DAEP::Change &note, const daeAttribute *attrib)
 	{
+		const COLLADA_INCOMPLETE(DBase) DAEP::Change &i = note;
 		//Don't forget to call note.carry_out_change().		
 		//Assume attrib==nullptr if note.kind_of_change!=DAEP::ATTRIBUTE.
 		//(It may actually be a @c daeValue pointer, to avoid branching.)
 		//note must be forwarded to elem.getDocument() to use the legacy indexing APIs.
-		return DBase::_noting(_(Element,dae(*note.element_of_change)),note,attrib);
+		return DBase::_noting(_(Element,*i.element_of_change),note,attrib);
 	}
 	virtual bool _v1_atomize_on_note(daeContainedObject &cache_object)
 	{

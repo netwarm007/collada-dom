@@ -15,7 +15,7 @@ void daeMeta::_clearTOC(daeElement *e)const
 {
 	daeOffset from = _clearTOC_offset;
 	daeOffset to = _content_offset-sizeof(daeChildID);
-	assert(to>=from&&to<(daeOffset)_sizeof&&from>=sizeof(DAEP::Element));
+	assert(to>=from&&to<(daeOffset)_sizeof&&from>=(int)sizeof(DAEP::Element));
 	memcpy((char*)e+from,(char*)_domAny_safe_prototype+from,to-from);
 	//_content_thunk.offset is not used above because it cannot get
 	//pseudo-elements, as they are the prototype. So not to branch:
@@ -166,7 +166,7 @@ void *daeMeta::_continue_XS_Schema_addElement2(void ctor(DAEP::Object*), daeFeat
 			for(size_t i=1;i<zerofill&&i<iN;i++) _elem0[i+1] = e1;
 		}
 	}			
-	int union_size = sizeof(dae_Array<>);
+	size_t union_size = sizeof(dae_Array<>);
 	daeOffset union_offset = content_offset-union_size;
 	{
 		//Automatically add the unnammed dae_Array, since it's always present.
@@ -203,8 +203,8 @@ void *daeMeta::_continue_XS_Schema_addElement2(void ctor(DAEP::Object*), daeFeat
 		//This is dicey. The 1 capacity is so
 		//daeContent::__COLLADA__move() can not
 		//branch on empty to set up the partition.
-		//REMINDER: re/deAlloc won't deallocate a 1.
-		new(&_content_thunk) daeAlloc<daeContent,0>(1);
+		//REMINDER: re/deAlloc won't deallocate a 1.		
+		new((void*)&_content_thunk) daeAlloc<daeContent,0>(1); //-Wplacement-new
 		content.setAllocThunk(&_content_thunk);		
 		assert(0==content_offset%sizeof(void*));
 		_content_offset = content_offset; //Computable...
@@ -367,7 +367,7 @@ void daeMeta::_addAttribute_maybe_addID(daeAttribute &maybe_ID, const daeElement
 		it = it+it->_next_attribute_is_ID; 
 		while(it<ID)
 		{
-			int diff = ID-it;
+			int diff = int(ID-it);
 			assert(diff>0);
 			it->_next_attribute_is_ID = diff; 
 			if(diff!=(int)it->_next_attribute_is_ID) 
@@ -410,7 +410,10 @@ void daeValue::_setDefaultString(daeHashString def)
 	{		
 		assert(_default==nullptr); _default = def;
 
-		if(DAE_OK!=_type->stringToMemory(def,_type.value)) assert(0);
+		if(DAE_OK!=_type->stringToMemory(def,_type.value)) 
+		{
+			assert(0);
+		}
 	}
 	(&_meta->_prototype->_getClassTag())[3]^=1; 
 }	
@@ -546,24 +549,24 @@ XS::Element &XS::Element::_setChild3(daeFeatureID fid, daeOffset os, daePseudony
 }
 XS::Element &daeMeta::_addChild(const XS::Element &cp, daeFeatureID fid, daeOffset os, daeHashString name)
 {	
-	assert(os>sizeof(daeElement));	
+	assert(os>=(int)sizeof(daeElement));
 
 	//This could be easier if _addElement() had more members.
 	daeOffset pivot = _elem0-_elems.begin();
-	daeOffset i, toc = _content_offset-os;
+	daeOffset i,toc = _content_offset-os;
 	XS::Element *out;
-	if(toc>sizeof(daeCursor)) 
+	if(toc>(int)sizeof(daeCounter))
 	{
 		//positive dae_Array
-		i = toc/sizeof(daeCursor);
-		assert(i>=2&&0==toc%sizeof(daeCursor));
+		i = toc/sizeof(daeCounter);
+		assert(i>=2&&0==toc%sizeof(daeCounter));
 	}
 	else //negative dae_Array
 	{
 		i = -pivot-1+(fid-_finalFeatureID);		
-		assert(i<0&&toc==sizeof(daeCursor));
+		assert(i<0&&toc==(int)sizeof(daeCounter));
 	}
-	_elem_names[name] = i;
+	_elem_names[name] = (int)i;
 	out = _jumpIntoTOC(i); //This includes a bounds check.
 	bool first_instance_of_name = 0==out->_element.offset;
 
@@ -595,12 +598,12 @@ XS::Element &daeMeta::_addChild(const XS::Element &cp, daeFeatureID fid, daeOffs
 	{	
 		daeParentCM *p = out->_parentCM;
 		assert(p!=nullptr&&p->_CM.back()==cp);		
-		p->_CM.back() = out; p->_deepCM_push_back(i,out);
+		p->_CM.back() = out; p->_deepCM_push_back((size_t)i,out);
 	}
 	//Finish up.
 	assert(name!=nullptr);
 	out->_element.name = name; 
-	out->_element.namefellows_demote = 0; return _addChild2(out,i,os);	
+	out->_element.namefellows_demote = 0; return _addChild2(out,(int)i,os);	
 }
 XS::Element &daeMeta::_addChild2(XS::Element *out, int i, daeOffset os)
 {
@@ -624,12 +627,6 @@ daeElementRef daeMeta::createWRT(daePseudoElement *parent, const daePseudonym &p
 	daeElement *out = ME->_construct_new(*parent);
 	
 	out->getNCName() = pseudonym; return out;	
-}
-//CIRCULAR-DEPENDENCY
-template<> inline void daeCM_Demotion<>::maybe_demote()
-{
-	if(_meta.jumpIntoTOC(daeCM_Placement::name)._element.namefellows_demote!=0)
-	_meta.getCMEntree()._chooseWithout(*this);
 }
 bool daeMeta::_typeLookup_unless(daeElement *e)
 {	

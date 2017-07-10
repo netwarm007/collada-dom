@@ -98,53 +98,45 @@ COLLADA_(public) //This is 2017 extension ahead of work on old COLLADA Viewer co
 		{
 			//HACK: _pointer exists only because the FX component has an
 			//old log message or two that want %p to format CGparamter?!
-			_pointer<daeConstOf<int,const_ptr>::type>::format(p,eh); return *this; 
+			_pointer(p,eh); return *this;
 		}
-		template<class NON_PORTABLE_p_SPECIFIER> struct _pointer
-		{ 
-			template<class T> static void format(const T *t, daeErrorHandler *eh)
-			{
-				char msg[96]; //ASSUMING WON'T OVERUN.				
-				COLLADA_SUPPRESS_C(4996)sprintf(msg,"%p",t); 
-				(eh->*H)(msg,dae_append);
-			}
-			template<> static void format(const daeUStringCP *msg, daeErrorHandler *eh)
-			{
-				(eh->*H)(p,dae_append); //xmlChar*???
-			}
-		};
-		template<> struct _pointer<daeStringCP>
+		template<class T>
+		static void _pointer(const T *t, daeErrorHandler *eh)
 		{
-			static void format(daeString msg, daeErrorHandler *eh)
-			{
-				(eh->*H)(msg,dae_append);
-			}
-		};
+			char msg[96]; //ASSUMING WON'T OVERUN.
+			COLLADA_SUPPRESS_C(4996)sprintf(msg,"%p",t);
+			(eh->*H)(msg,dae_append);
+		}
+		static void _pointer(const daeUStringCP *msg, daeErrorHandler *eh)
+		{
+			(eh->*H)(msg,dae_append); //xmlChar*???
+		}
+		static void _pointer(daeString msg, daeErrorHandler *eh)
+		{
+			(eh->*H)(msg,dae_append);
+		}
 		template<class T> 
 		inline LogStream operator<<(const T &t)
 		{ 
 			//HACK: _formatter filters out classes. Everything else is a
 			//number. C-array strings are converted to pointers. It'd be
 			//nice to convert them to daeHashString, but there's no rush.
-			_formatter<daeArrayAware<T>::is_class>::format(t,eh); return *this;
+			//daeFig is because GCC/C++ can't do explicit-specialization.
+			_nonpointer(daeFig<daeArrayAware<T>::is_class>(),t,eh); return *this;
 		}		
-		template<bool> struct _formatter
-		{ 
-			template<class T> static void format(const T &t, daeErrorHandler *eh)
-			{
-				(eh->*H)(t,dae_append);
-			}
+		template<class T>
+		static void _nonpointer(daeFig<1>, const T &t, daeErrorHandler *eh)
+		{
+			(eh->*H)(t,dae_append);
 		};
-		template<> struct _formatter<false>
+		template<class T>
+		static void _nonpointer(daeFig<0>, const T &t, daeErrorHandler *eh)
 		{ 
-			template<class T> static void format(const T &t, daeErrorHandler *eh)
-			{
-				char msg[64]; //ASSUMING WON'T OVERUN.
-				if(t==(int)t) //long long can be used with the correct printf flags?
-				COLLADA_SUPPRESS_C(4996)sprintf(msg,"%d",(int)t); else 
-				COLLADA_SUPPRESS_C(4996)sprintf(msg,"%f",(double)t); 
-				(eh->*H)(msg,dae_append);
-			}
+			char msg[64]; //ASSUMING WON'T OVERUN.
+			if(t==T((int)t)) //-Wsign-compare
+			COLLADA_SUPPRESS_C(4996)sprintf(msg,"%d",(int)t); else
+			COLLADA_SUPPRESS_C(4996)sprintf(msg,"%f",(double)t);
+			(eh->*H)(msg,dae_append);
 		};
 	};
 	template<void(daeEH::*H)(const daeHashString&,enum dae_clear)>
@@ -222,7 +214,7 @@ COLLADA_(protected)
 			if(_clear) fwrite(err,errN-1,1,f);
 			fwrite(msg.string,msg.extent*sizeof(daeStringCP),1,f);
 		}
-		if(_clear=clear)
+		_clear = clear; if(clear)
 		{
 			if(msg.empty()||msg.string[msg.extent-1]!='\n') 
 			fputc('\n',f);

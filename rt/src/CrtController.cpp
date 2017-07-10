@@ -20,9 +20,9 @@ COLLADA_(namespace)
 //<-----'
 	
 //NOT THREAD-SAFE
-#ifdef NDEBUG
-#error This can benefit from SSE optimization.
-#error (It's happening 30/60 times per second.)
+#ifdef NDEBUG //GCC doesn't like apostrophes.
+#error "This can benefit from SSE optimization."
+#error "(It's happening 30/60 times per second.)"
 #endif
 static std::vector<RT::Matrix> CrtController_mats; 	
 static std::vector<RT::Matrix> CrtController_matsIT; 
@@ -35,11 +35,12 @@ struct CrtController_skin
 	
 	//TODO: In unusual circumstances it might be necessary
 	//to compute "inverse-transposed" matrices for normals.
-	std::vector<RT::Matrix> &mats,matsIT;
+	std::vector<RT::Matrix> &mats,&matsIT;
 	
 	CrtController_skin(RT::Skin &skin, RT::Stack_Data **joints)
-	:skin(skin),joints(joints),mats(CrtController_mats)
+	:skin(skin),mats(CrtController_mats)
 	,matsIT(skin.Geometry->Normals!=nullptr?CrtController_matsIT:mats)
+	,joints(joints)
 	{
 		//CrtController_mats 		
 		mats.resize(std::max(mats.size(),skin.Joints.size()));
@@ -126,7 +127,7 @@ struct CrtController_skin
 			if(Stride>1) //Can't hurt.
 			out[1]+=transNorm*weight;
 		}
-		assert((out+Stride-in)==skin.Geometry->Vertices*Stride);
+		assert(size_t(out+Stride-in)==skin.Geometry->Vertices*Stride);
 	}
 };
 void RT::Skin::Update_VBuffer2(RT::Stack_Data **joints)
@@ -143,8 +144,8 @@ void RT::Skin::Update_VBuffer2(RT::Stack_Data **joints)
 		size_t i,iN = std::min(Joints.size(),Joints_INV_BIND_MATRIX.size());
 		for(i=0;i<iN;i++)
 		RT::MatrixMult(Joints_INV_BIND_MATRIX[i],joints[i]->Matrix,skin.mats[i]);
-		while(i<Joints.size()) //Just in case.
-		RT::MatrixCopy(joints[i]->Matrix,skin.mats[i++]);
+		for(;i<Joints.size();i++) //Just in case.
+		RT::MatrixCopy(joints[i]->Matrix,skin.mats[i]);
 		if(&skin.matsIT!=&skin.mats)
 		for(i=0;i<Joints.size();i++)
 		RT::MatrixInvertTranspose0(skin.mats[i],skin.matsIT[i]);		
@@ -172,9 +173,8 @@ struct CrtController_morph
 	const RT::Float nonzero;
 	CrtController_morph(RT::Morph &morph)
 	:morph(morph)
-	,nonzero(0.00001f)
 	,vN(morph.Geometry->Vertices)
-	,iN(morph.MorphTargets.size())
+	,iN(morph.MorphTargets.size()),nonzero(0.00001f)
 	{	
 		//COLLADA uses the concept of a "base mesh" but it
 		//is really no different from another target. Most

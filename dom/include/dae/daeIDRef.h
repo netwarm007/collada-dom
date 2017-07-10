@@ -80,7 +80,8 @@ COLLADA_(public) //DAEP::Object methods
 		//daeRefString must be able to switch to dynamic-storage.		
 		static DAEP::Model *om = nullptr; if(om!=nullptr) return *om;
 		static daeAlloc<daeStringCP,0> t; daeModel &m =
-		_support::getDefaultProcessShare().addModel<1>((Type*)this,"COLLADA::daeIDREF_base");				
+		_support::getDefaultProcessShare()
+		.template addModel<1>((Type*)this,"COLLADA::daeIDREF_base");
 		m.addFeature_variant<1>(this,_this()._refString.getInternalStorage()
 		,"VARIANT //daeRefString::_varray").setAllocThunk_offset(t);
 		m.addFeatureComplete();
@@ -297,6 +298,9 @@ COLLADA_(public) //FORWARDING CONSTRUCTORS
 	 */
 	daeIDREF_size(const daeIDREF_size &cp){ daeIDREF_base::operator=(cp); }
 
+	#ifdef NDEBUG
+	#error Does this need to not be explicit and use DAEP::NoValue?
+	#endif
 	//Marking explcit, just to be safe.
 	template<class T>
 	/** Single Argument Forwarded Constructors */

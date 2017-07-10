@@ -8,7 +8,15 @@
 #ifndef __COLLADA_FX__TYPES_H__
 #define __COLLADA_FX__TYPES_H__
 
+//This is the precompiled header, but not
+//really, as this isn't how it's included.
 #include "FX.pch.h"
+
+//GCC precompiled headers cannot remember
+//#pragma diagnostics; so bring them back.
+#ifdef PRECOMPILING_COLLADA_FX
+#include "../../dom/include/WARNING.HPP"
+#endif
 
 COLLADA_(namespace)
 {
@@ -119,7 +127,7 @@ struct Float3 : Float2
 
 	inline FX::Float3 &Normalize()
 	{
-		return *this/=sqrtf(x*x+y*y+z*z);
+		return *this/=sqrt(x*x+y*y+z*z);
 	}
 
 	inline FX::Float3 operator+(const FX::Float2 &v)const
@@ -206,7 +214,7 @@ struct Float4 : Float3
 	//This had been CrtVec4f::Set(CrtQuat*)
 	inline void SetToQuaternionAA(const FX::Float4 &q)
 	{
-		float s = sqrtf(1-(q.w*q.w));
+		float s = sqrt(1-(q.w*q.w));
 		w = 2*acosf(q.w);
 		if(s<0.001f)
 		{
@@ -231,7 +239,7 @@ struct Float4 : Float3
 	//UNUSED: Was CrtQuat::Normalize().
 	inline void NormalizeQuaternion()
 	{
-		float Len = sqrtf(x*x+y*y+z*z+w*w); 
+		float Len = sqrt(x*x+y*y+z*z+w*w);
 		if(Len>1e-06f)
 		{
 			float ILen = 1.0f/Len;
@@ -284,17 +292,18 @@ struct Float4 : Float3
 		GLuint FindTexID(),FindTexID(GLuint if_Missing);
 	  
 	COLLADA_(public)	
-		/**
-		 * Data doesn't generally require this any longer.
-		 * Still @c cgCreateSamplerStateAssignment() does.
-		 */
-		CGparameter Cg;
 
 		xs::ID Source;
 
 		FX::Paramable *Params;
 
 		bool GenerateMipmaps;
+
+		/**
+		 * Data doesn't generally require this any longer.
+		 * Still @c cgCreateSamplerStateAssignment() does.
+		 */
+		CGparameter Cg;
 	};
 	}
 }

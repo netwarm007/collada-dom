@@ -8,17 +8,18 @@
 
 #ifndef __COLLADA_DOM_INL__
 #define __COLLADA_DOM_INL__
-				
+
+#include "WARNING.HPP" //push
+
 //This includes the entirety of the library.
 #include "dae.h"
-#include "dae/domAny.h"
 #include "dae/daeMetaSchema.h"
 #include "dae/daeErrorHandler.h"
 #include "dae/daeIOPluginCommon.h"
 #include "dae/daeStandardURIResolver.h"
 //This is internal, but useful for I/0 code.
 #include "dae/daeRAII.hpp"
-					  
+
 //Miscellaneous and circularly defined APIs.
 COLLADA_(namespace)
 {//-.
@@ -55,16 +56,6 @@ inline typename daeConstOf
 	}
 	else return (S*)e; return nullptr;
 }
-/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
-template<class S> inline bool daeUnsafe(const daeElement *e)
-{
-	return _daeUnsafe2<daeConstOf<int,typename S::__COLLADA__T>::type>(e);
-}
-/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
-template<template<class> class S> inline bool daeUnsafe(const daeElement *e)
-{
-	return _daeUnsafe2<daeConstOf<int,typename S::__COLLADA__T>::type>(e);
-}
 /**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
 template<class S> inline bool _daeUnsafe2(const daeElement *e)
 {	
@@ -85,7 +76,11 @@ template<> inline bool _daeUnsafe2<daeObject>(const daeElement*){ return false; 
 template<> inline bool _daeUnsafe2<daeElement>(const daeElement*){ return false; }
 /**TEMPLATE-SPECIALIZATION Implements @c daeUnsafe(). */
 template<> inline bool _daeUnsafe2<DAEP::Element>(const daeElement*){ return false; }
-
+/**TEMPLATE-SPECIALIZATION Implements @c daeSafeCast(). */
+template<class S> inline bool daeUnsafe(const daeElement *e)
+{
+	return _daeUnsafe2<typename daeConstOf<int,typename S::__COLLADA__T>::type>(e);
+}
 /**
  * Extract the metadata by constructing an uninitialized "elemental"
  * in order to use its virtual-method-pointer. In theory optimizers
@@ -105,7 +100,7 @@ template<> inline bool _daeUnsafe2<DAEP::Element>(const daeElement*){ return fal
  */
 template<class T> inline const daeModel &daeGetModel()
 {
-	daeElement *nonconst_test = dae((typename T::__COLLADA__T*)nullptr);
+	daeElement *nonconst = dae((typename T::__COLLADA__T*)nullptr); (void)nonconst;
 	return DAEP::Elemental<typename T::__COLLADA__T>(DAEP::VPTR).__DAEP__Object__v1__model(); 
 }
 /**
@@ -149,26 +144,26 @@ inline daeDatabase &daeDoc::getDatabase()const{ return getDOM()->getDatabase(); 
  */
 inline daeDatabase &daeElement::getDatabase()const{ return getDOM()->getDatabase(); }
 
-template<> template<> 
+template<>
 /**KISS, CIRCULAR-DEPENDENCY 
  * Implements @c daeArray<daeContent>::clear().
  * Perhaps "__COLLADA__clear" is in order? Contents-arrays are special.
  * @see ColladaDOM.inl header's definition.
  */
-inline void daeArray<daeContent>::_clear2<daeContent>()
+inline void daeArray<daeContent>::_clear2(daeContent*)
 {
 	//If getObject() is nullptr it's likely to be @c XS::Choice::_solve().
 	//In that case, clear() is not supported; call _clear2<void>() directly.
 	assert(_au->_offset!=0); ((daeElement*)getObject())->__clear(*this); 
 }
-template<> template<> 
+template<>
 /** KISS, CIRCULAR-DEPENDENCY
  * Implements @c daeArray<daeContent>::grow(). 
  * @c __COLLADA__move() was going to be used, but when 
  * @c daeCursor was made to be an iterator, it became necessary to adjust it.
  * @see ColladaDOM_3.inl header's implementation.
  */
-inline void daeArray<daeContent>::_grow2<daeContent>(size_t minCapacity)
+inline void daeArray<daeContent>::_grow2(size_t minCapacity,daeContent*)
 {
 	//If getObject() is nullptr it's likely to be @c XS::Choice::_solve().
 	//In that case, grow() is not supported; call _grow2<void>() directly.
@@ -185,7 +180,8 @@ inline void daeArray<daeContent>::_grow2<daeContent>(size_t minCapacity)
 inline daeOK daeRef::get(daeRefRequest &req)const
 {	
 	const_daeDOMRef dom(req.object!=nullptr?req.object->getDOM():getDOM());
-	return nullptr==dom?DAE_ERR_INVALID_CALL:dom->getRefResolvers().resolve(*this,req);
+	if(nullptr==dom)
+	return DAE_ERR_INVALID_CALL; return dom->getRefResolvers().resolve(*this,req);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -310,6 +306,15 @@ inline const daeStringRef &daeBoundaryStringRef(const S &c, const void*const &st
 
 //---.
 }//<-'
+
+/** 
+ * This macro extends WARNING.HPP. A GCC precompild header will lose the state.
+ */
+#ifdef COLLADA_DOM_WARNING_HPP
+#undef __COLLADA_DOM__WARNING_HPP__
+#else
+#include "WARNING.HPP" //pop   
+#endif
 
 #endif //__COLLADA_DOM_INL__
 /*C1071*/

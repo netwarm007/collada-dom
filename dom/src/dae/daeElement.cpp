@@ -19,7 +19,7 @@ void DAEP::Element::__COLLADA__atomize()
 	_this.__clear2(meta.getContentsWRT(&_this),meta,doc);
 	_this.__atomize2(meta);	
 }
-inline void daeElement::__atomize2(daeMeta &meta)
+void daeElement::__atomize2(daeMeta &meta)
 {
 	//If this is called, it should follow the element has been removed.
 	assert(!isContent());		
@@ -154,8 +154,8 @@ int daeElement::_getAttributeIndex(const daePseudonym &name)const
 	const daeArray<daeAttribute> &attrs = getMeta()->getAttributes();
 	size_t i;
 	for(i=0;i<attrs.size();i++)
-	if(name==attrs[i]->getName()) return i;		
-	if(_addAnyAttribute(name)) return (int&)i; return -1;
+	if(name==attrs[i]->getName()) return (int)i;		
+	if(_addAnyAttribute(name)) return (int)i; return -1;
 }
 
 daeAttribute *daeElement::_getAttributeObject(size_t i)const
@@ -252,7 +252,7 @@ static std::ostream &formatColumns(std::ostream &os, daeString c1, daeString c2)
 	if(c1==nullptr) c1 = ""; 
 	if(c2==nullptr) c2 = "";
 	int w = (int)os.width();
-c2:	int n = strnlen(c1,w);
+c2:	int n = (int)strnlen(c1,w);
 	if(n>w) //append ellipses
 	{
 		os.width(0);
@@ -328,11 +328,11 @@ namespace //static
 		result.charDataMismatch = true; return result;
 	}
 
-	daeElement::compare_Result childCountMismatch(int a, int b, const daeElement &elt1, const daeElement &elt2)
+	daeElement::compare_Result childCountMismatch(size_t a, size_t b, const daeElement &elt1, const daeElement &elt2)
 	{
 		daeElement::compare_Result result;
 		result.elt1 = &elt1; result.elt2 = &elt2;		
-		result.compareValue = a-b;
+		result.compareValue = (int)a-(int)b;
 		result.childCountMismatch = true; return result;
 	}
 

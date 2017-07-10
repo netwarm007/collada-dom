@@ -279,19 +279,21 @@ COLLADA_(public) //Non-advertised inline methods (There was more.)
 	}
 };
 
+template<int size_of_array>
 /**ABSTRACT TEMPLATE-SPECIALIZATION
  * This class has the semantics of @c void*, only it's self-aware.
  *
- * @tparam N must be 4*4, or the same as @c daeAlloc<>.
+ * @tparam size_of_array must be 4*4, or the same as @c daeAlloc<>.
  *
  * @remarks Post-2.5 @c daeAlloc<> replaces the pre-2.5 "daeArray."
  */
-template<int N> class daeAlloc<void,N> : protected daeAllocThunk
+class daeAlloc<void,size_of_array> : protected daeAllocThunk
 {			
 	//moveThunk
 	friend class daeAllocThunk;
 	//Exposing protected daeAllocThunk just
 	//so debuggers don't jump into accessors.
+	template<class,int> friend class daeAlloc;
 	template<class,int> friend class daeArray;
 
 COLLADA_(public) //Thunk operations
@@ -307,7 +309,7 @@ COLLADA_(protected) //void-semantics
 	 */	
 	daeAlloc(size_t c=0):daeAllocThunk(c)
 	{
-		daeCTC<N==4*4>(); //Must equal daeAlloc<>.
+		daeCTC<size_of_array==4*4>(); //Must equal daeAlloc<>.
 	} 
 	/**
 	 * Non-Destructor (AUs are not C++ objects.)
@@ -329,7 +331,12 @@ COLLADA_(protected) //VIRTUAL METHOD TABLE
 	 */	
 	virtual daeOpaque __Thunk__v1__method(size_t N)const
 	{
-		if(N!=0) return operator new(N); delete (void*)this; return nullptr;
+		if(N!=0) return operator new(N);
+		//I can't make GCC shut-the-****-up about this in this instance.
+		//It exists somewhere between the end of the precompiled header
+		//and the line after the precompiled header's include directive.
+		//-Wdelete-incomplete
+		delete (char/*void*/*)this; return nullptr;
 	}	
 
 	/**LEGACY
@@ -431,6 +438,7 @@ COLLADA_(public) //STATIC METHODS
 	{
 		//1 should be harmless. It's for the contents-array hidden partition.
 		//Embedded AUs can be 1. Leave it even if a partition isn't required.
+		//NOTE: These days "hidden partition" is no more than a 0-terminator.
 		return au->getCapacity()>/*0*/1&&!isEmbeddedAU(au);
 	}	
 
@@ -442,8 +450,12 @@ COLLADA_(public) //STATIC METHODS
 	 */
 	inline static bool isEmbeddedAU(daeAlloc<T>* &au)
 	{
-		//daeOffsetOf should not be a macro!
-		typedef daeArray<char,!0> commaless;
+		#ifdef NDEBUG //GCC apostrophes.
+		#error "Don't use T* but first make sure daeArray<void*> is feasible."
+		#endif
+		//T* is for compilers that want template parameters or for the type
+		//to be "complete." These rules just make for very round-about code.
+		typedef daeArray</*char*/T*,!0> commaless;
 		daeOffset delta = daeOffset(au)-daeOffset(&au);
 		return delta==daeOffsetOf(commaless,_stack_au);
 	}
@@ -460,7 +472,8 @@ COLLADA_(public) //UTILITIES
 	inline void moveThunk(daeAlloc<> *reAlloc, size_t reCap)const
 	{
 		//__Alloc__v1__cloneThunk(clone); //seems like this has to always work.
-		memcpy(reAlloc,this,sizeof(daeAllocThunk)); 
+		//"-Wdynamic-class-memaccess"
+		memcpy((void*)reAlloc,(void*)this,sizeof(daeAllocThunk));
 		const_cast<size_t&>(reAlloc->_capacity) = reCap;
 	}
 	/** Implements @c moveThunk() while retaining the thunks existing capacity. */
@@ -494,16 +507,8 @@ COLLADA_(public)
 COLLADA_(public) //DATA MEMBER
 	/**
 	 * C++ forbids 0-sized arrays in structures (and on the stack.)
-	 */	
-	template<int size> struct _empty_arrays_are_forbidden
-	{
-		typedef T type[size];
-	};
-	template<> struct _empty_arrays_are_forbidden<0>
-	{
-		typedef enum{}type;
-	};
-	typename _empty_arrays_are_forbidden<size_of_array>::type _varray;		
+	 */		
+	typename daeTypic<size_of_array==0,enum dae_clear,T[size_of_array]>::type _varray;
 	
 	/**LOCAL-SINGLETON FACTORY
 	 * @return Returns a per translation-unit shared-thunk.
@@ -513,9 +518,9 @@ COLLADA_(public) //DATA MEMBER
 	static inline const daeAlloc &localThunk()
 	{
 		//T ensures size_of_array is invariant for _localThunk2(), which
-		//has a local-static variable (the local thunk.)
-		return (daeAlloc&)(daeAlloc<T>::_localThunk2()); 
-	}
+		//has a local-static variable (the local thunk.)		
+		return _localThunk2();
+	}		
 	/**SKETCHY
 	 * @todo It would be good to setup a @c daePrototype w/ @c daeTypewriter. 
 	 * There isn't a path for every type to a typewriter. @c enum types will
@@ -525,9 +530,11 @@ COLLADA_(public) //DATA MEMBER
 	 */
 	static inline const daeAlloc &_localThunk2()
 	{
+		//I don't know if const can be a clue to handle it as .rdata or not.
 		//0 prevents construction of _varray when localThunk() is never used.
-		static daeAlloc<T,0> t;
-		COLLADA_ASSUME(t._capacity==0&&t._counter==0); return (daeAlloc&)t; 
+		static const daeAlloc<T,0> t; 
+		COLLADA_ASSUME(t._capacity==0&&t._counter==0); 
+		return (const daeAlloc&)t; 
 	}	
 
 COLLADA_(public) //OPERATORS
@@ -559,9 +566,9 @@ COLLADA_(private) //daeAllocThunk methods
 	{
 		daePlatonic<T> p(on,this); switch(op)
 		{		
-		case p.atomize: return p.maybe<p.atomize>(); //Does teardown.
+		case p.atomize: return p.maybe_atomize(); //Does teardown.
 		case p.locate: //Does copy construction local to the array's module.
-		{	va_list va; va_start(va,op); daeError e = p.maybe<p.locate>(va);
+		{	va_list va; va_start(va,op); daeError e = p.maybe_locate(va);
 			va_end(va);	return e;
 		}}return DAE_ERR_NOT_IMPLEMENTED;
 	}
@@ -614,7 +621,7 @@ template<class T, class U=T> class daeArrayAware
 	/** Indicates @c S::S() requires a pointer to its @c DAEP::Object. */
 	template<typename S> static Yes Aware(typename S::__COLLADA__Object*);
 	template<typename S> static No Aware(...);
-	template<class T, T> class PtoM{};
+	template<class S, S> class PtoM{};
 	//NOTE: pointer-to-members won't find an inherited implementation. That's actually
 	//a help here, since it automatically prevents "slicing;" requiring reimplementation.
 	/** Indicates their is a virtual-method-table with a cross-module "locate" API defined. */
@@ -622,57 +629,63 @@ template<class T, class U=T> class daeArrayAware
 	template<typename S> //__COLLADA__locate with __COLLADA__Object. See above explanation. 
 	static Yes Local(PtoM<void(S::*)(typename S::__COLLADA__Object*,const S&),&S::__COLLADA__locate>*);
 	template<typename S> static No Local(...);	
-	template<typename T> struct YesT{ Yes yes; };	
+	template<typename S> struct YesT{ Yes yes; };	
 	/** Indicates @a S is a @c struct, @c class, or @c union. Think @c std::is_object. */
 	template<typename S> static YesT<S S::*> Class(S*,...);
 	template<typename S> static No Class(...);
-	template<typename xs> static No Class(xs*,typename xs::__enum__*); //ColladaDOM 3
+	template<typename E> static No Class(E*,typename E::__enum__*); //ColladaDOM 3
 	/** Indicates @a S is a wrapper of a raw-copyable type. For ignoring ref-counting. */
 	template<typename S> static Yes POD(typename S::__COLLADA__POD*);
 	template<typename S> static No POD(...);	
 
 public: /** Prefer @c is_plain over @c is_class for copying data. */		
-		static const bool is_aware = sizeof(Yes)==sizeof(Aware<T>(nullptr));
-		static const bool is_local = sizeof(Yes)==sizeof(Local<T>(nullptr));
-		static const bool is_class = sizeof(Yes)==sizeof(Class<T>(nullptr,nullptr));
-		static const bool is_plain = sizeof(Yes)==sizeof(POD<T>(nullptr))||!is_class;
+		
+	enum
+	{
+	is_aware = sizeof(Yes)==sizeof(Aware<T>(nullptr)),
+	is_local = sizeof(Yes)==sizeof(Local<T>(nullptr)),
+	is_class = sizeof(Yes)==sizeof(Class<T>(nullptr,nullptr)),
+	is_plain = sizeof(Yes)==sizeof(POD<T>(nullptr))||!is_class,
+	};
+
 private:
 
-	template<int> static void tri_move(const DAEP::Object*,T*,T*,size_t);
-	template<> static void tri_move<0>(const DAEP::Object*, T *lv, T *rv, size_t iN)
+	template<class Fig>
+	static void tri_move(Fig,const DAEP::Object*, T *lv, T *rv, size_t iN)
 	{
 		memcpy(lv,rv,iN*sizeof(T));
 	}	
-	template<> static void tri_move<1>(const DAEP::Object *obj, T *lv, T *rv, size_t iN)
+	static void tri_move(daeFig<1>,const DAEP::Object *obj, T *lv, T *rv, size_t iN)
 	{
 		//UGLY: IF __move USES __locate *IT* MUST LOOK SOMETHING LIKE tri_move<2>().
 		void (*sigtest)(typename T::__COLLADA__Object*,T*,T*,size_t) = T::__COLLADA__move; 
-		T::__COLLADA__move((typename T::__COLLADA__Object*)obj,lv,rv,iN);
+		T::__COLLADA__move((typename T::__COLLADA__Object*)obj,lv,rv,iN); (void) sigtest;
 	}	
-	template<> static void tri_move<2>(const DAEP::Object*, T *lv, T *rv, size_t iN)
+	static void tri_move(daeFig<2>, const DAEP::Object*, T *lv, T *rv, size_t iN)
 	{
 		//NEW: &daeAlloc<T>::dataptr_cast(lv) is forwarding to tri_place<-2>().
 		for(size_t i=0;i<iN;i++){ place(&daeAlloc<T>::dataptr_cast(lv),nullptr,lv+i,rv[i]); rv[i].~T(); }
 	}	
 
-	template<int> static void tri_place(const DAEP::Object*, T *placement_new_this, const U &cp, daeAlloc<T>*)
+	template<class Fig>
+	static void tri_place(Fig, const DAEP::Object*, T *placement_new_this, const U &cp, daeAlloc<T>*)
 	{
 		new(placement_new_this) T(cp);
 	}
-	template<> static void tri_place<1>(const DAEP::Object *obj, T *placement_new_this, const U &cp, daeAlloc<T> *AU)
+	static void tri_place(daeFig<1>, const DAEP::Object *obj, T *placement_new_this, const U &cp, daeAlloc<T> *AU)
 	{
-		void (T::*sigtest)(typename T::__COLLADA__Object*,const U&) = &T::__COLLADA__place; 
+		void (T::*sigtest)(typename T::__COLLADA__Object*,const U&) = &T::__COLLADA__place; (void)sigtest;
 		placement_new_this->__COLLADA__place((typename T::__COLLADA__Object*)obj,cp);
 	}
-	template<> static void tri_place<-1>(const DAEP::Object *obj, T *placement_new_this, const U &cp, daeAlloc<T> *AU)
+	static void tri_place(daeFig<-1>, const DAEP::Object *obj, T *placement_new_this, const U &cp, daeAlloc<T> *AU)
 	{
 		const T &cpT = cp; //__COLLADA__locate is instantiated by daePlatonic::_locate().
-		AU->__Thunk__v1__method2(placement_new_this,daePlatonic<>::locate,obj,&cpT);
+		AU->__Thunk__v1__method2(placement_new_this,daePlatonic<T>::locate,obj,&cpT);
 	}
-	template<> static void tri_place<-2>(const DAEP::Object*, T *placement_new_this, const U &cp, daeAlloc<T> *AU)
+	static void tri_place(daeFig<-2>, const DAEP::Object*, T *placement_new_this, const U &cp, daeAlloc<T> *AU)
 	{
 		const T &cpT = cp; //__COLLADA__locate is instantiated by daePlatonic::_locate().
-		AU->__Thunk__v1__method2(placement_new_this,daePlatonic<>::locate,&cpT);
+		AU->__Thunk__v1__method2(placement_new_this,daePlatonic<T>::locate,&cpT);
 	}
 
 public: static const bool value = is_aware;
@@ -682,7 +695,7 @@ public: static const bool value = is_aware;
 	/** C++03 object-aware allocation-unit swap/hook facility. */
 	static void move(const daeObject *obj, T *lv, T *rv, size_t iN)
 	{
-		tri_move<tri_value>(obj,lv,rv,iN);
+		tri_move(daeFig<tri_value>(),obj,lv,rv,iN);
 	}
 
 	/** C++03 object-aware placement-new based copy-construction. */
@@ -692,8 +705,19 @@ public: static const bool value = is_aware;
 	}
 	static void place(daeAlloc<T> *AU, const DAEP::Object *obj, T *placement_new_this, const U &cp)
 	{
-		tri_place<is_local?-tri_value:tri_value>(obj,placement_new_this,cp,AU);
+		tri_place(daeFig<is_local?-tri_value:tri_value>(),obj,placement_new_this,cp,AU);
 	}
+};
+/**GCC-FIX.
+ * HACK: This is triggered by @c isEmbeddedAU() called by @c deAlloc()
+ * with a @c void type @c daeAlloc. But @c daePlatonic needs it too to
+ * handle @c daeArray<void*> since GCC can't be explicitly specialized.
+ */
+template<> class daeArrayAware<void>
+{
+COLLADA_(public)
+
+	enum{ is_aware=0, is_local=0, is_class=0, is_plain=1 };
 };
 
 /**PARTIAL-TEMPLATE-SPECIALIZATION
@@ -776,7 +800,7 @@ COLLADA_(public)
 	 * @remark @c clear() is not used to avoid @c _clear2<daeContent>().
 	 * @see @c XS::Choice::_solve() definition.
 	 */
-	~daeArray(){ _clear2<void>(); getObject()->deAlloc(_au); }
+	~daeArray(){ _clear2(/*void*/); getObject()->deAlloc(_au); }
 
 	/**
 	 * This is exposed for the RTTI subsystem.
@@ -816,11 +840,13 @@ COLLADA_(public) //Standard Library compatibility layer
 	 * Freestanding arrays can re-construct themself with placement-new.
 	 * HOWEVER. This should not be done with clear.
 	 */
-	inline void clear(){ _clear2<T>(); }
+	inline void clear(){ _clear2((T*)nullptr); }
 	/**
 	 * Implements @c clear(). 
+	 * @param ... is because strict C++ won't let methods be explicitly
+	 * specialized in any capacity.
 	 */
-	template<class> inline void _clear2()
+	inline void _clear2(...)
 	{
 		size_t iN = _au->getCount(); //hack: use safe count (min(count,capacity))
 		for(size_t i=0;i<iN;i++) _au->_varray[i].~T(); _au->setInternalCounter(0);		
@@ -829,7 +855,7 @@ COLLADA_(public) //Standard Library compatibility layer
 	 * Implements @c daeArray<daeContent>::clear(). 
 	 * @see ColladaDOM_3.inl header's implementation.
 	 */
-	template<> inline void _clear2<daeContent>();
+	inline void _clear2(daeContent*);
 
 	/** Implements '\0' terminator for @c daeArray<daeStringCP>. */
 	inline void clear_and_0_terminate()
@@ -903,6 +929,10 @@ COLLADA_(public) //Standard Library compatibility layer
 	{
 		assert(_au->_counter<=_au->_capacity); return _au->getInternalCounter(); 
 	}
+	/**
+	 * @see @c getCapacity() legacy API.
+	 */
+	inline size_t capacity()const{ return _au->getCapacity(); }
 	
 	template<class S>
 	/** @c std::string compatible version of assign. */
@@ -931,11 +961,11 @@ COLLADA_(public) //Standard Library compatibility layer
 	{
 		clear(); return append_and_0_terminate(s);
 	}
-	template<class S, class T>
+	template<class S>
 	/** Implements '\0' terminator for @c daeArray<daeStringCP>. */
-	inline daeArray &assign_and_0_terminate(const S &s, const T &t)
+	inline daeArray &assign_and_0_terminate(const S &s, size_t iN)
 	{
-		clear(); return append_and_0_terminate(s,t);
+		clear(); return append_and_0_terminate(s,iN);
 	}
 	template<class S>
 	/** @c std::string compatible version of append. */
@@ -944,7 +974,7 @@ COLLADA_(public) //Standard Library compatibility layer
 		grow(size()+iN+(_plus_1?1:0));
 		for(size_t i=0;i<iN;i++) push_back(c_array[i]); return *this;
 	}
-	template<>
+	//template<>
 	/** @c std::string compatible version of append. */
 	inline daeArray &append(const T *c_array, size_t iN, bool _plus_1/*=false*/)
 	{
@@ -1111,14 +1141,21 @@ COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
 	 */
 	inline void grow(size_t minCapacity)
 	{
-		_grow2<T>(minCapacity);
+		_grow2(minCapacity,(T*)nullptr);
 	}
-	template<class>	
 	/** Implements @c grow(). */
-	inline void _grow2(size_t minCapacity)
+	inline void _grow2(size_t minCapacity,...)
 	{
 		if(minCapacity>getCapacity()) _grow3(minCapacity);
-	}
+	}	
+	/** KISS, CIRCULAR-DEPENDENCY
+	 * Implements @c daeArray<daeContent>::clear(). 
+	 * @c __COLLADA__move() was going to be used, but
+	 * when @c daeCursor was made to be an iterator, it
+	 * became necessary to adjust it.
+	 * @see ColladaDOM_3.inl header's implementation.
+	 */
+	void _grow2(size_t minCapacity,daeContent*);
 	/**
 	 * @note @c_getminmax() is potentially
 	 * protecting extra hidden-partition data, and 
@@ -1144,15 +1181,6 @@ COLLADA_(public) //LEGACY ACCESSORS & MUTATORS
 		newCap = _au->_getminmax(newCap,minCapacity); //!
 		getObject()->reAlloc(_au,newCap,_grower);
 	}			
-	template<>	
-	/** KISS, CIRCULAR-DEPENDENCY
-	 * Implements @c daeArray<daeContent>::clear(). 
-	 * @c __COLLADA__move() was going to be used, but
-	 * when @c daeCursor was made to be an iterator, it
-	 * became necessary to adjust it.
-	 * @see ColladaDOM_3.inl header's implementation.
-	 */
-	void _grow2<daeContent>(size_t minCapacity);
 	//TODO? _sizer() "illustrates" growing AND shrinking.
 	static void _sizer(const daeObject *obj, daeAlloc<T> &dst, daeAlloc<T> &src)
 	{	
@@ -1372,7 +1400,7 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 */
 	inline void insert(size_t index, size_t n)
 	{
-		return insert(index,n,T()); 
+		insert(index,n,T());
 	}
 	template<class S>
 	/**LEGACY
@@ -1522,28 +1550,28 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 		set(index,one); set(index+1,two); set(index+2,three); set(index+3,four);
 	}
 
-	template<class S, class T>
+	template<class S, class TT>
 	/**LEGACY
 	 * Appends two values to the array.
 	 * @param one The first value.
 	 * @param two The second value.
 	 */
-	inline void append2(const S &one, const T &two)
+	inline void append2(const S &one, const TT &two)
 	{
 		push_back(one); push_back(two); 
 	}
-	template<class S, class T, class U>
+	template<class S, class TT, class U>
 	/**LEGACY
 	 * Appends three values to the array.
 	 * @param one The first value.
 	 * @param two The second value.
 	 * @param three The third value.
 	 */
-	inline void append3(const S &one, const T &two, const U &three)
+	inline void append3(const S &one, const TT &two, const U &three)
 	{
 		push_back(one); push_back(two); push_back(three);
 	}
-	template<class S, class T, class U, class V>
+	template<class S, class TT, class U, class V>
 	/**LEGACY
 	 * Appends four values to the array.
 	 * @param one The first value.
@@ -1551,23 +1579,23 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param three The third value.
 	 * @param four The fourth value.
 	 */
-	inline void append4(const S &one, const T &two, const U &three, const V &four)
+	inline void append4(const S &one, const TT &two, const U &three, const V &four)
 	{
 		push_back(one); push_back(two); push_back(three); push_back(four);
 	}
 
-	template<class S, class T>
+	template<class S, class TT>
 	/**LEGACY
 	 * Inserts two values into the array at the specified location.
 	 * @param index The position in the array to start inserting.
 	 * @param one The first value.
 	 * @param two The second value.
 	 */
-	inline void insert2at(size_t index, const S &one, const T &two)
+	inline void insert2at(size_t index, const S &one, const TT &two)
 	{
 		insert(index,2); set(index,one); set(index+1,two);
 	}
-	template<class S, class T, class U>
+	template<class S, class TT, class U>
 	/**LEGACY
 	 * Inserts three values into the array at the specified location.
 	 * @param index The position in the array to start inserting.
@@ -1575,11 +1603,11 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param two The second value.
 	 * @param three The third value.
 	 */
-	inline void insert3at(size_t index, const S &one, const T &two, const U &three)
+	inline void insert3at(size_t index, const S &one, const TT &two, const U &three)
 	{
 		insert(index,3); set(index,one); set(index+1,two); set(index+2,three);
 	}
-	template<class S, class T, class U, class V>
+	template<class S, class TT, class U, class V>
 	/**LEGACY
 	 * Inserts four values into the array at the specified location.
 	 * @param index The position in the array to start inserting.
@@ -1588,7 +1616,7 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param three The third value.
 	 * @param four The fourth value.
 	 */
-	inline void insert4at(size_t index, const S &one, const T &two, const U &three, const V &four)
+	inline void insert4at(size_t index, const S &one, const TT &two, const U &three, const V &four)
 	{
 		insert(index,4); set(index,one); set(index+1,two); set(index+2,three); set(index+4,four);
 	}
@@ -1605,7 +1633,7 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 		if(index>=getCount()) return 0; 
 		COLLADA_SUPPRESS_C(4244) one = get(index); return 1;
 	}
-	template<class S, class T>
+	template<class S, class TT>
 	/**LEGACY
 	 * Gets two values from the array at the specified location.
 	 * @param index The position in the array to start getting.
@@ -1613,12 +1641,12 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param two Variable to store the second value.
 	 * @return Returns The number of elements retrieved.
 	 */
-	inline int get2at(size_t index, S &one, T &two)const
+	inline int get2at(size_t index, S &one, TT &two)const
 	{
 		if(1!=get1at(index++,one)) return 0;
 		if(1!=get1at(index++,two)) return 1; return 2;
 	}
-	template<class S, class T, class U>
+	template<class S, class TT, class U>
 	/**LEGACY
 	 * Gets three values from the array at the specified location.
 	 * @param index The position in the array to start getting.
@@ -1627,13 +1655,13 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param three Variable to store the third value.
 	 * @return Returns The number of elements retrieved.
 	 */
-	inline int get3at(size_t index, S &one, T &two, U &three)const
+	inline int get3at(size_t index, S &one, TT &two, U &three)const
 	{
 		if(1!=get1at(index++,one)) return 0;
 		if(1!=get1at(index++,two)) return 1;
 		if(1!=get1at(index++,three)) return 2; return 3;
 	}
-	template<class S, class T, class U, class V>
+	template<class S, class TT, class U, class V>
 	/**LEGACY
 	 * Gets four values from the array at the specified location.
 	 * @param index The position in the array to start getting.
@@ -1643,7 +1671,7 @@ COLLADA_(public) //INEFFICIENT LEGACY METHODS
 	 * @param four Variable to store the fourth value.
 	 * @return Returns The number of elements retrieved.
 	 */
-	inline int get4at(size_t index, S &one, T &two, U &three, V &four)const
+	inline int get4at(size_t index, S &one, TT &two, U &three, V &four)const
 	{
 		if(1!=get1at(index++,one)) return 0;
 		if(1!=get1at(index++,two)) return 1;
@@ -1695,14 +1723,15 @@ class daeArray : public daeArray<T,0>
 COLLADA_(public) 
 
 	using daeArray<T,0>::_au;
-	//using daeArray<T,0>::operator=;
+	//using daeArray<T,0>::operator=; //MSVC says no.
 	/**
 	 * Non-Default Assignment Operator
 	 * C++ requires this, to not generate a default @c operator=.
 	 */
 	inline daeArray &operator=(const daeArray &cp)
 	{
-		daeArray<T,0>::operator=<daeArray<T,0>>(cp); return *this;
+		daeArray<T,0>::operator=
+		(*static_cast<const daeArray<T,0>*>(&cp)); return *this;
 	}
 
 	template<class Type> //DAEP::Value<...>
@@ -1735,7 +1764,7 @@ COLLADA_(public)
 			//the generator uses this kind of array, the min-max is equal.
 			//(This checks for creative users or when something's wrong.)
 			daeCTC<(pt.has_default<=size_on_stack&&pt.is_fixed<=size_on_stack)>();
-			assert(swap->getCapacity()==getCapacity());
+			assert(swap->getCapacity()==this->getCapacity());
 			if(/*swap->getCapacity()>getCapacity()||*/!daeArrayAware<T>::is_plain)
 			{
 				_au->setInternalCounter(0);	*this = (daeArray&)swap;
@@ -1783,11 +1812,11 @@ COLLADA_(public) //daeArray<daeArray> (etc.) grow implementation
 			if(mover) mover(lv[i],rv[i]);
 			if(daeAlloc<>::isEmbeddedAU(rv[i]._au))
 			{
-				rv[i]._au->moveThunk(lv[i]._au); _copier(obj,*lv[i]._au,*rv[i]._au);
+				rv[i]._au->moveThunk(lv[i]._au); daeArray<T,0>::_copier(obj,*lv[i]._au,*rv[i]._au);
 			}
 			else lv[i]._au = rv[i]._au;
 		}//Set lv offsets & assign rv thunks.
-		_finish__COLLADA__move(obj,lv,rv,iN);		
+		daeArray<T,0>::_finish__COLLADA__move(obj,lv,rv,iN);
 	}
 
 COLLADA_(public) //daeArray<daeArray> (etc.) placement-new implementation

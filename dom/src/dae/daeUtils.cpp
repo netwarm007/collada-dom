@@ -6,13 +6,17 @@
  *
  */
 
+#ifdef NDEBUG
+#error Remove. (Must implement ZAE first.)
+#endif
 //REFERENCE: NO LONGER RELEVANT
 //THIS ENTIRE FILE/HEADER IS ON THE WAY OUT...
 //AT THIS POINT THE HEADER IS GONE, AND ONLY daeZAEUncompressHandler.cpp
 //REFERS TO IT. (IT'S THE LAST FILE ON THE TO-DO LIST.)
 //SOME PARTS HAVE BEEN MOVED TO daeSIDResolver.cpp WHERE THEY'RE ISOLATED.
 //(THAT FILE IS LARGELY UNTOUCHED AS WELL.)
-//BITS AND PIECES OF THE "cdom" NAMESPACE HAVE BEEN PROGRESSIVELY REMOVED. 
+//BITS AND PIECES OF THE "cdom" NAMESPACE HAVE BEEN PROGRESSIVELY REMOVED.
+#if 0
 
 #include <string> 
 #include <cstdio> //for tmpnam	  
@@ -158,5 +162,7 @@ namespace cdom
 
 //---.
 }//<-'
+
+#endif //0
 
 /*C1071*/

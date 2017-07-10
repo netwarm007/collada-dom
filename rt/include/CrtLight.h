@@ -46,16 +46,15 @@ COLLADA_(public)
 
 COLLADA_(public)
 
-	Light()
-	:Color(0.5,1)
-	//!!!GAC are these good values for defaults?
-	,FalloffAngle(180)
-	,FalloffExponent()
-	,ConstantAttenuation(1)
-	,LinearAttenuation()
-	,QuadraticAttenuation()
-	,Type(RT::Light_Type::DEFAULT){}
-	~Light(){}
+	bool IsDirectional(){ return Type==RT::Light_Type::DIRECTIONAL; }
+
+	//Reminder: 0.5 makes 1,1,1,1 models all
+	//white/unlit under the default lighting. 
+	//0.45 is for DEFAULT. (Kind of a HACK.)	
+	Light():Type(RT::Light_Type::DEFAULT),Color(0.45,1)
+	,FalloffAngle(180),FalloffExponent()
+	,ConstantAttenuation(1),LinearAttenuation(),QuadraticAttenuation()
+	{}
 };
 
 //-------.

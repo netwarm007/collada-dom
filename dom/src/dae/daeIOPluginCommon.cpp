@@ -31,7 +31,7 @@ void daeIOPluginCommon::__xstruct(int x, int legacy)
 }
 
 daeIOPluginCommon::daeIOPluginCommon()
-:_encoder(),_decoder(),_readFlags()
+:_readFlags(),_encoder(),_decoder()
 {
 	//1/3 is to give US a heads up
 	daeCTC<(__combined_size_on_client_stack*1/3>=sizeof(*this))>();
@@ -89,8 +89,8 @@ daeOK daeIOPluginCommon::readContent(daeIO &IO, daeContents &content)
 
 daeElement &daeIOPluginCommon::_beginReadElement(daePseudoElement &parent, const daeName &elementName)
 {
-	#ifdef NDEBUG
-	#error <math> hits this if not <math:math> and qualified xmlns isn't supported!
+	#ifdef NDEBUG //GCC doesn't like apostrophes.
+	#error "<math> hits this if not <math:math> and qualified xmlns isn't supported!"
 	#endif
 	const daeChildRef<> &child = parent.getMeta().pushBackWRT(&parent,elementName);
 	//This is sub-optimal.
@@ -178,7 +178,7 @@ bool daeIOPluginCommon::_maybeExtendedASCII(const daeValue &v)
 {	
 	if(nullptr!=daeIOPluginCommon::_encoder)
 	{
-		switch(v.getType()->per<daeAtom>().getAtomicType())
+		switch(v.getType()->where<daeAtom>().getAtomicType())
 		{
 		case daeAtomicType::ENUMERATION:
 
@@ -208,7 +208,7 @@ void daeIOPluginCommon::_push_back_xml_decl(daeContents &content, daeName versio
 	if(standalone)
 	_CD.append(daeName(" standalone=\"yes\"")); content.insert<'?'>(_CD,0);
 }
-void daeIOPluginCommon::_xml_decl(const daeContents &content, char* &version, char* &encoding, char* &standalone)
+void daeIOPluginCommon::_xml_decl(const daeContents &content, daeString &version, daeString &encoding, daeString &standalone)
 {
 	version = "1.0"; encoding = "UTF-8"; standalone = "";	
 	if(!content.data()->hasText()) 

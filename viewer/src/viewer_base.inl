@@ -5,57 +5,71 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+#include "viewer_base.pch.h" //IntelliSense
 
-#ifdef FREEGLUT
-#define GLUTAPIENTRY FGAPIENTRY
-#endif
-
-#include <time.h>  
-#include <fstream> 
-
-//These are not really used.
-#include "CrtScene.h"
-#include "CrtEffect.h"
-
-using namespace COLLADA;
+#include "../../dom/include/WARNING.HPP" //STFU (GCC)
 
 //demo.dae floods the console.
-enum{ Silence_console_if_DEBUG=0 };
+//See Silencer implemented below.
+#define Silence_console_if_DEBUG 0 //-Wunused-variable
+					  
+//This header is used by all of the system specific top-level
+//translation units. It doesn't have to be "inl" at this point
+//because the RT & FX subsystems are able to find their barings
+//on their on. Various "hpp" headers are slipped into the middle
+//of it. (It's a work in progress.)
 
-//SCHEDULED FOR REMOVAL
+//EXPERIMENTAL
+//GLUI implements the location bar. There isn't much at all to it
+//but that could change.
+static int COLLADA_viewer = 0;
+static std::string COLLADA_viewer_go;
+#ifdef GLUT_API_VERSION
+#ifndef NO_GLUI
+#include "viewer_GLUI.hpp"
+#endif
+#endif
+		  
+using namespace COLLADA;  
+					 
+//Assuming PS3 uses Berkley Sockets.
+#include "viewer_HTTP.hpp"
+
+//SCHEDULED FOR REMOVAL?
+//One advantage to linking these
+//here (if there is any other) is
+//it forces RT and FX to be rebuilt.
 COLLADA_(namespace)
 {
-	//One advantage to linking these
-	//here (if there is any other) is
-	//it forces RT and FX to be rebuilt.
 	struct GL GL; 
+
 	namespace RT
 	{
 		::COLLADA::RT::Frame Main;
 	}
 }
-static void COLLADA_viewer_GLUT_atexit()
-{
-	RT::Main._Destroy();
-	//GDI segfaults with some DAE samples.
-	#if defined(_WIN32) && defined(_DEBUG)
-	TerminateProcess(GetCurrentProcess(),0);
-	#endif
-}
 
+static bool visible = true;
 static bool fullscreen = false;
 static bool togglewireframe = false;
 static bool togglelighting = true;
-static int togglecullingface = 1;
-				
-//Main Render
+static int togglecullingface = 2;
 static void DrawGLScene()
 {
+	if(!visible) return; //assert(visible);
+
 	//Clear The Screen And The Depth Buffer
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
+	//EXPERIMENTAL
+	if(!COLLADA_viewer_go.empty())
+	{
+		COLLADA_viewer_main2(COLLADA_viewer_go.c_str());
+		COLLADA_viewer_go.clear();		
+	}
+
 	RT::Main.Refresh();
-} 
+} 						
 static void RestoreGL()
 {
 	//Reminder: The fallback renderer will use these.
@@ -91,17 +105,19 @@ static void InitGL(float r=0.9f, float g=0.9f, float b=0.9f, float a=1)
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT,GL_NICEST);
 
 	//Sometimes models present incorrectly because back-faces obscure them.
-	assert(1==togglecullingface);
-	glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //1	
+	assert(2==togglecullingface);
+	//glEnable(GL_CULL_FACE); glCullFace(GL_BACK); //1	
 }
 //Resize And Initialize The GL Window
 static void ResizeGLScreen(int width, int height)
 {
 	RT::Main.Width = width; RT::Main.Height = height;
+
+	#ifdef GLUI_VERSION	
+	UI.site->set_w(RT::Main.Width-GLUI_XOFF*3-2);
+	#endif
 }
 
-//GLUT can now emulate a wheel by draggin the middle
-//button along the vertical dimension.
 static float MouseWheelSpeed = 0.02f/1.5f;
 static float MouseRotateSpeed = 0.5f;
 static float MouseTranslateSpeed = 0.0025f;
@@ -118,19 +134,43 @@ static void AdjustUISpeed(float x)
 	MouseRotateSpeed*=rx; MouseTranslateSpeed*=rx; MouseWheelSpeed*=x;
 }
 
+static bool showSite = true;
 static bool mouseSwap = false;
-static int Xpos = 0, Ypos = 0;
-static int Xsize = 640, Ysize = 480;
+static int Xpos = 0, Ypos = 0; //F11
+static int Xsize = 640, Ysize = 480; //F11
 static void ProcessInput(unsigned char ASCII)
 {			   
+	//glutSpecialFunc_callback has more inputs.
+	//It depends on GLUT enums that maybe GLUI
+	//could define.
+
 	switch(ASCII)
 	{
+	case '\x1b': //Esc
+	case '\r': //Enter
+
+		#ifdef GLUI_VERSION				
+		if(ASCII=='\r'||!showSite)
+		{
+			showSite = true; UI.show();
+			//UI.site->activate(GLUI_ACTIVATE_TAB);
+			UI.activate_control(UI.site,GLUI_ACTIVATE_TAB);
+		}
+		else if(ASCII!='\r'&&showSite)
+		{
+			showSite = false; UI.hide(); 
+		}
+		#endif
+		break;
+
 	case 'z': case 'Z':
 
 		mouseSwap = !mouseSwap;
 		daeEH::Warning<<"[Z] swapped left and right buttons.";
+		#ifdef GLUT_API_VERSION
 		glutDetachMenu(mouseSwap?2:0);
 		glutAttachMenu(mouseSwap?0:2);
+		#endif
 		break;
 
 	case '\t':
@@ -152,7 +192,7 @@ static void ProcessInput(unsigned char ASCII)
 			{
 				glEnable(GL_LIGHTING);		
 				RT::Main.ShowCOLLADA_FX = true;				
-				daeEH::Verbose<<"[L]ighting disabled. FX enabled.";
+				daeEH::Verbose<<"[L]ighting enabled. FX enabled.";
 			}
 			else 
 			{
@@ -268,6 +308,33 @@ static void ProcessInput(unsigned char ASCII)
 		RT::Main.ShowHierarchy = !RT::Main.ShowHierarchy;
 		break;
 
+	case 'y': case 'Y': //EXPERIMENTAL
+	{
+		bool refresh; GLboolean enabled;
+		if(!glIsEnabled(GL_FRAMEBUFFER_SRGB))
+		{
+			glEnable(GL_FRAMEBUFFER_SRGB);
+			enabled = glIsEnabled(GL_FRAMEBUFFER_SRGB);
+			refresh = enabled==1;
+		}
+		else
+		{
+			refresh = true; enabled = 0;
+			glDisable(GL_FRAMEBUFFER_SRGB);
+		}
+		if(refresh&&RT::Main.DB!=nullptr)
+		{
+			for(size_t i=0;i<RT::Main.DB->Images.size();i++)
+			if(RT::Main.DB->Images[i]->sRGB)
+			RT::Main.DB->Images[i]->Refresh();
+		}
+
+		if(enabled==1) //y looks like the Greek letter gamma.
+		daeEH::Verbose<<"[y] sRGB gamma correct mode enabled.";
+		if(enabled==0)
+		daeEH::Verbose<<"[y] sRGB gamma correct mode disabled or is unavailable.";
+		break;
+	}
 	case '1': case '2': case '3': case '4': case '5': case '6': 
 
 		RT::Main.ShowTextures_Mask^=1<<(ASCII-'1'); break;
@@ -286,45 +353,15 @@ static void ProcessInput(unsigned char ASCII)
 	default: daeEH::Warning<<"unused key : "<<ASCII;
 	}
 }
-static void glutSpecialFunc_callback(int key, int, int)
-{
-	switch(key)
-	{
-	case GLUT_KEY_F11:
-	{
-		if(fullscreen=!fullscreen)
-		{
-			/* Save parameters */
-			Xpos = glutGet(GLUT_WINDOW_X);
-			Ypos = glutGet(GLUT_WINDOW_Y);
-			Xsize = glutGet(GLUT_WINDOW_WIDTH);
-			Ysize = glutGet(GLUT_WINDOW_HEIGHT);
-			glutFullScreen();/* Go to full screen */
-		}
-		else
-		{
-			/* Restore parameters */
-			glutReshapeWindow(Xsize,Ysize);
-			glutPositionWindow(Xpos,Ypos);
-			glutPostRedisplay();
-		}
-		break;
-	}
-	case GLUT_KEY_LEFT: ProcessInput('A'); break;
-	case GLUT_KEY_RIGHT: ProcessInput('D'); break;
-	case GLUT_KEY_UP: ProcessInput(' '); break;
-	case GLUT_KEY_DOWN: ProcessInput('X'); break;
-
-	default: daeEH::Warning<<"unused (special) key : "<<key;
-	}
-}
 
 static int lastx = 0;
 static int lasty = 0;
-static int mouseWheel = 0;
 static bool mouseDown[4] = {};
 static void toggleMouse(unsigned int button, bool state)
 {
+	//Close location bar?
+	if(state&&showSite) ProcessInput('\x1b');
+
 	if(button>2) //FreeGLUT?
 	{
 		//WHEEL_DELTA on Windows is 120.
@@ -341,8 +378,7 @@ static void toggleMouse(unsigned int button, bool state)
 		if(button==2) button = 0;
 
 		mouseDown[button] = state; 
-	}
-	
+	}	
 }
 static void moveMouseTo(int x, int y)
 {	
@@ -364,83 +400,417 @@ static void moveMouseTo(int x, int y)
 	}
 }
 
-#ifdef GLUT_API_VERSION
-static void glutDisplayFunc_callback()
-{
-	DrawGLScene(); glutSwapBuffers();
-}
-static void glutReshapeFunc_callback(int width, int height)
-{
-	ResizeGLScreen(width,height); 
-}
-static void glutKeyboardFunc_callback(unsigned char ASCII, int, int)
-{			   
-	ProcessInput(ASCII);
-}
-static void glutMouseFunc_callback(int button, int state, int x, int y)
-{
-	toggleMouse(button,state==GLUT_DOWN); assert((state&~1)==0);
-}
-static void glutMotionFunc_callback(int x, int y)
-{
-	moveMouseTo(x,y);
-}
-static bool CreateGLUTWindow(int LArgC, char **LArgV, const char *title, int width, int height)
-{
-	#if defined(FREEGLUT) && defined(_DEBUG)
-	//fghIsLegacyContextRequested wants OpenGL>2.1??
-	glutInitContextVersion(3,0); //First version after 2.1.
-	glutInitContextFlags(GLUT_DEBUG);
-	#endif
+//TODO: This should have a thread created so it doesn't lock the X button.
+static void COLLADA_viewer_main2(const char *dae, const void *default_dae)
+{	
+	if(dae[0]=='\0') return;
 
-	glutInit(&LArgC,LArgV);
-	glutInitDisplayMode(GLUT_DOUBLE|GLUT_DEPTH|GLUT_RGB);	
-	
-	int cx = (glutGet(GLUT_SCREEN_WIDTH)-width)/2;
-	int cy = (glutGet(GLUT_SCREEN_HEIGHT)-height)/2;
-	glutInitWindowPosition(cx,cy);
-	glutInitWindowSize(width,height);
-	
-	float r = 0.9f; //FreeGLUT background color hack...
-	glutCreateWindow(title);
+	#ifdef GLUI_VERSION	
+	if(dae==COLLADA_viewer_go.c_str())
 	{
-		//FreeGLUT's windows pops up immediately, and so
-		//fill its background so it's less distracting.
-		glClearColor(r,r,r,1);
-		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-		glutSwapBuffers();
+		UI.site->scroll_history(-1);
 	}
-	InitGL(r,r,r,1);
+	#endif
+		
+	//Unloading can introduce quite a lot of delay.
+	if(!RT::Main.DOM.getDocs().empty())
+	{
+		daeEH::Verbose<<"Unloading: deleting memory, etc...";
+		RT::Main.Unload();
+	}
 
-	glutIdleFunc(glutDisplayFunc_callback);
-	glutDisplayFunc(glutDisplayFunc_callback);
-	glutKeyboardFunc(glutKeyboardFunc_callback);
-	glutSpecialFunc(glutSpecialFunc_callback); 
-	glutMotionFunc(glutMotionFunc_callback); glutPassiveMotionFunc(glutMotionFunc_callback);
-	glutMouseFunc(glutMouseFunc_callback);
-	glutReshapeFunc(glutReshapeFunc_callback); //glutReshapeWindow(width,height);
+	//WinMain had used clock(). It seems like it's
+	//part of the standard library, but RT::Time()
+	//has code for 3 systems, but one of them uses
+	//midnight as the wraparound time. Maybe clock
+	//is better and portable too.
+	RT::Float timer = RT::Time();
+	{
+		daeEH::Verbose<<
+		(dae==default_dae?"Loading default document \"":"Loading \"")		   
+		<<dae<<"\"...";			
+		if(!RT::Main.Load(dae))
+		{
+			//Let console print any errors.
+			//exit(0); //!!!!!!!!!!
+		}
+	}
+	//If the time is negative it wrapped around.
+	daeEH::Verbose<<"LOAD TIME OF "<<RT::Main.URL;
+	daeEH::Verbose<<"IS "<<RT::Time()-timer<<" SECONDS";
+
+	bool sRGB = false, lerp = false; int cull = 2;
+	for(size_t i=0;i<RT::Main.COLLADA_index_keywords.size();i++)
+	{
+		daeName word = RT::Main.COLLADA_index_keywords[i];
+		if(word=="sRGB") sRGB = true;
+		if(word=="cull") cull = 1;
+		if(word=="lerp") lerp = true;
+	}				
+
+	//This is already set if in the first 4096 characters.
+	if(sRGB!=(1==glIsEnabled(GL_FRAMEBUFFER_SRGB))) 
+	ProcessInput('y');
+	//These are for problem documents only.
+	while(cull!=togglecullingface)
+	ProcessInput('F');
+	if(lerp!=RT::Main.AnimationLinear)
+	ProcessInput('I'); 
+	//This shows the first camera, but is it as nice as the
+	//default camera?
+	//ProcessInput('\t');
+		  	
+	#ifdef GLUI_VERSION	
+	//SCHEDULED FOR REMOVAL
+	//GLUI isn't Unicode (yet.)
+	char *ASCII = URI_to_ASCII(RT::Main.URL);
+	if(0!=strcmp(ASCII,UI.site->get_text()))
+	{
+		//add_to_history is a bogus internal API.
+		//The argument is not added, the current text is 
+		//if the argument is not empty.
+		UI.site->set_text(ASCII);
+		UI.site->add_to_history(ASCII);
+		//"" is needed to prevent double-stuffing.
+		UI.site->set_text("");
+		UI.site->scroll_history(-1);
+	}			
+	#endif
+}			
+
+//TEMPORARY //TEMPORARY //TEMPORARY
+
+//EXPERIMENTAL
+HTTP_agent TestIO_HTTP_agent; //HACK
+
+struct TestIO : daeIO //QUICK & DIRTY
+{	
+	#ifdef _WIN32
+	typedef wchar_t Maxpath[MAX_PATH];
+	#else
+	typedef char Maxpath[260*4*(sizeof(char)==1)];
+	#endif
+		
+	virtual daeOK getError()
+	{
+		return OK;  
+	}
+	virtual size_t getLock()
+	{
+		if(OK==DAE_OK&&lock==size_t(-1))
+		{	
+			lock = 0; Maxpath maxpath;
+			if(!I.getRequest().isEmptyRequest())
+			{
+				int i = 0; 
+				if(_file_protocol(maxpath,I.getRequest().remoteURI))
+				{
+					#ifdef _WIN32
+					r = CRT.r->fopen(maxpath,L"rb",_SH_DENYWR);
+					#else
+					r = CRT.r->fopen(maxpath,"rb");
+					#endif
+				}
+				else //HACK: It's already open to peek at <COLLADA xmlns>.
+				{
+					if(!TestIO_HTTP_agent.connected())
+					new(&TestIO_HTTP_agent) HTTP_agent(&I.getRequest());					
+					i = TestIO_HTTP_agent.ContentLength();
+				} 
+				if(r!=nullptr)
+				{
+					i = CRT.r->stat(r).size;
+				}
+				if(i>0) lock = i; else OK = DAE_ERROR;
+			}
+			if(!O.getRequest().isEmptyRequest())
+			{
+				if(_file_protocol(maxpath,O.getRequest().remoteURI))
+				{
+					#ifdef _WIN32
+					w = CRT.w->fopen(maxpath,L"wb",_SH_DENYRW);
+					#else
+					w = CRT.w->fopen(maxpath,"wb");
+					#endif
+				}
+				if(w==nullptr) OK = DAE_ERROR; 
+			}
+		}
+		return lock;
+	}
+	virtual daeOK readIn(void *in, size_t chars)
+	{
+		if(TestIO_HTTP_agent.connected())
+		{
+			if(!TestIO_HTTP_agent.readIn(in,chars)) OK = DAE_ERROR;
+		}
+		else if(1!=CRT.r->fread(in,chars,1,r)&&chars!=0) OK = DAE_ERROR; return OK;
+	}
+	virtual daeOK writeOut(const void *out, size_t chars)
+	{
+		if(1!=CRT.w->fwrite(out,chars,1,w)&&chars!=0) OK = DAE_ERROR; return OK;
+	}
+	virtual FILE *getReadFILE(int=0)
+	{
+		if(r==nullptr) getLock(); return r; 
+	}
+	virtual FILE *getWriteFILE(int=0)
+	{
+		if(w==nullptr) getLock(); return w; 
+	}
+
+	//This is not the normal way to go about this.
+	//It's just easy to set up for basic file I/O.
+	struct{ const struct daeCRT::FILE *r,*w; }CRT;
+	daeIOPlugin &I,&O; daeOK OK; FILE *r,*w; size_t lock;
+	TestIO(std::pair<daeIOPlugin*,daeIOPlugin*> IO)
+	:I(*IO.first),O(*IO.second),r(),w(),lock(-1)
+	{
+		CRT.r = &I.getCRT_default().FILE; 
+		CRT.w = &O.getCRT_default().FILE;
+	}
+	~TestIO()
+	{
+		if(r!=nullptr) CRT.r->fclose(r); 
+		if(w!=nullptr) CRT.w->fclose(w); 
+	}
+	 		
+	static bool _file_protocol(Maxpath &maxpath, const daeURI *URI)
+	{							   
+		if(URI==nullptr||"file"!=URI->getURI_protocol())
+		return false;
+		#ifdef _WIN32
+		daeRefView v = URI->getURI_upto<'?'>(); int UNC = v[7]=='/'?8:5;
+		maxpath[MultiByteToWideChar(CP_UTF8,0,v+UNC,v.extent-UNC,maxpath,MAX_PATH-1)] = 0;
+		#else
+		//ASSUMING NOT REMOTE FOR NOW
+		daeRefView v = URI->getURI_path();
+		if(v.extent>=sizeof(maxpath))
+		return false;
+		memcpy(maxpath,v.view,v.extent); maxpath[v.extent] = '\0';
+		#endif
+		return true;
+	}
+};
+static struct TestPlatform : daePlatform //SINGLETON
+{
+	HTTP_agent *HTTP_downloading;
+
+	std::vector<TestIO> IO_stack;
 	
-	glutShowWindow(); //FreeGLUT is very ugly.
+	virtual const daeURI &getDefaultBaseURI(daeURI &URI)
+	{
+		char UTF[4*260+8] = "file:///"; //MAX_PATH
+		#ifdef _WIN32
+		TestIO::Maxpath maxpath;
+		GetCurrentDirectoryW(MAX_PATH,maxpath);
+		int UNC = maxpath[0]=='//'?5:8;
+		int len = UNC+WideCharToMultiByte(CP_UTF8,0,maxpath,-1,UTF+UNC,sizeof(UTF)-8,0,0);
+		#else
+		if(!getcwd(UTF+7,sizeof(UTF)-7))
+		return URI;
+		int len = strlen(UTF)+1; //WideCharToMultByte includes the 0 terminator.
+		#endif
+		//If the directory URI doesn't end in a slash it looks like a filename?
+		switch(UTF[len-2]) 
+		{
+		case '\\': case '/': break; default: UTF[len-1] = '/'; UTF[len] = '\0';
+		}
+		URI.setURI(UTF); return URI;
+	}
+	virtual daeOK resolveURI(daeURI &URI, const daeDOM &DOM)
+	{
+		//Getting this when running outside of Visual Studio?
+		if(URI.empty()) return DAE_ERROR;
 
-	return true;
-}
-#endif //GLUT_API_VERSION
-//The old Windows_wgl.inl defines these
-//The PS3 client leaves them as nullptr
-static bool (*CreateGLWindow)(int,char**,const char*,int,int) = 
-#ifdef GLUT_API_VERSION
-CreateGLUTWindow
-#else 
-nullptr
-#endif
-;
-#ifdef GLUT_API_VERSION
-static void (GLUTAPIENTRY *COLLADA_viewer_main_loop)() = glutMainLoop;
-#elif defined(_WIN32)
-static void (*COLLADA_viewer_main_loop)() = nullptr
-#endif
-;
+		//Try to handle non-URI paths.
+		//NOTE: This might be different if the default-base
+		//URI is "file:\\" instead of the current directory.
+		if(URI.isUnparentedObject()&&URI.getURI_upto<'/'>().empty())
+		{
+			daeString d = URI.data(), base = nullptr;
+			longpath:
+			int alpha = isalpha(d[0]);
+			switch(d[alpha]) //Not thoroughly tested.
+			{
+			#ifndef _WIN32
+			//HACK: NEEDS TO BE EXPANDED.
+			case '~': base = "file://"; //Home?
+			#endif
+			case ':': base = "file:///"; break;
 
+			case '/': case '\\': if(alpha!=0) break;
+
+				if(d[1]=='/'||d[1]=='\\')
+				{
+					if(d[2]=='?') //Windows long path?
+					{
+						d+=2; goto longpath;
+					}
+					base = "file:"; break;
+				}
+				base = "file://"; break;
+
+			default: if(alpha==0) break; //Hostname?
+
+				for(size_t i=0;i<URI.size();i++) if(':'==d[i])
+				{
+					base = "file://"; break;					
+				}			
+			}
+			if(base!=nullptr) 
+			{
+				//passing "file:\\" as a base URI might work.
+				//But just manually concatenating.
+				COLLADA_SUPPRESS_C(4996)
+				char cat[4*260+8]; strcpy(cat,base); //MAX_PATH
+				memcpy(cat+strlen(base),d,sizeof(cat)-strlen(base));
+				cat[sizeof(cat)-1] = '\0';
+				URI.setURI(cat);
+			}
+		}
+		//daeEH::Verbose<<"Resolving URI: "<<URI.getURI();
+		daeOK OK = URI.resolve_RFC3986(DOM);
+		//daeEH::Verbose<<"Resolved URI: "<<URI.getURI();
+		assert(URI.getURI_protocol().size()>=4||URI.empty()); return OK;
+	}
+	virtual daeOK openURI(const daeIORequest &req, daeIOPlugin *I, daeURIRef &URI)
+	{
+		daeDocRoot<> doc; req.resolve();
+		if(!req.localURI->getURI_extensionIs("dae"))
+		{
+			daeEH::Error<<"Unsupported file extension "<<req.localURI->getURI_extension();
+			req.unfulfillRequest(doc); return doc;
+		}
+		#ifdef NDEBUG
+		#error WORK IN PROGRESS
+		#endif
+		//TODO: Must scan for version="1.5.0" and switch to 8.
+		extern daeMeta *InitSchemas(int);
+		daeMeta *meta = InitSchemas(Peek_xmlns(req)=="http://www.collada.org/2005/11/COLLADASchema"?5:8);
+		req.fulfillRequestI(meta,I,doc);
+		if(doc==DAE_OK) URI = &doc->getDocURI(); return doc; 
+	}
+	virtual daeIO *openIO(daeIOPlugin &I, daeIOPlugin &O)
+	{
+		IO_stack.emplace_back(std::make_pair(&I,&O)); return &IO_stack.back();
+	}
+	virtual void closeIO(daeIO *IO)
+	{
+		assert(IO==&IO_stack.back()); IO_stack.pop_back();
+
+		if(TestIO_HTTP_agent.connected()) TestIO_HTTP_agent.~HTTP_agent();
+	}		
+	virtual int getLegacyProfile()
+	{
+		return LEGACY_LIBXML|
+		LEGACY_SIDREF_RESOLVER|LEGACY_IDREF_RESOLVER|LEGACY_URI_RESOLVER;
+	}
+
+	daeName Peek_xmlns(const daeIORequest &req)
+	{
+		static std::string out; out.clear();
+
+		char buf[4096] = {};
+		TestIO::Maxpath path; 
+		if(TestIO::_file_protocol(path,req.remoteURI)) 
+		{	
+			std::ifstream s(path); s.read(buf,sizeof(buf));
+		}
+		else //HACK: Testing
+		{
+			new(&TestIO_HTTP_agent) HTTP_agent(&req);
+			if(TestIO_HTTP_agent.connected())
+			{
+				TestIO_HTTP_agent.peekIn(buf,sizeof(buf));
+			}
+			else TestIO_HTTP_agent.~HTTP_agent();
+		}
+		
+		if(buf[0]=='\0') return out;
+
+		out.assign(buf,4096);
+		
+		//NO need to normalize. Not a URI per se.
+		out.erase(0,out.find("xmlns=\"")+7);
+
+		//EXPERIMENTAL
+		//HACK: Looking for sRGB option so textures don't
+		//have to be reloaded. The sRGB status applies to
+		//to the entire DOM starting at an index document.
+		if(RT::Main.DOM.getDocs().empty())
+		if(0==out.find("http://www.collada.org"))
+		if(out.npos!=out.find("sRGB"))
+		{			
+			daeEH::Verbose<<"Found sRGB keyword in COLLADA index document's first 4096 characters...";
+			ProcessInput('y');
+		}
+
+		out.erase(std::min(out.find('"'),out.size()),-1); 	
+		return out; 
+	}
+
+	TestPlatform(){ daeDOM::setGlobalPlatform(this); }
+
+}TestPlatform; //SINGLETON
+
+//EXPERIMENTAL demo.dae floods the console.
+#ifdef _DEBUG
+#if 0!=Silence_console_if_DEBUG
+static struct Silencer : public daeStandardErrorHandler
+{
+	bool Verbose; //True if receiving a Verbose message.
+
+	std::string Silenced;
+
+	Silencer():Verbose(){ daeErrorHandler::setErrorHandler(this); }
+	
+	virtual void handleWarning(const daeHashString &msg, enum dae_clear clear)
+	{
+		//Appending an empty message is how daeErrorHandler implements
+		//the RT & FX package's Verbose output strings. It's a warning
+		//without the "Warning: " announcement.
+		if(!clear&&msg.empty())
+		{
+			Verbose = true; Silenced.clear();
+		}		
+		if(Verbose)
+		{
+			if(clear)
+			{
+				Verbose = false; 
+			}
+			else Silenced.append(msg.string,msg.extent);
+		}
+		else 
+		{
+			if(!Silenced.empty())
+			{
+				//This is provided for context.
+				daeStandardErrorHandler::handleWarning("",dae_append);
+				daeStandardErrorHandler::handleWarning("Silenced: ",dae_append);
+				daeStandardErrorHandler::handleWarning(Silenced.c_str(),dae_clear);
+				Silenced.clear();
+			}
+			daeStandardErrorHandler::handleWarning(msg,clear);
+		}
+	}
+
+}*Silenced = Silence_console_if_DEBUG?new Silencer:nullptr;
+#endif
+#endif
+
+//GLUT //GLUT //GLUT //GLUT //GLUT //GLUT //GLUT //GLUT //GLUT
+
+#ifdef GLUT_API_VERSION
+#include "viewer_GLUT.hpp"
+#endif
+
+//UNUSED //UNUSED //UNUSED //UNUSED //UNUSED //UNUSED //UNUSED 
+
+/*UNUSED This works but is not used.
+//#include "CrtScene.h"
+//#include "CrtEffect.h"
 //DUNNO WHY THIS CODE IS BEING KEPT AROUND.
 //This was separately implemented by the Windows/Linux/OSX branches 
 //It gets amplitudeGlobalParameter. Not clear it does anything else
@@ -535,332 +905,4 @@ static void InitSceneEffects()
 			daeEH::Verbose<<"Parameter "<<name<<" needs a color picker named "<<UIName;			
 		}
 	}
-}
-
-static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
-{	
-	//THIS MUST BE DONE BEFORE RT::Main.Init() OR Cg REPORTS "NO PROFILE."
-	//Create an OpenGL Window
-	if(!CreateGLWindow(argc,argv,"ColladaDOM 3 Reference Viewer",Xsize,Ysize))
-	return 0;	
-
-	//cgSetPassState messes up the global state.
-	//This is also initialzing the RT component.
-	RT::Main.Init(RestoreGL);
-
-	//Set the default screen size
-	RT::Main.Width = Xsize; RT::Main.Height = Ysize;
-											   
-	//These are from WinMain. They may not be portable?
-	time_t seconds = time(nullptr);
-	clock_t clocka = clock();
-	{
-		//Load the file name provided on the command line
-		const char *dae = argc>1&&argv[1]?argv[1]:default_dae;
-		daeEH::Verbose<<
-		(dae==default_dae?"Loading default document \"":"Loading \"")		   
-		<<dae<<"\"...";			
-		if(!RT::Main.Load(dae))
-		{
-			//Let console print any errors.
-			//exit(0); //!!!!!!!!!!
-		}
-	}
-	daeEH::Verbose<<"LOAD TIME OF "<<RT::Main.URL;
-	daeEH::Verbose<<"IS "<<int(time(nullptr)-seconds)<<" SECONDS";
-	daeEH::Verbose<<"IS "<<int(clock()-clocka)<<" CLOCK TICKS\n\n"; //sic
-
-	//This block of code shows how to enumerate all the effects, get their parameters and then
-	//get their UI information.
-	InitSceneEffects();
-
-	//Disable INTEPORLATION by default.
-	if(!RT::Main.AnimationLinear)
-	ProcessInput('I');
-
-	//GLUT's main loop calls exit() to exit.
-	//This is so RT::Main::DOM is cleared before
-	//Windows can destroy the schema metadata globals.
-	//Force all schemas to initialize.
-	extern daeMeta *InitSchemas(int=0);
-	InitSchemas(); //daeGetModel<Collada05::COLLADA>();
-	atexit(COLLADA_viewer_GLUT_atexit); 
-
-	COLLADA_viewer_main_loop(); //glutMainLoop();
-		
-	return 0;
-}			
-
-//TEMPORARY //TEMPORARY //TEMPORARY
-
-struct TestIO : daeIO //QUICK & DIRTY
-{	
-	#ifdef _WIN32
-	typedef wchar_t Maxpath[MAX_PATH];
-	#else
-	typedef char Maxpath[260*4*(sizeof(char)==1)];
-	#endif
-		
-	virtual daeOK getError()
-	{
-		return OK;  
-	}
-	virtual size_t getLock()
-	{
-		if(OK==DAE_OK&&lock==size_t(-1))
-		{	
-			lock = 0; Maxpath maxpath;
-			if(!I.getRequest().isEmptyRequest())
-			{
-				int i = 0; 
-				if(_file_protocol(maxpath,I.getRequest().remoteURI))
-				{
-					#ifdef _WIN32
-					r = CRT.r->fopen(maxpath,L"rb",_SH_DENYWR);
-					#else
-					r = CRT.r->fopen(maxpath,"rb");
-					#endif
-				}
-				if(r!=nullptr)
-				{
-					i = CRT.r->stat(r).size;
-				}
-				if(i>0) lock = i; else OK = DAE_ERROR;
-			}
-			if(!O.getRequest().isEmptyRequest())
-			{
-				if(_file_protocol(maxpath,O.getRequest().remoteURI))
-				{
-					#ifdef _WIN32
-					w = CRT.w->fopen(maxpath,L"wb",_SH_DENYRW);
-					#else
-					w = CRT.w->fopen(maxpath,"wb");
-					#endif
-				}
-				if(w==nullptr) OK = DAE_ERROR; 
-			}
-		}
-		return lock;
-	}
-	virtual daeOK readIn(void *in, size_t chars)
-	{
-		if(1!=CRT.r->fread(in,chars,1,r)&&chars!=0) OK = DAE_ERROR; return OK;
-	}
-	virtual daeOK writeOut(const void *out, size_t chars)
-	{
-		if(1!=CRT.w->fwrite(out,chars,1,w)&&chars!=0) OK = DAE_ERROR; return OK;
-	}
-	virtual FILE *getReadFILE(int=0)
-	{
-		if(r==nullptr) getLock(); return r; 
-	}
-	virtual FILE *getWriteFILE(int=0)
-	{
-		if(w==nullptr) getLock(); return w; 
-	}
-
-	//This is not the normal way to go about this.
-	//It's just easy to set up for basic file I/O.
-	struct{ const struct daeCRT::FILE *r,*w; }CRT;
-	daeIOPlugin &I,&O; daeOK OK; FILE *r,*w; size_t lock;
-	TestIO(std::pair<daeIOPlugin*,daeIOPlugin*> IO)
-	:I(*IO.first),O(*IO.second),r(),w(),lock(-1)
-	{
-		CRT.r = &I.getCRT_default().FILE; 
-		CRT.w = &O.getCRT_default().FILE;
-	}
-	~TestIO()
-	{
-		if(r!=nullptr) CRT.r->fclose(r); 
-		if(w!=nullptr) CRT.w->fclose(w); 
-	}
-	 		
-	static bool _file_protocol(Maxpath &maxpath, const daeURI *URI)
-	{							   
-		if(URI!=nullptr&&"file"==URI->getURI_protocol())
-		{
-			#ifdef _WIN32
-			daeRefView v = URI->getURI_upto<'?'>(); int UNC = v[7]=='/'?8:5;
-			maxpath[MultiByteToWideChar(CP_UTF8,0,v+UNC,v.extent-UNC,maxpath,MAX_PATH-1)] = 0;
-			#else
-			if(URI->size()<sizeof(maxpath)) 
-			memcpy(maxpath,URI->data(),URI->size()+1);
-			else return false;
-			#endif
-			return true;
-		}assert(URI->empty()); return false; 
-	}
-};
-static struct TestPlatform : daePlatform //SINGLETON
-{
-	std::vector<TestIO> IO_stack;
-
-	virtual const daeURI &getDefaultBaseURI(daeURI &URI)
-	{
-		TestIO::Maxpath maxpath;
-		char UTF[4*MAX_PATH+8] = "file:///";		
-		#ifdef _WIN32
-		GetCurrentDirectoryW(MAX_PATH,maxpath);
-		int UNC = maxpath[0]=='//'?5:8;
-		int len = UNC+WideCharToMultiByte(CP_UTF8,0,maxpath,-1,UTF+UNC,sizeof(UTF)-8,0,0);
-		#else
-		if(!getcwd(UTF+7,sizeof(UTF)-7))
-		return URI;
-		int len = strlen(UTF);
-		#endif
-		//If the directory URI doesn't end in a slash it looks like a filename?
-		switch(UTF[len-2]) 
-		{
-		case '\\': case '/': break; default: UTF[len-1] = '/'; UTF[len] = '\0';
-		}
-		URI.setURI(UTF); return URI;
-	}
-	virtual daeOK resolveURI(daeURI &URI, const daeDOM &DOM)
-	{
-		//Getting this when running outside of Visual Studio?
-		if(URI.empty()) return DAE_ERROR;
-
-		//Try to handle non-URI paths.
-		//NOTE: This might be different if the default-base
-		//URI is "file:\\" instead of the current directory.
-		if(URI.isUnparentedObject()&&URI.getURI_upto<'/'>().empty())
-		{
-			daeString d = URI.data(), base = nullptr;
-			longpath:
-			int alpha = isalpha(d[0]);
-			switch(d[alpha]) //Not thoroughly tested.
-			{
-			#ifndef _WIN32
-			//HACK: NEEDS TO BE EXPANDED.
-			case '~': base = "file://"; //Home?
-			#endif
-			case ':': base = "file:///"; break;
-
-			case '/': case '\\': if(alpha!=0) break;
-
-				if(d[1]=='/'||d[1]=='\\')
-				{
-					if(d[2]=='?') //Windows long path?
-					{
-						d+=2; goto longpath;
-					}
-					base = "file:"; break;
-				}
-				base = "file://"; break;
-
-			default: if(alpha==0) break; //Hostname?
-
-				for(size_t i=0;i<URI.size();i++) if(':'==d[i])
-				{
-					base = "file://"; break;					
-				}			
-			}
-			if(base!=nullptr) 
-			{
-				//passing "file:\\" as a base URI might work.
-				//But just manually concatenating.
-				COLLADA_SUPPRESS_C(4996)
-				char cat[4*MAX_PATH+8]; strcpy(cat,base);
-				memcpy(cat+strlen(base),d,sizeof(cat)-strlen(base));
-				cat[sizeof(cat)-1] = '\0';
-				URI.setURI(cat);
-			}
-		}
-		//daeEH::Verbose<<"Resolving URI: "<<URI.getURI();
-		daeOK OK = URI.resolve_RFC3986(DOM);
-		//daeEH::Verbose<<"Resolved URI: "<<URI.getURI();
-		assert(URI.getURI_protocol().size()>=4||URI.empty()); return OK;
-	}
-	virtual daeOK openURI(const daeIORequest &req, daeIOPlugin *I, daeURIRef &URI)
-	{
-		daeDocRoot<> doc; req.resolve();
-		if(!req.localURI->getURI_extensionIs("dae"))
-		{
-			daeEH::Error<<"Unsupported file extension "<<req.localURI->getURI_extension();
-			req.unfulfillRequest(doc); return doc;
-		}
-		#ifdef NDEBUG
-		#error WORK IN PROGRESS
-		#endif
-		//TODO: Must scan for version="1.5.0" and switch to 8.
-		extern daeMeta *InitSchemas(int);
-		daeMeta *meta = InitSchemas(Peek_xmlns(req.localURI)=="http://www.collada.org/2005/11/COLLADASchema"?5:8);
-		req.fulfillRequestI(meta,I,doc);
-		if(doc==DAE_OK) URI = &doc->getDocURI(); return doc; 
-	}
-	virtual daeIO *openIO(daeIOPlugin &I, daeIOPlugin &O)
-	{
-		IO_stack.emplace_back(std::make_pair(&I,&O)); return &IO_stack.back();
-	}
-	virtual void closeIO(daeIO *IO)
-	{
-		assert(IO==&IO_stack.back()); IO_stack.pop_back();
-	}		
-	virtual int getLegacyProfile()
-	{
-		return LEGACY_LIBXML|
-		LEGACY_SIDREF_RESOLVER|LEGACY_IDREF_RESOLVER|LEGACY_URI_RESOLVER;
-	}
-
-	daeName Peek_xmlns(const daeURI *URI)
-	{
-		static std::string out; out.clear();
-
-		TestIO::Maxpath path; 
-		if(!TestIO::_file_protocol(path,URI)) return out;
-
-		std::ifstream s(path);
-		char buf[4096]; s.read(buf,4096);
-		out.assign(buf,4096);
-		out.erase(0,out.find("xmlns=\"")+7); //GOOD ENOUGH?
-		out.erase(std::min(out.find('"'),out.size()),-1); 		
-		return out; //NO need to normalize. Not a URI per se.
-	}
-
-	TestPlatform(){ daeDOM::setGlobalPlatform(this); }
-
-}TestPlatform; //SINGLETON
-
-//EXPERIMENTAL demo.dae floods the console.
-#ifdef _DEBUG 
-static struct Silencer : public daeStandardErrorHandler
-{
-	bool Verbose; //True if receiving a Verbose message.
-
-	std::string Silenced;
-
-	Silencer():Verbose(){ daeErrorHandler::setErrorHandler(this); }
-	
-	virtual void handleWarning(const daeHashString &msg, enum dae_clear clear)
-	{
-		//Appending an empty message is how daeErrorHandler implements
-		//the RT & FX package's Verbose output strings. It's a warning
-		//without the "Warning: " announcement.
-		if(!clear&&msg.empty())
-		{
-			Verbose = true; Silenced.clear();
-		}		
-		if(Verbose)
-		{
-			if(clear)
-			{
-				Verbose = false; 
-			}
-			else Silenced.append(msg.string,msg.extent);
-		}
-		else 
-		{
-			if(!Silenced.empty())
-			{
-				//This is provided for context.
-				daeStandardErrorHandler::handleWarning("",dae_append);
-				daeStandardErrorHandler::handleWarning("Silenced: ",dae_append);
-				daeStandardErrorHandler::handleWarning(Silenced.c_str(),dae_clear);
-				Silenced.clear();
-			}
-			daeStandardErrorHandler::handleWarning(msg,clear);
-		}
-	}
-
-}*Silenced = Silence_console_if_DEBUG?new Silencer:nullptr;
-#endif
+}*/
