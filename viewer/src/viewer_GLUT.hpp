@@ -159,6 +159,13 @@ static bool CreateGLUTWindow(int LArgC, char **LArgV, const char *title, int wid
 
 static int COLLADA_viewer_main(int argc, char **argv, const char *default_dae)
 {	
+	//SCHEDULED FOR REMOVAL
+	//HACK: default_dae is most likely in the samples/ folder, which 
+	//is unlikely to be the working-directory at this point. An online
+	//document is a reliable target. This URL is where binaries are kept.
+	//I'd rather set this here than in the Windows/Linx/OSX_main.cpp files.
+	default_dae = "http://www.swordofmoonlight.net/holy/example.dae";
+
 	//THIS MUST BE DONE BEFORE RT::Main.Init() OR Cg REPORTS "NO PROFILE."
 	//Create an OpenGL Window
 	if(!CreateGLUTWindow(argc,argv,"ColladaDOM 3 Reference Viewer",Xsize,Ysize))

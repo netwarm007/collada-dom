@@ -1,0 +1,14 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+check_required_components("@PROJECT_NAME@")
+
+#Note: There used to be a lot here. Going by what contemporary 
+#projects are doing, the above should suffice. I'm uncertain as
+#to what all it defines, but there is a big problem with there
+#not being standard definitions, so it seems best to not define
+#anything if at all possible. 
+#The colladadom25Targets file seems to originate from inside of
+#dom/CMakeLists.txt. (The EXPORT bit.) And it should be noted 
+#that colladadom3d is not covered at all. Should it be included?
+#If so, how??

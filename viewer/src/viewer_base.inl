@@ -585,9 +585,17 @@ struct TestIO : daeIO //QUICK & DIRTY
 		#else
 		//ASSUMING NOT REMOTE FOR NOW
 		daeRefView v = URI->getURI_path();
-		if(v.extent>=sizeof(maxpath))
+		if(v.extent+sizeof("/cygdrive")>=sizeof(maxpath))
 		return false;
-		memcpy(maxpath,v.view,v.extent); maxpath[v.extent] = '\0';
+		int cygdrive = 0;
+		#ifdef __CYGWIN__
+		if(v[0]=='/'&&v[2]==':') //Open command line from outside Cygwin?
+		{
+			cygdrive = strlen(strcpy(maxpath,"/cygdrive/c/"));
+			maxpath[sizeof("/cygdrive")] = v.view[1]; v.view+=3; v.extent-=3;
+		}
+		#endif
+		memcpy(maxpath+cygdrive,v.view,v.extent); maxpath[cygdrive+v.extent] = '\0';
 		#endif
 		return true;
 	}

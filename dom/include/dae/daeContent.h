@@ -661,6 +661,9 @@ COLLADA_(public) //LOW-LEVEL CONTENTS-ARRAYS TRAVERSAL METHODS
 		return (const_daeChildRef&)_child.ref;
 	}	
 
+	#ifdef NDEBUG
+	#error Maybe these/getKnownChild should do sanity checks?
+	#endif
 	//These are for daeContents_size::for_each_child(). 
 	//MSVC2013 seems to have a bug that hides the non-const
 	//forms if implemented as a template, even though I can't 

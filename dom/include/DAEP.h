@@ -1552,9 +1552,9 @@ COLLADA_(public) //C2679 //GCC wants parameters.
 
 template<class T>
 /**SFINAE
- * This is used to exclude DAEP Value in and "enable_if" fashion. There 
+ * This is used to exclude DAEP Value in an "enable_if" fashion. There 
  * is ambiguity with the construction form of the = operator when there
- * is are conversion operators and constructors. If a compiler selected
+ * is both conversion operators and constructors. If a compiler selected
  * either one it would be fine, but many won't do it.
  * @see @c daeURI_size::daeURI_size().
  * @see @c daeHashString::daeHashString().

@@ -130,8 +130,7 @@ int main(int argc, char *argv[])
 	Windows_main_GLUT_hook = 
 	SetWindowsHookEx(WH_CBT,Windows_main_GLUT_hook_proc,0,GetCurrentThreadId());
 	
-	int exit_status = COLLADA_viewer_main
-	(argc,argv,"http://www.swordofmoonlight.net/holy/example.dae");
+	int exit_status = COLLADA_viewer_main(argc,argv,"demo.dae");
 	return (int)exit_status;
 }
 int __stdcall wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)

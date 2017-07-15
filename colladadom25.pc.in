@@ -1,0 +1,14 @@
+# Package Information for pkg-config
+
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@/bin
+libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+includedir=${prefix}/include
+
+Name: colladadom25
+Description: COLLADA Document Object Model (DOM)
+Version: @PROJECT_VERSION@
+URL:  http://sourceforge.net/projects/collada-dom
+Libs: -L${libdir} -lcolladadom25 @PC_LIBS@
+Libs.private:
+Cflags: -I${includedir}
