@@ -7,14 +7,7 @@ include(developer.cmake OPTIONAL)
 #SVN-EXTERNALS: cmake-modules/CMakePCHCompiler
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake-modules/CMakePCHCompiler)
 
-#if(MSVC) is not true until after project() is utilized.
 project(colladadom25 VERSION 2.5.0 LANGUAGES CXX CXXPCH)
-if(MSVC)
-	#https://gitlab.kitware.com/cmake/cmake/issues/17060
-	cmake_minimum_required(VERSION 3.9.0 FATAL_ERROR)
-	message(FATAL_ERROR #CMake can't do this over multiple lines???
-"Please use viewer/projects/vc10-Win/viewer.sln until https://gitlab.kitware.com/cmake/cmake/issues/17060 is resolved. Sorry. --COLLADA-DOM project")
-endif()
 
 cmake_policy(SET CMP0004 OLD) #allow untrimmed whitespace
 
@@ -41,12 +34,13 @@ _(no-strict-aliasing -fno-strict-aliasing 0) ##REMOVE ME
 _(rtti -frtti 0)
 _(visibility -fvisibility=hidden 0)
 _(permissive -fpermissive 0)
-_(Wall -Wall 0)
+_(Wall -Wall 0) ##How can -Wall be optional? (All warnings?)
 _(Wno-multichar -Wno-multichar 0)
 _(Wno-unused-but-set-variable -Wno-unused-but-set-variable 0)
 #Windows flags (not necessarily MSVC.)
 #These are set together in the subdirectories even though
 #the compile options can be set anywhere, right here even.
+#WARNING The / can be understood as a path by CMake. Dumb.
 _(wincompile -mconsole /GF) #string-pooling 
 _(winlink 0 /SUBSYSTEM:WINDOWS)
 
@@ -72,7 +66,7 @@ if(PKGCONFIG_FOUND AND WIN32)
 	endif()
 endif()
 #Defines CMAKE_INSTALL_LIBDIR, but what else?
-INCLUDE(GNUInstallDirs)
+include(GNUInstallDirs)
 
 message(STATUS "installing to ${CMAKE_INSTALL_PREFIX}")
 
@@ -87,6 +81,18 @@ option(COLLADA_DOM__TARGET_PS3 "Use its ancient PlayStation3 entrypoint" OFF)
 #Enable PCH in dom/ output. Only use if you understand its pros/cons.
 if(NOT COLLADA_DOM__ENABLE_LIBRARY_PCH)
 option(COLLADA_DOM__ENABLE_LIBRARY_PCH "Use ColladaDOM.inl as PCH header" OFF)
+endif()
+
+#https://gitlab.kitware.com/cmake/cmake/issues/17060
+
+#Moving this so the DOM library can be built by itself.
+#if(MSVC) is not true until after project() is utilized.
+if(MSVC AND (COLLADA_DOM__COMPILE_VIEWER OR COLLADA_DOM__ENABLE_LIBRARY_PCH))
+	cmake_minimum_required(VERSION 3.9.0 FATAL_ERROR)
+	message(FATAL_ERROR #CMake can't do this over multiple lines???
+"Please use viewer/projects/vc10-Win/viewer.sln until https://gitlab.kitware.com/cmake/cmake/issues/17060 is resolved. Sorry. --COLLADA-DOM project"
+"\n"
+"The core DOM library can be built in a pinch by setting COMPILE_VIEWER and ENABLE_LIBRARY_PCH to OFF (so that precompiled-headers are not necessary.)")
 endif()
 
 ####FEATURE TESTS##############################
@@ -110,7 +116,7 @@ endif()
 #it's debatable which is better at string and element name look up.
 check_include_file_cxx("unordered_map" HAVE_UNORDERED_MAP)
 if(HAVE_UNORDERED_MAP)
-	add_definitions(-DCOLLADA_DOM_UNORDERED_MAP -DCOLLADA_DOM_UNORDERED_MAP)
+	add_definitions(-DCOLLADA_DOM_UNORDERED_MAP)
 endif()
 
 ####BUILD/INSTALL###############################
@@ -152,7 +158,10 @@ macro(try_external_libs l name NAME)
 	if(IS_DIRECTORY ${fullpath}) 
 		message(STATUS "compiling ${name} from sources and linking statically")		
 		add_subdirectory(external-libs/${name})
-		set(${NAME}_LIBRARIES ${l})
+		#PRIVATE is for install(EXPORT). An error is generated if the internal
+		#library is not exported. It inserts PRIVATE into target_link_libraries.
+		#(Or else there'd be an if/endif for every library. Thank god this works.)
+		list(APPEND ${NAME}_LIBRARIES PRIVATE ${l})
 		set(${NAME}_INCLUDE_DIRS external-libs/${name})	
 	else()
 		message(STATUS "${fullpath} not found")
@@ -201,17 +210,17 @@ set(src ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME})
 #Note, the camel-case file names are part of the documentation.
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file("${bin}ConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION} 
+	VERSION ${PROJECT_VERSION} 
 	COMPATIBILITY SameMajorVersion)
 configure_package_config_file("${PROJECT_NAME}Config.cmake.in" "${bin}Config.cmake"    
-    INSTALL_DESTINATION "lib/cmake/${PROJECT_NAME}")
+	INSTALL_DESTINATION "lib/cmake/${PROJECT_NAME}")
 install(FILES 
 	"${PROJECT_NAME}Config.cmake" 
 	"${bin}ConfigVersion.cmake"
-    DESTINATION "lib/cmake/${PROJECT_NAME}")
+	DESTINATION "lib/cmake/${PROJECT_NAME}")
 install(EXPORT "${PROJECT_NAME}Targets"
-    NAMESPACE COLLADA_DOM::
-    DESTINATION "lib/cmake/${PROJECT_NAME}")
+	NAMESPACE COLLADA_DOM::
+	DESTINATION "lib/cmake/${PROJECT_NAME}")
 
 #OBSOLETE? pkg-config support (I think)
 #Note, dom/CMakeLists.txt sets up ${PC_LIBS} that is in turn expanded by colladadom25.pc.in.
@@ -221,8 +230,8 @@ install(FILES ${bin}.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig/ COMPONENT
 #### Monkey see, monkey do??? ################
 
 export(EXPORT ${PROJECT_NAME}Targets
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/COLLADA_DOM/${PROJECT_NAME}Targets.cmake"
-    NAMESPACE COLLADA_DOM::) #${PROJECT_NAME}
+	FILE "${CMAKE_CURRENT_BINARY_DIR}/COLLADA_DOM/${PROJECT_NAME}Targets.cmake"
+	NAMESPACE COLLADA_DOM::) #${PROJECT_NAME}
 
 #############REMINDER#########################
 #2017: There had been CPack code here. I don't see CPack in any CMakeLists.txt files today. It

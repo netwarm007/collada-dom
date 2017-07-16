@@ -13,6 +13,8 @@ if(NOT BULLET_FOUND)
 		string(APPEND BULLET_INCLUDE_DIRS "/src")
 		if(NOT COLLADA_DOM__SINGLE_PRECISION)
 			set(USE_DOUBLE_PRECISION ON) #Bullet's option.
+			#I doubt this^ does anything...
+			add_definitions(-DBT_USE_DOUBLE_PRECISION)
 		endif()		
 	else()
 		add_definitions(-DNO_BULLET)
@@ -39,7 +41,7 @@ endif()
 
 ####BUILD/NO-INSTALL#########################
 
-include_directories(include ../dom/include ../fx/include)
+include_directories(include ../fx/include)
 
 include_directories(${BULLET_INCLUDE_DIRS} ${IL_INCLUDE_DIRS})
 

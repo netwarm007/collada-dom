@@ -7,10 +7,6 @@ add_definitions(-DEXPORTING_COLLADA_DOM)
 
 ####EXTERNAL-LIBS############################
 
-if(COLLADA_DOM__LEGACY_TINYXML)
-try_external_lib(tinyxml tinyxml/trunk TINYXML)
-endif()
-
 try_package(zlib ZLIB)
 if(ZLIB_FOUND)	
 	string(APPEND PC_LIBS " -lz") #OBSOLETE?
@@ -25,6 +21,11 @@ else()
 	try_external_libs(minizip minizip/trunk MINIZIP)
 endif()
 
+if(COLLADA_DOM__LEGACY_TINYXML)
+	try_external_lib(tinyxml tinyxml/trunk TINYXML)
+	include_directories(${TINYXML_INCLUDE_DIRS})
+endif()
+
 if(COLLADA_DOM__LEGACY_LIBXML2)
 	try_package(LibXml2 LIBXML2)
 	if(LIBXML2_FOUND)
@@ -35,7 +36,7 @@ if(COLLADA_DOM__LEGACY_LIBXML2)
 		#file, so one has been provided.
 		try_external_libs(xml2 libxml2/cmake LIBXML2)	
 		if(LIBXML2_INCLUDE_DIRS)
-			string(APPEND LIBXML2_INCLUDE_DIRS "../trunk/include")
+			string(APPEND LIBXML2_INCLUDE_DIRS "/../trunk/include")
 		endif()
 	endif()
 endif()
@@ -53,9 +54,12 @@ set(PC_LIBS "${PC_LIBS}" PARENT_SCOPE) #OBSOLETE?
 # (for some reason the precompiled libxml2 libraries have zlib.h/zconf.h)
 include_directories(${MINIZIP_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS} ${LIBXML2_INCLUDE_DIRS})
 
-
 #Headers will never work with CMakePCHCompiler :(
 file(GLOB files "src/dae/*.cpp") #"include/*.*" "include/dae/*.h" "include/modules/*.h") 
+
+if(MSVC) 
+	list(APPEND files projects/NatvisFile.natvis)
+endif()
 
 #Assuming SHARED for time being.
 add_library(colladadom25 SHARED ${files} src/modules/LIBXMLPlugin/daeLIBXMLPlugin.cpp)
@@ -71,11 +75,12 @@ endif()
 set_target_properties(colladadom25 PROPERTIES 
 	POSITION_INDEPENDENT_CODE TRUE ##Assuming SHARED for time being.
 	CXX_STANDARD_REQUIRED OFF #Not sure if the viewer is C++11, but try to be C++98 here.
-	COMPILE_FLAGS ${_wincompile})
+	COMPILE_FLAGS ${_wincompile}
+	LINK_FLAGS ${_winlink})
 
-target_link_libraries(colladadom25 ${_winlink} ${MINIZIP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBXML2_LIBRARIES})
+target_link_libraries(colladadom25 ${MINIZIP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBXML2_LIBRARIES})
 
-#### Monkey see, monkey do??? #############################
+#### Monkey see, monkey do??? ################
 
 install(TARGETS colladadom25 EXPORT ${PROJECT_NAME}Targets 
 	RUNTIME DESTINATION bin

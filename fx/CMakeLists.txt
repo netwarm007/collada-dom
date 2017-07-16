@@ -7,7 +7,7 @@ add_definitions(-DPRECOMPILING_COLLADA_FX)
 
 #### Assuming parent directory set up OpenGL/Cg #########
 
-include_directories(../dom/include include)
+include_directories(include)
 
 #Headers will never work with CMakePCHCompiler :(
 file(GLOB files "src/*.cpp") #"include/*.h") 

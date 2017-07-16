@@ -5,6 +5,7 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+
 #ifndef __COLLADA_DOM_INL__
 #define __COLLADA_DOM_INL__
 

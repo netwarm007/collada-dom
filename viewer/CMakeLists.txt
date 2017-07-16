@@ -4,7 +4,7 @@ endif()
 
 #This is done separately because it can't use the precompiled header.
 add_library(colladadom3D-big-obj OBJECT src/viewer_base.lite.cpp)
-#_bigobj is -Wa,-mbig-obj,-Ur -g0 -O1 for GCC. See its definition in
+#_bigobj is -Wa,-mbig-obj -g0 -O1 for GCC. See its definition in
 #the top-level script for more thoughts.
 set_source_files_properties(src/viewer_base.lite.cpp PROPERTIES
 	COMPILE_FLAGS "${_bigobj} ${_wincompile} ${_Wno-unused-but-set-variable}") 
@@ -47,16 +47,15 @@ add_executable(colladadom3D ${main} $<TARGET_OBJECTS:colladadom3D-big-obj>) #${s
 target_precompiled_header(colladadom3D src/viewer_base.pch.h)
 
 add_compile_options(${_wincompile})
-target_link_libraries(colladadom3D
-	${_winlink}
-	${_whole-archive}
-	colladadomRT colladadomFX colladadom25 
-	${_no-whole-archive})
+set_property(TARGET colladadom3D PROPERTY
+	LINK_FLAGS ${_winlink})
+target_link_libraries(colladadom3D #${_winlink}
+	${_whole-archive} colladadomRT colladadomFX colladadom25 ${_no-whole-archive})
 
-#RT components, assuming static linkage.
+#RT components
 target_link_libraries(colladadom3D ${BULLET_LIBRARIES} -L/usr/local/lib ${IL_LIBRARIES})
 
-#3D components, assuming static linkage.
+#3D components
 target_link_libraries(colladadom3D ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${GLUI_LIBRARIES} ) 
 
 #Special care is taken to avoid converting the Windows path to a Cygwin path.
