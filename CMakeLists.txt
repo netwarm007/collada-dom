@@ -9,8 +9,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake-modules/CMakePCHCompiler
 
 project(colladadom25 VERSION 2.5.0 LANGUAGES CXX CXXPCH)
 
-cmake_policy(SET CMP0004 OLD) #allow untrimmed whitespace
-
 #CMake should provide this level of abstraction, but it's dumb.
 macro(_ f etc win)
 	set(sel 0)

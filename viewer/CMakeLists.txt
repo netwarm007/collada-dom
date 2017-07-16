@@ -48,7 +48,8 @@ target_precompiled_header(colladadom3D src/viewer_base.pch.h)
 
 add_compile_options(${_wincompile})
 set_property(TARGET colladadom3D PROPERTY
-	LINK_FLAGS ${_winlink})
+	#"strings" are needed to guard against 'x called with incorrect number of arguments.' :(
+	LINK_FLAGS "${_winlink}")
 target_link_libraries(colladadom3D #${_winlink}
 	${_whole-archive} colladadomRT colladadomFX colladadom25 ${_no-whole-archive})
 

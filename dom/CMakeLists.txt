@@ -75,8 +75,9 @@ endif()
 set_target_properties(colladadom25 PROPERTIES 
 	POSITION_INDEPENDENT_CODE TRUE ##Assuming SHARED for time being.
 	CXX_STANDARD_REQUIRED OFF #Not sure if the viewer is C++11, but try to be C++98 here.
-	COMPILE_FLAGS ${_wincompile}
-	LINK_FLAGS ${_winlink})
+	#"strings" are needed to guard against 'x called with incorrect number of arguments.' :(
+	COMPILE_FLAGS "${_wincompile}"
+	LINK_FLAGS "${_winlink}")
 
 target_link_libraries(colladadom25 ${MINIZIP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBXML2_LIBRARIES})
 
