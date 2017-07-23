@@ -22,9 +22,12 @@
 #pragma GCC diagnostic ignored "-Wuninitialized" //userful
 #pragma GCC diagnostic ignored "-Wdelete-incomplete" //bad advice
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs" //useful
+#pragma GCC diagnostic ignored "-Wc++11-compat" //nullptr
+#if __GNUC__ > 5 //Don't know precise version.
 #pragma GCC diagnostic ignored "-Wnonnull-compare" //newer
 #pragma GCC diagnostic ignored "-Wmisleading-indentation" //Huh?
 #pragma GCC diagnostic ignored "-Waddress" //Is this a threat???
+#endif
 #endif
 #endif //push/pop
 

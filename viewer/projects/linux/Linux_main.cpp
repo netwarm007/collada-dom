@@ -8,6 +8,9 @@
 #include "viewer_base.pch.h" //PCH 
 
 #include <GL/glut.h>
+#ifdef FREEGLUT
+#include <GL/freeglut.h>
+#endif
 
 #include "../../src/viewer_base.inl"
 

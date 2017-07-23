@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 
 ####This is a hook for developers to use.
 ####Please have it print out what changes it makes via the CMake's message API.
@@ -8,6 +8,17 @@ include(developer.cmake OPTIONAL)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake-modules/CMakePCHCompiler)
 
 project(colladadom25 VERSION 2.5.0 LANGUAGES CXX CXXPCH)
+
+#Note: No longer trying to hit C++98 in technical terms, because GCC will
+#not accommodate the pointer-to-member templates in DAEP.h, that are core.
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#cmake-gui doesn't show this option. But be cautious since it may one day.
+set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD} CACHE STRING "Must not be 98" FORCE)
+mark_as_advanced(CLEAR CMAKE_CXX_STANDARD)
+if(NOT CMAKE_CXX_STANDARD OR 98 EQUAL CMAKE_CXX_STANDARD)
+	message("CMAKE_CXX_STANDARD is not set or 98. Set to 11")
+	set(CMAKE_CXX_STANDARD 11)
+endif()
 
 #CMake should provide this level of abstraction, but it's dumb.
 macro(_ f etc win)
@@ -21,26 +32,34 @@ macro(_ f etc win)
 	set(_${f} ${sel})
 	endif()
 endmacro()
-#O1 or O2 is needed to keep the file small to help it not outgrow the file system.
-#Without g0 there is a "string table overflow at offset" and "File too big" error
-#with GCC 6.3.0 on Cygwin. Removing debug makes it smaller. String pooling may be
-#off in g0 mode also. It may be done in the linker.
-_(bigobj "-Wa,-mbig-obj -g0 -O1" /bigobj)
 _(whole-archive -Wl,--whole-archive 0)
 _(no-whole-archive -Wl,--no-whole-archive 0)
 _(no-strict-aliasing -fno-strict-aliasing 0) ##REMOVE ME
+_(c++11 -std=gnu++11 0)
 _(rtti -frtti 0)
 _(visibility -fvisibility=hidden 0)
 _(permissive -fpermissive 0)
-_(Wall -Wall 0) ##How can -Wall be optional? (All warnings?)
+_(Wall "-Wall;-Winvalid-pch" 0) ##How can -Wall be optional? (All warnings?)
 _(Wno-multichar -Wno-multichar 0)
-_(Wno-unused-but-set-variable -Wno-unused-but-set-variable 0)
+_(Wno-unused-but-set-variable "-Wno-unused-but-set-variable;-Wmaybe-uninitialized" 0)
 #Windows flags (not necessarily MSVC.)
 #These are set together in the subdirectories even though
 #the compile options can be set anywhere, right here even.
 #WARNING The / can be understood as a path by CMake. Dumb.
 _(wincompile -mconsole /GF) #string-pooling 
 _(winlink 0 /SUBSYSTEM:WINDOWS)
+#O1 or O2 is needed to keep the file small to help it not outgrow the file system.
+#Without g0 there is a "string table overflow at offset" and "File too big" error
+#with GCC 6.3.0 on Cygwin. Removing debug makes it smaller. String pooling may be
+#off in g0 mode also. It may be done in the linker.
+_(winbigobj -Wa,-mbig-obj /bigobj)
+_(gccbigobj "-g0;-O1" 0) #gcc is super slow.
+if(NOT CYGWIN AND NOT WIN32)
+	#error: unrecognized command line option -mconsole?
+	set(_wincompile "") 
+	#Apparently -mbig-obj is a Windows flag like -mconsole.
+	set(_winbigobj "")
+endif()
 
 message(STATUS "Compiling COLLADA-DOM Version ${PROJECT_VERSION}")
 message(STATUS "Using cmake version ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" )
@@ -95,10 +114,16 @@ endif()
 
 ####FEATURE TESTS##############################
 
+#check_type_size doesn't know about CMAKE_CXX_STANDARD :(
+if(NOT 98 EQUAL CMAKE_CXX_STANDARD) 
+	list(APPEND CMAKE_REQUIRED_FLAGS ${_c++11})
+endif()
+
 #The new headers write nullptr instead of NULL or 0 but don't use
 #its C++ template functionality. It's just for code style/reading.
 check_type_size(nullptr HAVE_NULLPTR LANGUAGE CXX)
-if(NOT HAVE_NULLPTR)
+#98 was not required until CMAKE_CXX_STANDARD began to be used???
+if(NOT HAVE_NULLPTR OR 98 EQUAL CMAKE_CXX_STANDARD)
 	add_definitions(-DCOLLADA_DOM_NEED_NULLPTR)
 endif()
 
@@ -113,7 +138,8 @@ endif()
 #map is used if this is not defined. Both use an allocator, and so
 #it's debatable which is better at string and element name look up.
 check_include_file_cxx("unordered_map" HAVE_UNORDERED_MAP)
-if(HAVE_UNORDERED_MAP)
+#CMAKE_CXX_STANDARD is added because #include is standard agnostic.
+if(HAVE_UNORDERED_MAP AND NOT 98 EQUAL CMAKE_CXX_STANDARD)
 	add_definitions(-DCOLLADA_DOM_UNORDERED_MAP)
 endif()
 

@@ -233,7 +233,8 @@ hit: //fill out the request object
 		if(nullptr!=(e=e->getChild("technique_common"))
 		 &&nullptr!=(e=e->getChild("accessor")))
 		{	
-			daeName source = e->getAttribute("source");
+			daeArray<char,90> GCC; //SCHEDULED FOR REMOVAL
+			daeName source = e->getAttribute(GCC,"source");
 			if(!source.empty())
 			{
 				e = daeURI_parser(source,e).getTargetedFragment();

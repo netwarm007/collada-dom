@@ -460,7 +460,10 @@ COLLADA_(public) //daeIOPlugin methods
 	virtual daeOK readContent(daeIO&,daeContents&){ return DAE_ERR_NOT_IMPLEMENTED; }
 	virtual daeOK writeContent(daeIO&,const daeContents&){ return DAE_ERR_NOT_IMPLEMENTED; }	
 	//CAUTION: THIS IS REALLY NOT A GOOD SET UP. DON'T GIVE IT A TEMPORARY daeIORequest OBJECT!!!
-	daeIOSecond(const daeIORequest &tmp=daeIORequest(nullptr,nullptr,nullptr)):daeIOPlugin(&tmp){}
+	//daeIOSecond(const daeIORequest &tmp=daeIORequest(nullptr,nullptr,nullptr)):daeIOPlugin(&tmp){}
+	daeIOSecond(const daeIORequest &tmp=_empty_request()):daeIOPlugin(&tmp){}
+	//HACK: GCC 5 or so on Linux aggressively reuses the temporary's memory. SCHEDULED FOR REMOVAL?
+	static daeIORequest &_empty_request(){ static daeIORequest e(nullptr,nullptr,nullptr); return e; }
 };
 /**LEGACY
  * Implements an empty @c daeIOPlugin.

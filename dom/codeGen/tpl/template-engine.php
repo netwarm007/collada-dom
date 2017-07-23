@@ -567,7 +567,7 @@ function echoAnyEtcCPP()
 }
 function echoElementsCPP(&$meta,$elementsPtoMs,$N,$any) 
 {		
-	global $COLLADA_DOM;
+	global $_globals, $COLLADA_DOM;
 	$lo = layoutTOC($meta);
 	if(!empty($lo)||$any) echoCode("
 public: //Elements");		
@@ -606,8 +606,19 @@ public: //Elements");
 		$clash = getNameClash($nc,$ea->child,'__ELEMENT');
 		$name = $_elem.getFriendlyName($ea->child.$clash);
 		echoDoxygen(@$meta['element_documentation'][$ea->child],"\t",$ea->type);		
+		
+		//Suppress GCC warnings about the class name matching the member's.
+		$class = $ea->type; if($name===$class) 
+		{
+			//Could omit class keyword if recursive, but recursive__ is only
+			//required because of class, so leaving it so it doesn't appear as
+			//if __recursive is otherwise required.
+			if(!empty($_globals['recursive'][$class]))
+			$class.='__recursive'; $class = 'class '.$class;
+		}		
+		
 		echoCode("
-	DAEP::Child<$k,$ea->type,_,(_::_)&_::$_> $name;");
+	DAEP::Child<$k,$class,_,(_::_)&_::$_> $name;");
 	}
 	if(empty($singles))
 	{ 

@@ -6,8 +6,8 @@ endif()
 add_library(colladadom3D-big-obj OBJECT src/viewer_base.lite.cpp)
 #_bigobj is -Wa,-mbig-obj -g0 -O1 for GCC. See its definition in
 #the top-level script for more thoughts.
-set_source_files_properties(src/viewer_base.lite.cpp PROPERTIES
-	COMPILE_FLAGS "${_bigobj} ${_wincompile} ${_Wno-unused-but-set-variable}") 
+target_compile_options(colladadom3D-big-obj PRIVATE
+	${_winbigobj} ${_gccbigobj} ${_Wno-unused-but-set-variable}) 
 
 #-idirafter is needed for fx/include to hide its gl/glext.h file from
 #the include path, but it's GCC specific so just hoping glext.h is cross
@@ -66,7 +66,12 @@ STRING(REPLACE "\\" "/" CG_LIB_PATH "$ENV{CG_LIB_PATH}")
 else()
 STRING(REPLACE "\\" "/" CG_LIB_PATH "$ENV{CG_LIB64_PATH}")  
 endif()
-target_link_libraries(colladadom3D -L"${CG_LIB_PATH}" cg cgGL)
+target_link_libraries(colladadom3D -L"${CG_LIB_PATH}" Cg CgGL)
+
+#TESTING
+if(NOT WIN32 AND NOT CYGWIN)
+	target_link_libraries(colladadom3D stdc++ m)
+endif()
 
 #TODO: Create symlink to colladadom3D-X.Y?
 set_property(TARGET colladadom3D PROPERTY OUTPUT_NAME colladadom3d)

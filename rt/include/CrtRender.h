@@ -588,9 +588,13 @@ COLLADA_(public)
 	/**
 	 * Singleton Constructor
 	 * It will be a project to support multiple objects
-	 * of this type.
+	 * of this type.	 
+	 * 
+	 * @param OK is ensuring the order of intialization
+	 * doesn't matter. Ignore it.
 	 */
-	Frame():DB(),URL(""),Missing_Image("default.tga"),Loading()
+	Frame(daeOK=COLLADA::DOM_process_share.grant())
+	:DB(),URL(""),Missing_Image("default.tga"),Loading()
 	{
 		assert(this==&RT::Main); _InitMembers(); 
 	}

@@ -36,7 +36,7 @@ extern bool cfxCOMMON_InitGLSL(GLenum stage, xs::string src, GLuint &prog, xs::I
 	{
 		GLchar log[1024+1];
 		GL.GetShaderiv(sh,GL_INFO_LOG_LENGTH,&st);
-		st = std::min<int>(st,sizeof(log));
+		st = std::min(st,(GLint)sizeof(log));
 		GL.GetShaderInfoLog(sh,st,&st,log);
 		daeEH::Error<<"Unable to compile "<<error_name<<": "<<daeName(log,st);
 	}	
@@ -484,6 +484,17 @@ void cfxCOMMON_DEBUG_output(daeArray<char> &rewrite)
 bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 {
 	DataSharingSurvey load = load_int; load_int = 0; assert(load!=0);
+	
+	//Set default color multipliers to black or white.
+	//Do first, in case of early return owing to error.
+	{
+		const FX::Float4 b(0,1),w(1,1);	
+		FX::Profile_COMMON.Emission.Color.Value = load.Emission==0?b:w;
+		FX::Profile_COMMON.Ambient.Color.Value = load.Ambient==0?b:w;
+		FX::Profile_COMMON.Diffuse.Color.Value = load.Diffuse==0?b:w;
+		FX::Profile_COMMON.Specular.Color.Value = load.Specular==0?b:w;
+		FX::Profile_COMMON.Transparent.Color.Value = load.Transparent==0?b:w;
+	}
 
 	GL.DeleteProgram(GLSL); GLSL = 0;
 	 	
@@ -673,16 +684,6 @@ bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 		sp->Type = type;
 		sp->Size = size;
 		sp->GLSL = GL.GetUniformLocation(GLSL,buf);	
-	}
-
-	//Set default color multipliers to black or white.
-	{
-		const FX::Float4 b(0,1),w(1,1);	
-		FX::Profile_COMMON.Emission.Color.Value = load.Emission==0?b:w;
-		FX::Profile_COMMON.Ambient.Color.Value = load.Ambient==0?b:w;
-		FX::Profile_COMMON.Diffuse.Color.Value = load.Diffuse==0?b:w;
-		FX::Profile_COMMON.Specular.Color.Value = load.Specular==0?b:w;
-		FX::Profile_COMMON.Transparent.Color.Value = load.Transparent==0?b:w;
 	}
 
 	return true;

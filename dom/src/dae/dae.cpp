@@ -328,7 +328,17 @@ COLLADA_SUPPRESS_C(4355)
 }
 daeDOM::~daeDOM() 
 {  
-	if(_destructed) return; _destructed = true;
+	if(_destructed) //HACK: Let users manage a global DOM object.
+	{
+		//HACL: daeArray doesn't set its pointer back to a thunk.
+		//So do that.
+		new(this) daeArchive(*this); 
+		new(&_closedDocs) daeArchive(*this);
+		new(&_refResolvers) daeRefResolverList;
+
+		return;		
+	}	
+	_destructed = true;
 
 	daeDOM_outstanding--;
 

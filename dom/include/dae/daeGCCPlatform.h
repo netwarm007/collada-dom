@@ -15,7 +15,7 @@
 #define COLLADA_DOM_EXPORT __attribute__((__dllexport__))
 #define COLLADA_DOM_IMPORT __attribute__((__dllimport__))
 #else
-#define COLLADA_DOM_EXPORT __attribute__((__visibility__("default")))
+#define COLLADA_DOM_EXPORT __attribute__((__visibility__("default"),__used__))
 #define COLLADA_DOM_IMPORT __attribute__((__visibility__("default")))
 #endif
 

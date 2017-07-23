@@ -61,7 +61,7 @@ class daeOpaque
 	template<class T> operator T()const{ return *(T*)nullptr; }		
 
 COLLADA_(public) 
-
+	
 	daeOpaque(){ /*NOP*/ }
 	daeOpaque(const void *vp):_ptr((char*)vp){}
 	daeOpaque &operator=(void *vp)
@@ -74,15 +74,21 @@ COLLADA_(public)
 	const char *operator&()const{ return _ptr; }
 	daeOpaque operator[](daeOffset i){ return daeOpaque(_ptr+i); }
 	const daeOpaque operator[](daeOffset i)const{ return daeOpaque(_ptr+i); }						
+
+COLLADA_(public) //operator==()
+
+	struct daeOpaque2{ void *_ptr; }; //C++98/04 support
+	operator daeOpaque2&(){ return *(daeOpaque2*)this; }
+	operator daeOpaque2&()const{ return *(daeOpaque2*)this; }
 	bool operator==(daeOpaque b)const{ return _ptr==b._ptr; }
 	template<class T> friend //!
 	//Does T include const? Anyway, MSVC2015 can't compare two integral 
 	//constants without trying to apply these operators/luckily failing.
-	bool operator==(daeOpaque a, /*const*/ T &b){ return a._ptr==(char*)&b; }
+	bool operator==(daeOpaque2 a, /*const*/ T &b){ return a._ptr==(char*)&b; }
 	template<class T> friend //!
 	//Does T include const? Anyway, MSVC2015 can't compare two integral 
 	//constants without trying to apply these operators/luckily failing.
-	bool operator==(/*const*/ T &a, daeOpaque b){ return b._ptr==(char*)&a; }		
+	bool operator==(/*const*/ T &a, daeOpaque2 b){ return b._ptr==(char*)&a; }		
 };
 
 /**SKETCHY

@@ -264,6 +264,7 @@ includes the C++98 set. daeStringSet, etc. require one or the other.
 
 #include <typeinfo> //typeid
 #include <stdio.h>
+#include <stddef.h> //ptrdiff_t
 #include <stdlib.h>
 #include <stdarg.h>
 #include <iostream>

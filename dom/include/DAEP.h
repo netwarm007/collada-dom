@@ -1561,7 +1561,7 @@ template<class T>
  */
 struct NoValue
 {
-	typedef int type; 
+	typedef class undefined *type; 
 };
 template<int ID, class T, class CC, typename CC::_ PtoM>
 /**SFINAE, PARTIAL-SPECIALIZATION

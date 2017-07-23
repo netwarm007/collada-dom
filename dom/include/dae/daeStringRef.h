@@ -586,7 +586,10 @@ COLLADA_(public) //OPERATORS
 	}
 
 COLLADA_(public) //daeDBaseString API
-	/**
+	/**WARNING
+	 * @warning DON'T FORM A REFERENCE TO THE RETURNED REFERENCE
+	 * IF IT'S TO BE USED AFTER A SEMICOLON (;) STATEMENT. SORRY!
+	 *
 	 * The library should find a way to guarantee this always
 	 * works for strings originating from @c XS::Schema::getIDs()
 	 * registered attribute names.
@@ -598,7 +601,10 @@ COLLADA_(public) //daeDBaseString API
 		(daeString&)def = (daeString)((daeOffset)_string&~daeOffset(1));
 		assert('#'==def[0]); return (daeStringRef&)def;
 	}
-	/**
+	/**WARNING
+	 * @warning DON'T FORM A REFERENCE TO THE RETURNED REFERENCE
+	 * IF IT'S TO BE USED AFTER A SEMICOLON (;) STATEMENT. SORRY!
+	 *
 	 * This does the inverse of @c getID_fragment().
 	 */
 	const daeStringRef &getID_id
@@ -974,6 +980,13 @@ COLLADA_(public) //C++03 requirements
 	typedef const value_type &const_reference, *const_pointer;
 	typedef size_t size_type; typedef ptrdiff_t difference_type;
 	void construct(pointer p, value_type const &val){ new(p) value_type(val); }
+	#ifdef __GNUC__
+	//DEPRECATED IN C++17
+	//I can't find a ... less way to do this :(
+	template<class U, class... Args>
+	//template< class U, class... Args > void construct(U* p, Args&&... args );
+	void construct(U *p, Args&&...args){ new((void*)p) U(std::forward<Args>(args)...); }
+	#endif
 	void destroy(pointer p){ p->~value_type(); }
 	size_type max_size()const{ return std::numeric_limits<size_type>::max()/sizeof(value_type); }
 	pointer address(reference x)const{ return &x;}

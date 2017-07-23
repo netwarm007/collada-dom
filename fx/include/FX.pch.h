@@ -8,7 +8,7 @@
 #ifndef __COLLADA_FX__PCH_H__
 #define __COLLADA_FX__PCH_H__
 
-#include <math.h>
+#include <cmath> //math.h //want abs(float)
 #include <float.h>
 #include <vector>
 
@@ -111,6 +111,9 @@ COLLADA_(namespace)
 
 COLLADA_(namespace)
 {
+	//SCHEDULED FOR REMOVAL
+	using std::abs;
+
 	namespace FX
 	{
 		namespace xs = ::COLLADA::DAEP::xs;

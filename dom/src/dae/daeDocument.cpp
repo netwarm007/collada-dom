@@ -83,8 +83,10 @@ daeDocument::daeDocument(daeDOM *DOM):daeDoc(DOM,daeDocType::HARDLINK)
 	//This is to be sure !_isAny() and that it's not a system object.
 	assert(0!=e._getPShare()&&!e._isAny());
 
+	#ifdef _DEBUG
 	//This is the document's top-level content for NatvisFile.natvis.
 	__Natvis_content = ((_PseudoElement*)&e)->content.operator->();
+	#endif
 }
 daeDocument::~daeDocument() //VERY SKETCHY
 {

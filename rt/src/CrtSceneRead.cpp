@@ -1963,8 +1963,8 @@ struct RT::DBase::LoadScene_Physics
 	bool BindNode(const daeStringRef &target,
 	RT::RigidBody &ib, ColladaYY::const_instance_rigid_body &iv)
 	{
-		const daeStringRef &id = target.getID_id();
-		RT::Name fragment = id;
+		RT::Name fragment = target.getID_id();
+		const void *id = fragment.string;
 		const daeDocument *doc,*doc2 =
 		dae(visual_scene)->getDocument();
 		if('#'!=target[0])

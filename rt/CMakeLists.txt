@@ -9,7 +9,7 @@ add_definitions(-DPRECOMPILING_COLLADA_RT)
 
 if(NOT BULLET_FOUND)
 	try_external_libs(bullet bullet/trunk BULLET)
-	if(BULLET_INCLUDE_DIRS)
+	if(BULLET_LIBRARIES)
 		string(APPEND BULLET_INCLUDE_DIRS "/src")
 		if(NOT COLLADA_DOM__SINGLE_PRECISION)
 			set(USE_DOUBLE_PRECISION ON) #Bullet's option.
@@ -31,7 +31,7 @@ if(NOT IL_FOUND)
 		string(APPEND IL_INCLUDE_DIRS "/include")
 	endif()
 endif()
-if(NOT IL_INCLUDE_DIRS)
+if(NOT IL_LIBRARIES)
 	message("No DevIL image library, try 'ln -s /usr/local/lib/pkgconfig/IL.pc /lib/pkgconfig/IL.pc'?")
 	message("No DevIL image library, maybe try https://unix.stackexchange.com/questions/18182/tell-pkg-config-to-look-pc-files-also-in-usr-local-lib-pkgconfig-system-wide")
 	#For the PlayStation 3?

@@ -218,12 +218,12 @@ COLLADA_(public) //shaping functions
 	 * @note the second argument is a pointer, only because of
 	 * MSVC's C4700 warning; which can't seem to be suppressed.
 	 */
-	static void supercharge(daeArray<T> &dst, daeStringRef *C4700)
+	static void supercharge(daeArray<T> *dst, daeStringRef *C4700)
 	{
 		//If this is not done, the insterter will allocate a 
 		//string in the system string-table, and then allocate
 		//it again, the second time, in the array's string-table.
-		new(C4700) daeStringRef(dst.getObject());
+		new(C4700) daeStringRef(dst->getObject());
 	}
 
 	//EXPERIMENTAL
@@ -691,7 +691,7 @@ COLLADA_(public) typedef U Typist;
 			//"warning C4700: uninitialized local variable 'tmp' used."
 			//COLLADA_SUPPRESS_C(4700) //no effect???
 			//-Wmaybe-uninitialized is here in -On modes. GCC wants a full push/pop song and dance????
-			daeOK OK; T tmp; Typist::supercharge(dst,&tmp); 
+			daeOK OK; T tmp; Typist::supercharge(&dst,&tmp); 
 			for(;!src.eof();)
 			{
 				OK = Typist::encodeXML(src,tmp);
@@ -789,7 +789,8 @@ template<> struct daeTypist<daeBoolean> : daeTypist<> //xs:boolean
 			src.clear(); src.setf(src.flags()^src.boolalpha);
 			src >> dst;
 		}*/
-		char b[6]; src >> std::setw(sizeof(b)) >> b;
+		//+1 is for MSVC. I don't get why it doesn't set eofbit??
+		char b[6+1]; src >> std::setw(sizeof(b)) >> b;
 		switch(b[0])
 		{
 		case '0': case '1':

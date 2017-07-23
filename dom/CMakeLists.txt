@@ -41,8 +41,10 @@ if(COLLADA_DOM__LEGACY_LIBXML2)
 	endif()
 endif()
 
-if(LIBXML2_INCLUDE_DIRS)
-	add_definitions(${LIBXML2_DEFINITIONS} -DBUILDING_IN_LIBXML)	
+if(LIBXML2_LIBRARIES)
+	add_definitions(${LIBXML2_DEFINITIONS} -DBUILDING_IN_LIBXML)
+else()
+	set(LIBXML2_LIBRARIES "") #YUCK: CMake cries NOTFOUND :(
 endif()
 
 #HACK: The top-level script does this.
@@ -74,7 +76,6 @@ endif()
 
 set_target_properties(colladadom25 PROPERTIES 
 	POSITION_INDEPENDENT_CODE TRUE ##Assuming SHARED for time being.
-	CXX_STANDARD_REQUIRED OFF #Not sure if the viewer is C++11, but try to be C++98 here.
 	#"strings" are needed to guard against 'x called with incorrect number of arguments.' :(
 	COMPILE_FLAGS "${_wincompile}"
 	LINK_FLAGS "${_winlink}")

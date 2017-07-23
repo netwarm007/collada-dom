@@ -116,10 +116,13 @@ static void glutPassiveMotionFunc_callback(int x, int y)
 }
 static bool CreateGLUTWindow(int LArgC, char **LArgV, const char *title, int width, int height)
 {
+	//interferes with Windows Subsystem for Linux tests
+	#if(_WIN32)
 	#if defined(FREEGLUT) && defined(_DEBUG)
 	//fghIsLegacyContextRequested wants OpenGL>2.1??
 	glutInitContextVersion(3,0); //First version after 2.1.
 	glutInitContextFlags(GLUT_DEBUG);
+	#endif
 	#endif
 
 	glutInit(&LArgC,LArgV);

@@ -312,8 +312,16 @@ COLLADA_(public) //DEPRECATIONS
 COLLADA_(protected) //DATA-MEMBER
 
 	template<class> friend class daeSmartRef;
-	/* The pointer to the element which is being reference counted. */
-	daeObject *_ptr;
+
+	union
+	{
+		T *__viz; /** For debuggers eyes only. */
+
+		/**
+		 * The pointer to the element which is being reference counted. 
+		 */
+		daeObject *_ptr;
+	};
 };
 
 //---.
