@@ -990,7 +990,7 @@ COLLADA_(private)
 	//Visual Studio's misapplication of templates is much simpler.
 	static daeAttribute &_value_or_attribute(LAZY e)
 	{
-		if(1==S::is_content) return dae(e)->getMeta().getValue();
+		if(1==S::is_content) return *dae(e)->getMeta().getValue();
 		if(0==S::is_content) return dae(e)->getMeta().getAttributes()[S::name];
 	}
 

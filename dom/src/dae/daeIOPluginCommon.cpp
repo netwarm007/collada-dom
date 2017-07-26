@@ -7,6 +7,9 @@
  */
 #include <ColladaDOM.inl> //PCH
 
+#if defined(BUILDING_IN_LIBXML)\
+ || defined(BUILDING_IN_TINYXML)
+
 COLLADA_(namespace)
 {//-.
 //<-'
@@ -210,7 +213,7 @@ void daeIOPluginCommon::_push_back_xml_decl(daeContents &content, daeName versio
 }
 void daeIOPluginCommon::_xml_decl(const daeContents &content, daeString &version, daeString &encoding, daeString &standalone)
 {
-	version = "1.0"; encoding = "UTF-8"; standalone = "";	
+	version = "1.0"; encoding = "UTF-8"; standalone = "no";	
 	if(!content.data()->hasText()) 
 	return;
 	daeText &xml_decl = content[0].getKnownStartOfText();
@@ -240,5 +243,7 @@ void daeIOPluginCommon::_xml_decl(const daeContents &content, daeString &version
 
 //---.
 }//<-'
+
+#endif //BUILDING_IN_LIBXML || BUILDING_IN_TINYXML
 
 /*C1071*/

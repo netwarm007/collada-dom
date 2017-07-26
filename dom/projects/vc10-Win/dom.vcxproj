@@ -145,7 +145,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <TargetName>libcolladadom25-sd</TargetName>
+    <TargetName>colladadom25-sd</TargetName>
     <OutDir>../../../bin/Win32\</OutDir>
     <IntDir>../../build/vc9-Win-d/obj/$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -155,7 +155,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <TargetName>libcolladadom25-s</TargetName>
+    <TargetName>colladadom25-s</TargetName>
     <OutDir>../../../bin/Win32\</OutDir>
     <IntDir>../../build/vc9-Win/obj/$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -188,7 +188,7 @@
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <AdditionalDependencies>../../external-libs/libxml2/trunk/lib/libxml2.lib;../../external-libs/tinyxml/trunk/lib/tinyxml.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <OutputFile>$(OutDir)libcolladadom25-sd$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)colladadom25-sd$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -236,7 +236,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <OutputFile>$(OutDir)libcolladadom25-s$(TargetExt)</OutputFile>
+      <OutputFile>$(OutDir)colladadom25-s$(TargetExt)</OutputFile>
       <AdditionalDependencies>../../external-libs/libxml2/trunk/lib/libxml2.lib;../../external-libs/tinyxml/trunk/lib/tinyxml.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

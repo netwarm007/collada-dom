@@ -5,6 +5,7 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+#include <ColladaDOM.inl> //PCH //CMake file(GLOB)
 
 #ifdef NDEBUG
 #error Remove. (Must implement ZAE first.)

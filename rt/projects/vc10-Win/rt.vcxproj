@@ -85,13 +85,13 @@
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>libcolladadomRT</TargetName>
+    <TargetName>colladadomRT</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>libcolladadomRT</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>libcolladadomRT-d</TargetName>
+    <TargetName>colladadomRT-d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>libcolladadomRT-d</TargetName>
@@ -113,7 +113,7 @@
       <PrecompiledHeaderFile>RT.pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)libcolladadomRT-d.lib</OutputFile>
+      <OutputFile>$(OutDir)colladadomRT-d.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -148,7 +148,7 @@
       <StringPooling>true</StringPooling>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)libcolladadomRT.lib</OutputFile>
+      <OutputFile>$(OutDir)colladadomRT.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

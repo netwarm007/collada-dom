@@ -6,6 +6,8 @@
  * http://www.opensource.org/licenses/mit-license.php
  *
  */
+#include <ColladaDOM.inl> //PCH //CMake file(GLOB)
+
 //2016 NOTE: The above notice is copied from daeZAEUncrompressHandler.h.
 //(It could conceivably be false attribution.)
 

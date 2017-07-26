@@ -681,9 +681,11 @@ GLuint FX::Sampler::FindTexID(GLuint missing)
 	//Should this be done? Should samplers do so too?
 	//NOTE: This is done when the surface is created
 	//but it can be completed by an <instance_effect>.			
-	surf->Refresh();
+	surf->Refresh(); 
 	
-	assert(0!=surf->TexId); return surf->TexId;
+	assert(0!=surf->TexId||0==missing);
+
+	return surf->TexId;
 }
 GLuint FX::Sampler::FindTexID()
 {

@@ -85,13 +85,13 @@
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>ColladaDOM-3-reference-d</TargetName>
+    <TargetName>colladadom3d-d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>ColladaDOM-3-reference-d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>ColladaDOM-3-reference</TargetName>
+    <TargetName>colladadom3d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>ColladaDOM-3-reference</TargetName>
@@ -112,8 +112,8 @@
       <StringPooling>true</StringPooling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(IntDir)viewer_base.lite.obj;libcolladadomRT-d.lib;libcolladadomFX-d.lib;libcolladadom25-sd.lib;cg.lib;cgGL.lib;opengl32.lib;wsock32.lib;winmm.lib;DevIL.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Debug\LinearMath_Debug.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Debug\BulletCollision_Debug.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Debug\BulletDynamics_Debug.lib;..\..\external-libs\GLUI\CMake\Debug\glui_staticd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(OutDir)ColladaDOM-3-reference-d.exe</OutputFile>
+      <AdditionalDependencies>$(IntDir)viewer_base.lite.obj;colladadomRT-d.lib;colladadomFX-d.lib;colladadom25-sd.lib;cg.lib;cgGL.lib;opengl32.lib;wsock32.lib;winmm.lib;DevIL.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Debug\LinearMath_Debug.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Debug\BulletCollision_Debug.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Debug\BulletDynamics_Debug.lib;..\..\external-libs\GLUI\CMake\Debug\glui_staticd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)colladadom3d-d.exe</OutputFile>
       <AdditionalLibraryDirectories>..\..\..\bin\Win32;..\..\..\rt\external-libs\devil\DevIL Windows SDK\lib\x86\Release;$(CG_LIB_PATH);..\..\..\rt\external-libs\bullet\lib\vc8;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ManifestFile>$(IntDir)$(TargetFileName).intermediate.manifest</ManifestFile>
       <IgnoreSpecificDefaultLibraries>MSVCRT; LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
@@ -176,7 +176,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>libcolladadomRT.lib;libcolladadomFX.lib;libcolladadom25-s.lib;cg.lib;cgGL.lib;glut32.lib;opengl32.lib;wsock32.lib;winmm.lib;DevIL.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Release\LinearMath.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Release\BulletCollision.lib;..\..\..\rt\external-libs\bullet\CMake\lib\Release\BulletDynamics.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>$(OutDir)ColladaDOM-3-reference.exe</OutputFile>
+      <OutputFile>$(OutDir)colladadom3d.exe</OutputFile>
       <AdditionalLibraryDirectories>..\..\..\bin\Win32;..\..\..\rt\external-libs\devIL\win32\lib;$(CG_LIB_PATH);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>false</GenerateDebugInformation>

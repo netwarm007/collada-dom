@@ -119,82 +119,82 @@ public: //Elements
 	 * The COLLADA element may contain any number of library_animations elements.
 	 * @see XSD @c library_animations
 	 */
-	DAEP::Child<18,library_animations,_,(_::_)&_::_3> library_animations;
+	DAEP::Child<18,class library_animations,_,(_::_)&_::_3> library_animations;
 	/**
 	 * The COLLADA element may contain any number of library_animation_clips elements.
 	 * @see XSD @c library_animation_clips
 	 */
-	DAEP::Child<17,library_animation_clips,_,(_::_)&_::_4> library_animation_clips;
+	DAEP::Child<17,class library_animation_clips,_,(_::_)&_::_4> library_animation_clips;
 	/**
 	 * The COLLADA element may contain any number of library_cameras elements.
 	 * @see XSD @c library_cameras
 	 */
-	DAEP::Child<16,library_cameras,_,(_::_)&_::_5> library_cameras;
+	DAEP::Child<16,class library_cameras,_,(_::_)&_::_5> library_cameras;
 	/**
 	 * The COLLADA element may contain any number of library_controllerss elements.
 	 * @see XSD @c library_controllers
 	 */
-	DAEP::Child<15,library_controllers,_,(_::_)&_::_6> library_controllers;
+	DAEP::Child<15,class library_controllers,_,(_::_)&_::_6> library_controllers;
 	/**
 	 * The COLLADA element may contain any number of library_geometriess elements.
 	 * @see XSD @c library_geometries
 	 */
-	DAEP::Child<14,library_geometries,_,(_::_)&_::_7> library_geometries;
+	DAEP::Child<14,class library_geometries,_,(_::_)&_::_7> library_geometries;
 	/**
 	 * The COLLADA element may contain any number of library_effects elements.
 	 * @see XSD @c library_effects
 	 */
-	DAEP::Child<13,library_effects,_,(_::_)&_::_8> library_effects;
+	DAEP::Child<13,class library_effects,_,(_::_)&_::_8> library_effects;
 	/**
 	 * The COLLADA element may contain any number of library_force_fields elements.
 	 * @see XSD @c library_force_fields
 	 */
-	DAEP::Child<12,library_force_fields,_,(_::_)&_::_9> library_force_fields;
+	DAEP::Child<12,class library_force_fields,_,(_::_)&_::_9> library_force_fields;
 	/**
 	 * The COLLADA element may contain any number of library_images elements.
 	 * @see XSD @c library_images
 	 */
-	DAEP::Child<11,library_images,_,(_::_)&_::_10> library_images;
+	DAEP::Child<11,class library_images,_,(_::_)&_::_10> library_images;
 	/**
 	 * The COLLADA element may contain any number of library_lights elements.
 	 * @see XSD @c library_lights
 	 */
-	DAEP::Child<10,library_lights,_,(_::_)&_::_11> library_lights;
+	DAEP::Child<10,class library_lights,_,(_::_)&_::_11> library_lights;
 	/**
 	 * The COLLADA element may contain any number of library_materials elements.
 	 * @see XSD @c library_materials
 	 */
-	DAEP::Child<9,library_materials,_,(_::_)&_::_12> library_materials;
+	DAEP::Child<9,class library_materials,_,(_::_)&_::_12> library_materials;
 	/**
 	 * The COLLADA element may contain any number of library_nodes elements.
 	 * @see XSD @c library_nodes
 	 */
-	DAEP::Child<8,library_nodes,_,(_::_)&_::_13> library_nodes;
+	DAEP::Child<8,class library_nodes,_,(_::_)&_::_13> library_nodes;
 	/**
 	 * The COLLADA element may contain any number of library_materials elements.
 	 * @see XSD @c library_physics_materials
 	 */
-	DAEP::Child<7,library_physics_materials,_,(_::_)&_::_14> library_physics_materials;
+	DAEP::Child<7,class library_physics_materials,_,(_::_)&_::_14> library_physics_materials;
 	/**
 	 * The COLLADA element may contain any number of library_physics_models elements.
 	 * @see XSD @c library_physics_models
 	 */
-	DAEP::Child<6,library_physics_models,_,(_::_)&_::_15> library_physics_models;
+	DAEP::Child<6,class library_physics_models,_,(_::_)&_::_15> library_physics_models;
 	/**
 	 * The COLLADA element may contain any number of library_physics_scenes elements.
 	 * @see XSD @c library_physics_scenes
 	 */
-	DAEP::Child<5,library_physics_scenes,_,(_::_)&_::_16> library_physics_scenes;
+	DAEP::Child<5,class library_physics_scenes,_,(_::_)&_::_16> library_physics_scenes;
 	/**
 	 * The COLLADA element may contain any number of library_visual_scenes elements.
 	 * @see XSD @c library_visual_scenes
 	 */
-	DAEP::Child<4,library_visual_scenes,_,(_::_)&_::_17> library_visual_scenes;
+	DAEP::Child<4,class library_visual_scenes,_,(_::_)&_::_17> library_visual_scenes;
 	/**
 	 * The extra element may appear any number of times.
 	 * @see XSD @c extra
 	 */
-	DAEP::Child<3,extra,_,(_::_)&_::_18> extra;
+	DAEP::Child<3,class extra,_,(_::_)&_::_18> extra;
 
 	COLLADA_DOM_Z(1,1) union //NO-NAMES & ONLY-CHILDS
 	{
@@ -207,7 +207,7 @@ public: //Elements
 	 * The COLLADA element must contain an asset element.
 	 * @see XSD @c asset
 	 */
-	DAEP::Child<-1,asset,_,(_::_)&_::_Z> asset;
+	DAEP::Child<-1,class asset,_,(_::_)&_::_Z> asset;
 	/**
 	 * The scene embodies the entire set of information that can be visualized
 	 * from the contents of a COLLADA resource. The scene element declares the
@@ -265,7 +265,7 @@ public: //Elements
 	 * The extra element may appear any number of times.
 	 * @see XSD @c extra
 	 */
-	DAEP::Child<3,extra,_,(_::_)&_::_1> extra;
+	DAEP::Child<3,class extra,_,(_::_)&_::_1> extra;
 
 	COLLADA_DOM_Z(1,1) union //NO-NAMES & ONLY-CHILDS
 	{

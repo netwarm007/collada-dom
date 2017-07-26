@@ -2,6 +2,20 @@ if(CMAKE_SOURCE_DIR EQUAL CMAKE_CURRENT_SOURCE_DIR)
 message(FATAL_ERROR "Please run cmake out of the top-level directory")
 endif()
 
+####GLUT##################################
+
+if(NOT COLLADA_DOM__TARGET_PS3)
+	try_package(GLUT GLUT)
+	if(NOT GLUT_FOUND)
+		try_external_libs(freeglut freeglut/trunk/freeglut/freeglut GLUT)
+		if(GLUT_INCLUDE_DIRS)
+			string(APPEND GLUT_INCLUDE_DIRS "/include")
+		endif()
+	endif()
+	#GLUI? #EXPERIMENTAL	
+	add_definitions(-DNO_GLUI) 
+endif(NOT COLLADA_DOM__TARGET_PS3)
+
 #This is done separately because it can't use the precompiled header.
 add_library(colladadom3D-big-obj OBJECT src/viewer_base.lite.cpp)
 #_bigobj is -Wa,-mbig-obj -g0 -O1 for GCC. See its definition in
@@ -13,17 +27,6 @@ target_compile_options(colladadom3D-big-obj PRIVATE
 #the include path, but it's GCC specific so just hoping glext.h is cross
 #platform; written in terms of gl.h.
 include_directories(src ../fx/include ../rt/include)
-
-find_package(GLUT QUIET) #GLUT
-if(NOT GLUT_FOUND)
-message("No GLUT? Assuming PlayStation 3 build (probably not.)")
-add_definitions("-DNO_GLUT")
-endif()
-
-#EXPERIMENTAL
-#..\..\external-libs\GLUI\CMake\Debug\glui_staticd.lib
-#find_package(GLUI QUIET)
-add_definitions(-DNO_GLUI) #GLUI?
 
 if(COLLADA_DOM__TARGET_PS3)
 file(GLOB main 
@@ -54,10 +57,10 @@ target_link_libraries(colladadom3D #${_winlink}
 	${_whole-archive} colladadomRT colladadomFX colladadom25 ${_no-whole-archive})
 
 #RT components
-target_link_libraries(colladadom3D ${BULLET_LIBRARIES} -L/usr/local/lib ${IL_LIBRARIES})
+target_link_libraries(colladadom3D -L/usr/local/lib ${IL_LIBRARIES} ${BULLET_LIBRARIES})
 
 #3D components
-target_link_libraries(colladadom3D ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${GLUI_LIBRARIES} ) 
+target_link_libraries(colladadom3D ${GLUI_LIBRARIES} ${GLUT_LIBRARIES} ${OPENGL_LIBRARIES}) 
 
 #Special care is taken to avoid converting the Windows path to a Cygwin path.
 #add_definitions("-I\"$ENV{CG_INC_PATH}\"") just works. -l is just different.
@@ -66,11 +69,11 @@ STRING(REPLACE "\\" "/" CG_LIB_PATH "$ENV{CG_LIB_PATH}")
 else()
 STRING(REPLACE "\\" "/" CG_LIB_PATH "$ENV{CG_LIB64_PATH}")  
 endif()
-target_link_libraries(colladadom3D -L"${CG_LIB_PATH}" Cg CgGL)
+target_link_libraries(colladadom3D ${_libpath}${CG_LIB_PATH} Cg CgGL) ##${CG_LIB_PATH} #Must be done up above.
 
-#TESTING
+#Various standard libraries. Windows 10 Linux wants these. Just add what's missing :(
 if(NOT WIN32 AND NOT CYGWIN)
-	target_link_libraries(colladadom3D stdc++ m)
+	target_link_libraries(colladadom3D stdc++ m) #m is math
 endif()
 
 #TODO: Create symlink to colladadom3D-X.Y?

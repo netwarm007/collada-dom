@@ -84,13 +84,13 @@
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <TargetName>libcolladadomFX-d</TargetName>
+    <TargetName>colladadomFX-d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetName>libcolladadomFX-d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>libcolladadomFX</TargetName>
+    <TargetName>colladadomFX</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>libcolladadomFX</TargetName>
@@ -108,7 +108,7 @@
       <StringPooling>true</StringPooling>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)libcolladadomFX.lib</OutputFile>
+      <OutputFile>$(OutDir)colladadomFX.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -143,7 +143,7 @@
       <PrecompiledHeaderFile>FX.pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Lib>
-      <OutputFile>$(OutDir)libcolladadomFX-d.lib</OutputFile>
+      <OutputFile>$(OutDir)colladadomFX-d.lib</OutputFile>
     </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

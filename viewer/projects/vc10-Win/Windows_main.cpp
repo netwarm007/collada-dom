@@ -19,6 +19,7 @@
 #else
 #include "../../../viewer\external-libs/freeglut/include/GL/freeglut.h"
 #endif
+#ifndef CMAKE_INTDIR //HACK: MSCV insists on these existing.
 #ifndef FREEGLUT
 #pragma comment(lib,"glut32.lib")
 #ifdef NDEBUG
@@ -26,7 +27,8 @@
 #else
 #pragma comment(lib,"freeglut_staticd.lib")
 #endif
-#endif
+#endif 
+#endif //CMAKE
 #endif
 
 #include "../../src/viewer_base.inl"

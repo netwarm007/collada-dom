@@ -32,6 +32,7 @@ macro(_ f etc win)
 	set(_${f} ${sel})
 	endif()
 endmacro()
+_(libpath -L -LIBPATH:)
 _(whole-archive -Wl,--whole-archive 0)
 _(no-whole-archive -Wl,--no-whole-archive 0)
 _(no-strict-aliasing -fno-strict-aliasing 0) ##REMOVE ME
@@ -95,22 +96,7 @@ option(COLLADA_DOM__LEGACY_TINYXML "Try to build-in TinyXML I/O plugin" OFF)
 option(COLLADA_DOM__COMPILE_VIEWER "Build colladadom3d reference/viewer" ON)
 option(COLLADA_DOM__SINGLE_PRECISION "Use single-precision colladadom3d" ON)
 option(COLLADA_DOM__TARGET_PS3 "Use its ancient PlayStation3 entrypoint" OFF)
-#Enable PCH in dom/ output. Only use if you understand its pros/cons.
-if(NOT COLLADA_DOM__ENABLE_LIBRARY_PCH)
 option(COLLADA_DOM__ENABLE_LIBRARY_PCH "Use ColladaDOM.inl as PCH header" OFF)
-endif()
-
-#https://gitlab.kitware.com/cmake/cmake/issues/17060
-
-#Moving this so the DOM library can be built by itself.
-#if(MSVC) is not true until after project() is utilized.
-if(MSVC AND (COLLADA_DOM__COMPILE_VIEWER OR COLLADA_DOM__ENABLE_LIBRARY_PCH))
-	cmake_minimum_required(VERSION 3.9.0 FATAL_ERROR)
-	message(FATAL_ERROR #CMake can't do this over multiple lines???
-"Please use viewer/projects/vc10-Win/viewer.sln until https://gitlab.kitware.com/cmake/cmake/issues/17060 is resolved. Sorry. --COLLADA-DOM project"
-"\n"
-"The core DOM library can be built in a pinch by setting COMPILE_VIEWER and ENABLE_LIBRARY_PCH to OFF (so that precompiled-headers are not necessary.)")
-endif()
 
 ####FEATURE TESTS##############################
 
@@ -182,10 +168,7 @@ macro(try_external_libs l name NAME)
 	if(IS_DIRECTORY ${fullpath}) 
 		message(STATUS "compiling ${name} from sources and linking statically")		
 		add_subdirectory(external-libs/${name})
-		#PRIVATE is for install(EXPORT). An error is generated if the internal
-		#library is not exported. It inserts PRIVATE into target_link_libraries.
-		#(Or else there'd be an if/endif for every library. Thank god this works.)
-		list(APPEND ${NAME}_LIBRARIES PRIVATE ${l})
+		list(APPEND ${NAME}_LIBRARIES ${l})
 		set(${NAME}_INCLUDE_DIRS external-libs/${name})	
 	else()
 		message(STATUS "${fullpath} not found")

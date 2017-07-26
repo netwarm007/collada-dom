@@ -297,7 +297,7 @@ COLLADA_(public) //daePlatform::openURI() support
 	/**HELPER Helps @c daePlatform::openURI(). */
 	inline void fulfillRequestI(daeIOPlugin *I, daeDocRoot<> &doc)const 
 	{
-		return fulfillRequestI(daeGetMeta<ROOT>(),this,doc);
+		return fulfillRequestI(daeGetMeta<ROOT>(),I,doc);
 	}
 	template<class LAZY>
 	/**HELPER Helps @c daePlatform::openURI(). */
