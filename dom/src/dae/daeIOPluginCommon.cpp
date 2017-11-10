@@ -40,48 +40,16 @@ daeIOPluginCommon::daeIOPluginCommon()
 	daeCTC<(__combined_size_on_client_stack*1/3>=sizeof(*this))>();
 }
 
-daeOK daeIOPluginCommon::addDoc(daeDOM &DOM, daeDocRef &readDoc)
-{
-	readDoc = daeDocumentRef(DOM); if(readDoc!=nullptr) return DAE_OK;
-
-	assert(readDoc!=nullptr); return DAE_ERR_BACKEND_IO; //Unexpected.
+daeOK daeIOPluginCommon::addDoc(daeDocRef &out, daeMeta*)
+{		
+	out = daeDocumentRef(*getRequest().getDOM()); return DAE_OK;
 }
 
 daeOK daeIOPluginCommon::readContent(daeIO &IO, daeContents &content)
 {
 	_readFlags = daeElement::xs_anyAttribute_is_still_not_implemented;
 
-	bool OK = _read(IO,content);
-
-	/*REFERENCE: THIS IS NO LONGER RELEVANT
-	//#defined in daeZAEUncompressHandler.h
-	#ifdef __COLLADA_DOM__DAE_ZAE_UNCOMPRESS_HANDLER_H__
-	{
-		bool zaeRoot = false;
-		string extractedURI = ""; if(!OK)
-		{
-			daeZAEUncompressHandler zaeHandler(fileURI);
-			if(zaeHandler.isZipFile())
-			{
-				string rootFilePath = zaeHandler.obtainRootFilePath();
-				daeURI rootFileURI(*fileURI.getDOM(),cdom::nativePathToUri(rootFilePath));
-				if(OK=readFromFile(rootFileURI))
-				{
-					zaeRoot = true;	extractedURI = rootFileURI.str();
-				}
-				
-			}
-		}
-	}
-	#else //__COLLADA_DOM__DAE_ZAE_UNCOMPRESS_HANDLER_H__
-	{
-		#if defined(BUILDING_IN_LIBXML) && defined(BUILDING_IN_MINIZIP)
-		#error unexpected: #ifndef __COLLADA_DOM__DAE_ZAE_UNCOMPRESS_HANDLER_H__
-		#endif
-	}
-	#endif //COLLADA_daeZAEUncompressHandler*/
-	
-	if(!OK)
+	if(!_read(IO,content))
 	{
 		const daeURI *URI = getRequest().remoteURI;
 		daeEH::Error<<"Failed to load "<<(URI!=nullptr?URI->data():"XML document from memory");

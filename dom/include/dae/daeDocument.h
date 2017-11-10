@@ -59,7 +59,7 @@ class daeDoc : public daeObject
 	friend class daeArchive;
 	friend class daeDocument;		
 
-COLLADA_(public) //DATA-MEMBERS
+COLLADA_(protected) //DATA-MEMBERS
 	//SUB-OBJECT
 	/**
 	 * URI of the document, archive, or DOM working directory. 
@@ -77,11 +77,11 @@ COLLADA_(public) //DATA-MEMBERS
 	 * @see @c daeDOM::getEmptyURI() Doxygentation.
 	 */
 	daeURI_size<0> _uri;
-	/** 
+	/**ZAE 
 	 * If ARCHIVE, this holds the ZAE's root DAE. 
 	 */
 	daeDocRef _link;
-	/** 
+	/**ZAE 
 	 * If @c _archive==this, then this is the @c daeDOM.
 	 */
 	daeArchive *_archive; 
@@ -133,6 +133,15 @@ COLLADA_(public)
 	inline bool isArchive()const
 	{
 		return getDocType()==daeDocType::ARCHIVE&&_archive!=(void*)this; 
+	}
+	/**
+	 * @return Returns @c true if this @c daeDoc is in @a a.
+	 */
+	inline bool inArchive(const daeArchive *a)const
+	{
+		const daeArchive *p = _archive;
+		while(p!=((daeDoc*)p)->_archive&&a!=p)
+		p = ((daeDoc*)p)->_archive; return a==p;
 	}
 
 	/**NOT-THREAD-SAFE
@@ -199,7 +208,7 @@ COLLADA_(public)
 	 * @remarks Post-2.5 returns @c const types for upstream "getter" APIs. 
 	 */
 	inline const daeArchive &getArchive()const{ return *_archive; }
-	
+
 	/** 
 	 * Gets the links' real document.
 	 * "getDocument" is interchangeable with @c daeElement's.
@@ -382,12 +391,15 @@ COLLADA_(private) //INTERNALS
 
 #if defined(BUILDING_COLLADA_DOM) || defined(__INTELLISENSE__)
 
+		/** @see getFragment() doxygentation. */
+		mutable daeStringRef _fragment;
+
 		//GCC (template parameter lists.)
 		template<class,class> friend class DAEP::Elemental;
 
 		struct _PseudoElement 
 		:
-		public daeElemental<_PseudoElement>, public DAEP::Schema<2>
+		public daeElemental<_PseudoElement>, public DAEP::Schema<32+2>
 		{
 		COLLADA_(public) //DAEP::Object method
 			/**
@@ -452,6 +464,20 @@ COLLADA_(public) ~daeDocument(){ assert(0); }
 #endif //BUILDING_COLLADA_DOM
 
 COLLADA_(public)	
+	/**ZAE
+	 * Gets the fragment part of the document's URL that was removed
+	 * when @c this document was opened or was later associated with
+	 * it. Any action that changes the document's URL can cause this
+	 * fragment to change or be cleared. Users are free to change it
+	 * to any value at any time, as if changing a browser's location.
+	 *
+	 * @note This API was added to support the <dae_root> concept of
+	 * ZAE archives. @c daeZAEPlugin prefers the URL's fragment over
+	 * the fragment supplied by <dae_root>.
+	 */ 	
+	LINKAGE daeStringRef &getFragment()const
+	SNIPPET( return _fragment; )
+
 	/**
 	 * Gets the contents-array of this document.
 	 * @note "getContents" is designed to match 2.x generated classes.
@@ -479,7 +505,7 @@ COLLADA_(public)
 	 */
 	inline daeMeta &getMeta()const
 	{
-		return _getPseudoElement().getMeta().jumpIntoTOC(0).getChild();
+		return _getPseudoElement().getMeta().jumpIntoTOC(1).getChild();
 	}
 	/**
 	 * It seems harmless to let this be set directly if the document

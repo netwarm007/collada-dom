@@ -481,20 +481,26 @@ void cfxCOMMON_DEBUG_output(daeArray<char> &rewrite)
 	//daeEH::Verbose<<"DEBUG REWRITE FOLLOWS\n"<<rewrite;
 }
 
+void FX::Profile_COMMON::Color_or_Texture::FinalizeBWTextureColors()
+{
+	DataSharingSurvey &load = FX::Profile_COMMON.Load;
+	if(load==0) return;
+
+	const FX::Float4 b(0,1),w(1,1);	
+	FX::Profile_COMMON.Emission.Color.Value = load.Emission==0?b:w;
+	FX::Profile_COMMON.Ambient.Color.Value = load.Ambient==0?b:w;
+	FX::Profile_COMMON.Diffuse.Color.Value = load.Diffuse==0?b:w;
+	FX::Profile_COMMON.Specular.Color.Value = load.Specular==0?b:w;
+	FX::Profile_COMMON.Transparent.Color.Value = load.Transparent==0?b:w;
+}
+
 bool FX::Profile_COMMON::Internals::Reprogram(int &load_int)
 {
-	DataSharingSurvey load = load_int; load_int = 0; assert(load!=0);
-	
 	//Set default color multipliers to black or white.
 	//Do first, in case of early return owing to error.
-	{
-		const FX::Float4 b(0,1),w(1,1);	
-		FX::Profile_COMMON.Emission.Color.Value = load.Emission==0?b:w;
-		FX::Profile_COMMON.Ambient.Color.Value = load.Ambient==0?b:w;
-		FX::Profile_COMMON.Diffuse.Color.Value = load.Diffuse==0?b:w;
-		FX::Profile_COMMON.Specular.Color.Value = load.Specular==0?b:w;
-		FX::Profile_COMMON.Transparent.Color.Value = load.Transparent==0?b:w;
-	}
+	Color_or_Texture::FinalizeBWTextureColors();
+	//ORDER-IS-IMPORTANT
+	DataSharingSurvey load = load_int; load_int = 0; assert(load!=0);	
 
 	GL.DeleteProgram(GLSL); GLSL = 0;
 	 	

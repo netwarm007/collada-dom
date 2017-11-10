@@ -46,7 +46,7 @@ struct UnplugIO
 
 struct CloseIO
 {
-	daePlatform &p; daeIO *IO;
+	daeIOController &p; daeIO *IO;
 
 	daeIO *operator=(daeIO *io)
 	{
@@ -56,7 +56,7 @@ struct CloseIO
 		return io;
 	}
 
-	CloseIO(daePlatform &p):p(p),IO(nullptr){}
+	CloseIO(daeIOController &p):p(p),IO(nullptr){}
 
 	~CloseIO(){ if(IO!=nullptr) p.closeIO(IO); } 	
 };

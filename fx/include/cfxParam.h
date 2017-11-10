@@ -135,6 +135,7 @@ COLLADA_(public)
 	void Apply(){ SetParam = this; ParamToSet->SetParam = this; }
 
 	Surface(GLuint TexId, FX::Surface *parent=nullptr)
+	COLLADA_SUPPRESS_C(4355)
 	:TexId(TexId),SetParam(this),ParamToSet(this)
 	{
 		if(parent!=nullptr) ParamToSet = parent;

@@ -331,7 +331,7 @@ COLLADA_(private) //OBJECT MEMBERS
 		#ifdef NDEBUG
 		#error Add string-ref support via a ref-release flag.
 		#endif
-		unsigned int resolved:1,any:1,attached:1; 
+		unsigned int resolved:1,any:1,attached:1,directory_like:1; 
 
 		_Flags(){ (unsigned&)*this = 0; }
 	};
@@ -447,6 +447,15 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline void setIsAttached(){ _getFlags().attached = true; }
 
+	/**ZAE
+	 * Gets a flag that tells if @c this URI needs a / if it's a base.
+	 */
+	inline bool getIsDirectoryLike()const{ return _getFlags().directory_like!=0; }
+	/**ZAE
+	 * Sets a flag that tells if @c this URI needs a / if it's a base.
+	 */
+	inline void setIsDirectoryLike(){ _getFlags().directory_like = true; }
+
 	/**
 	 * Sets the pointer to the @c daeObject that contains this ref.
 	 * @param c the containing @c daeObject.
@@ -497,7 +506,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * @note @resolve() does an assertion check if the flag is not set.
 	 * @param DOM @c getDOM() is used if it is @c nullptr or unspecified. 
 	 */
-	LINKAGE daeOK resolve(const daeDOM *DOM=nullptr)const;	
+	LINKAGE daeOK resolve(const daeArchive *DOM_or_ZAE=nullptr)const;	
 			 
 	/**SCHEDULED FOR REMOVAL?
 	 * Pre-2.5 this was "reset" and marked as internal, 
@@ -950,7 +959,7 @@ COLLADA_(public) //UTILITIES
 	 * @param RFC3986_ops are bitwise options, taken from @c daeURI_base::RFC3986.
 	 * @return Returns the result of @c setURI().
 	 */
-	LINKAGE daeOK resolve_RFC3986(const daeDOM&, int RFC3986_ops=RFC3986::ALL);
+	LINKAGE daeOK resolve_RFC3986(const daeArchive &DOM_or_ZAE, int RFC3986_ops=RFC3986::ALL);
 
 	/**HELPER
 	 * @c baseLookup() depends on these conditions to produce a correct URI.
@@ -980,7 +989,7 @@ COLLADA_(public) //UTILITIES
 	 * @param base will not be @c nullptr upon return.
 	 * @return Returns @a base unaltered if @c false==is_baseLookup_friendly().
 	 */
-	LINKAGE const_daeURIRef &baseLookup(const daeDOM &DOM, const_daeURIRef &base)const;
+	LINKAGE const_daeURIRef &baseLookup(const daeArchive &DOM_or_ZAE, const_daeURIRef &base)const;
 
 	/**WARNING
 	 * @warning Doesn't say the URIs are resolved!!
@@ -1000,7 +1009,7 @@ COLLADA_(public) //UTILITIES
 
 		if(b.extent<a.extent) a.extent = b.extent; 
 
-		return a==b&&(0==b.extent||'/'==b[b.extent-1]||'/'==a[b.extent]);
+		return a==b&&(0==b.extent||'/'==b.view[b.extent-1]||'/'==a.view[b.extent]);
 	}
 
 	/**WARNING, LEGACY

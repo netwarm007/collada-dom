@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -29,6 +29,7 @@
     <ClInclude Include="..\..\include\dae.h" />
     <ClInclude Include="..\..\include\DAEP.h" />
     <ClInclude Include="..\..\include\dae\daeArray.h" />
+    <ClInclude Include="..\..\include\dae\daeAtlas.h" />
     <ClInclude Include="..\..\include\dae\daeAtomicType.h" />
     <ClInclude Include="..\..\include\dae\daeContent.h" />
     <ClInclude Include="..\..\include\dae\daeDatabase.h" />
@@ -58,7 +59,6 @@
     <ClInclude Include="..\..\include\dae\daeTypes.h" />
     <ClInclude Include="..\..\include\dae\daeURI.h" />
     <ClInclude Include="..\..\include\dae\daeWin32Platform.h" />
-    <ClInclude Include="..\..\include\dae\daeZAEUncompressHandler.h" />
     <ClInclude Include="..\..\include\dae\domAny.h" />
     <ClInclude Include="..\..\include\LINKAGE.HPP" />
     <ClInclude Include="..\..\include\modules\daeSTLDatabase.h" />
@@ -81,7 +81,6 @@
     <ClCompile Include="..\..\src\dae\daeTinyXMLPlugin.cpp" />
     <ClCompile Include="..\..\src\dae\daeURI.cpp" />
     <ClCompile Include="..\..\src\dae\daeZAEUncompressHandler.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\dae\domAny.cpp" />
@@ -111,7 +110,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -125,7 +124,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -168,10 +167,10 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>EXPORTING_COLLADA_DOM;BUILDING_IN_LIBXML;BUILDING_IN_TINYXML;COLLADA_DOM_UNORDERED_SET;COLLADA_DOM_UNORDERED_MAP;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXPORTING_COLLADA_DOM;BUILDING_IN_LIBXML;BUILDING_IN_TINYXML;BUILDING_IN_ZLIB;COLLADA_DOM_UNORDERED_SET;COLLADA_DOM_UNORDERED_MAP;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableLanguageExtensions>true</DisableLanguageExtensions>
       <ShowIncludes>false</ShowIncludes>
-      <AdditionalIncludeDirectories>..\..\include;..\..\external-libs\tinyxml\trunk;..\..\external-libs\libxml2\trunk\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\include;..\..\external-libs\tinyxml\trunk;..\..\external-libs\libxml2\trunk\include;..\..\external-libs\minizip\trunk</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <StringPooling>true</StringPooling>
       <PrecompiledHeaderFile>ColladaDOM.inl</PrecompiledHeaderFile>

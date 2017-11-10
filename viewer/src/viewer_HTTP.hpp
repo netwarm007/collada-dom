@@ -8,13 +8,7 @@
 #include "viewer_base.pch.h"
 
 #define HTTP_AGENT "ColladaDOM 3 Reference Viewer"
-
-#ifdef _WIN32
-#ifndef MSG_WAITALL
-#define MSG_WAITALL 8
-#endif
-#endif
-
+		   
 //urlencode
 static std::vector<char> URI_to_ASCII_buf;
 static char *URI_to_ASCII(COLLADA::RT::Name URI)
@@ -42,12 +36,17 @@ struct HTTP_agent
 
 	inline size_t transferred(){ return statistics[0]; }
 
+	//ZAE: Content-Length isn't necessarily the file size.
 	inline size_t ContentLength(){ return statistics[1]; }
+	inline size_t *ContentRange(){ return content_range; }
 	
 	static bool _no_progress(const HTTP_agent*){ return true; }
-	HTTP_agent(const COLLADA::daeIORequest*, bool progress(const HTTP_agent*)=_no_progress); 
+	HTTP_agent(const COLLADA::daeIORequest*, daeIO::Range *rngI, bool progress(const HTTP_agent*)=_no_progress); 
 	HTTP_agent():socket(-1){}
 	~HTTP_agent();
+
+	//EXPERIMENTAL ZAE-SUPPORT
+	size_t content_range[3]; 
 	
 	bool (*progress)(const HTTP_agent*); void *progress_dialog;	
 
@@ -55,7 +54,7 @@ struct HTTP_agent
 	//pulse is a running time. Bs is for bytes/s.
 	//statistics[0] is bytes downloaded. And [1]
 	//is the total size downloaded, which cannot
-	//change under daeIO model. 
+	//change under daeIO model.
 	COLLADA::RT::Float pulse; int pulse_Bs, statistics[4]; 
 
 	int socket; inline bool connected()
@@ -73,7 +72,7 @@ private: //INTERNAL
 
 	char resume_RFC1123[30/*INTERNET_RFC1123_BUFSIZE*/];
 
-	void resume_connect(),resume_disconnect();
+	void resume_connect(int=-1),resume_disconnect();
 
 	inline bool resume()
 	{
@@ -93,9 +92,15 @@ void HTTP_agent::resume_disconnect()
 		socket = -1;
 	}
 }	
-void HTTP_agent::resume_connect()
+void HTTP_agent::resume_connect(int bytes)
 {	
-	if(0==transferred())
+	char bytestr[33] = ""; if(bytes>=0)
+	{
+		if(bytes!=0) bytes-=1; //Inclusive. Must download at least 1?
+		itoa(content_range[0]+bytes,bytestr,10);
+	}
+
+	if('\0'==resume_RFC1123[0]) //if(0==transferred())
 	{
 		resume_RFC1123[29] = 1; //...
 		#ifndef _WIN32
@@ -109,7 +114,8 @@ void HTTP_agent::resume_connect()
 	}
 	char headers[1024] = "", head[4096];
 	snprintf(headers,sizeof(headers),
-	"If-Unmodified-Since: %s\r\nRange: bytes=%d-\r\n",resume_RFC1123,statistics[0]);	
+	"If-Unmodified-Since: %s\r\nRange: bytes=%d-%s\r\n"
+	,resume_RFC1123,content_range[0]+statistics[0],bytestr);	
 					
 	#ifdef _WIN32
 	static WSADATA data; WSAStartup(0x202,&data);	
@@ -167,11 +173,16 @@ static void HTTP_legalize(char *inout)
 	}
 }*/
 
-HTTP_agent::HTTP_agent(const daeIORequest *IO, bool cb(const HTTP_agent*))
+HTTP_agent::HTTP_agent(const daeIORequest *IO, daeIO::Range *rngI, bool cb(const HTTP_agent*))
 {	
 	//HACK! Don't use memset/placement-new.
 	memset(this,0x00,sizeof(*this)); progress = cb;
 	new(&urlencode) daeURI(URI_to_ASCII(IO->remoteURI->getURI_upto<'#'>())); 
+	if(rngI!=nullptr&&0!=rngI->size())
+	{
+		content_range[0] = rngI->first;
+		content_range[1] = rngI->second;
+	}
 
 	//Resolving will replace the percent-encodings with friendly UTF8.
 	urlencode.setIsResolved(); assert(IO->remoteURI->getIsResolved()); 
@@ -192,7 +203,7 @@ HTTP_agent::HTTP_agent(const daeIORequest *IO, bool cb(const HTTP_agent*))
 	
 	int http_status = 0;
 
-	resume_connect();
+	resume_connect(rngI==nullptr?-1:(int)rngI->size());
 	//in->thread = CreateThread
 	//(0,0,(LPTHREAD_START_ROUTINE)HTTP_threadmain,in,0,&in->id);
 	{	
@@ -219,9 +230,32 @@ HTTP_agent::HTTP_agent(const daeIORequest *IO, bool cb(const HTTP_agent*))
 			else switch(http_status) //HACK this is holding the download size.
 			{
 			case 200: case 206: case 412: //Expecting 206 (Partial-Content)
+			{	
+				statistics[1] = atoi(p+sizeof(tok)-1);				
 
-				statistics[1] = atoi(p+sizeof(tok)-1); break;
-			}
+				//NEW: Content-Length isn't necessarily the file's size.
+				char *p = strstr(buf,"\r\nContent-Range: ");
+				if(p!=nullptr)
+				{
+					while(*p!='\0'&&!isdigit(*p)) *p++;
+					content_range[0] = atoi(p); 
+					while(*p!='\0'&&*p++!='-');
+					content_range[1] = std::max<int>(atoi(p),content_range[0]);
+					while(*p!='\0'&&*p++!='/');
+					content_range[2] = std::max<int>(atoi(p),content_range[1]);
+				}
+				else if(0!=statistics[1])
+				{
+					assert(0);
+					content_range[0] = statistics[0];
+					content_range[1] = statistics[0]+statistics[1]-1;
+					content_range[2] = content_range[1]+1;
+				}				
+				if(rngI!=nullptr)				
+				rngI->limit_to_size(content_range[2]);
+
+				break;
+			}}
 			p = strstr(buf,"\r\n\r\n"); 		
 			if(p==nullptr) 
 			{	
@@ -231,7 +265,7 @@ HTTP_agent::HTTP_agent(const daeIORequest *IO, bool cb(const HTTP_agent*))
 			}
 			else //Clear the header from the buffer?
 			{				
-				lim = p-buf+4; len = recv(socket,buf,lim,MSG_WAITALL); 
+				lim = p-buf+4; len = recv(socket,buf,lim,0); 
 				assert(lim==len);				
 			}
 		}
@@ -248,6 +282,8 @@ HTTP_agent::HTTP_agent(const daeIORequest *IO, bool cb(const HTTP_agent*))
 	}
 	else switch(http_status)
 	{
+	case 200: case 206: assert(0); //Can GET download 0Bs?
+
 	case 301: //TODO: Redirect.
 	case 302:
 	case 303:
@@ -293,7 +329,7 @@ daeOK HTTP_agent::readIn(void *in, size_t chars)
 	{
 		//hurry up the last bit
 		I len = std::min<I>(remaining,bufmost);
-		len = recv(socket,bufp,len,MSG_WAITALL);
+		len = recv(socket,bufp,len,0);
 
 		if(0==len) //Resume download?
 		{

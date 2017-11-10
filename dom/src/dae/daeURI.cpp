@@ -26,11 +26,11 @@ daeOK daeURI_base::refresh()const
 	if(DOM==nullptr) return DAE_ERR_INVALID_CALL;
 	return DOM->getPlatform().resolveURI(*this,*DOM);
 }
-daeOK daeURI_base::resolve(const daeDOM *DOM)const
+daeOK daeURI_base::resolve(const daeArchive *DOM_or_ZAE)const
 {
-	if(getIsResolved()||DOM==nullptr&&nullptr==(DOM=getDOM()))
+	if(getIsResolved()||DOM_or_ZAE==nullptr&&nullptr==(DOM_or_ZAE=getDOM()))
 	return DAE_ERR_INVALID_CALL;			
-	daeError out = DOM->getPlatform().resolveURI(*this,*DOM);
+	daeError out = DOM_or_ZAE->getDOM()->getPlatform().resolveURI(*this,*DOM_or_ZAE);
 	assert(out!=DAE_OK||getIsResolved()); return out;
 }
 
@@ -239,6 +239,13 @@ nonquery:			if(p[0]=='?'&&'/'==toslash(p[1])) p++;
 		{
 			_size = _fragment+1; assert('#'==URI[_size-2]);
 			_this()._refString.setString(*this,URI,_size,'\0');
+
+			//Retain the fragment. This feature was added for ZAE
+			//but here it is only a courtesy on the user's behalf.
+			//Should non-document "docs" have a fragment it would
+			//be inherited by the likes of daeDOM.
+			if(doc->isDocument())			
+			doc->_getDocument()->getFragment() = URI+_size;
 		}
 		else _this()._refString.setString(*this,URI,_size);
 	}
@@ -258,13 +265,24 @@ void daeURI_base::_setURI_concat(const daeURI &base, size_t trim, daeString rel)
 	else switch(trim==0?toslash(*rel):-1) //-1 if ../ trimming
 	{
 	case '/': i = base.getURI_pathCP(); break; //root local
-	default: i = base.getURI_filenameCP(); break; //path local
+	default: 
+
+		if(!base.getIsDirectoryLike()) //NEW
+		{			
+			i = base.getURI_filenameCP(); break; //path local
+		}		
+
 	case '?': i = base.getURI_uptoCP<'?'>(); break; //query[fragment]
 	case '\0': //RFC3986 says remove the base's #
 	case '#': i = base.getURI_uptoCP<'#'>(); break; //local fragment 	
 	}
 	daeArray<daeStringCP,520> buf; 
-	buf.assign(base.data(),i+1);	
+	buf.assign(base.data(),i+1);
+	if(base.getIsDirectoryLike()&&'/'!=toslash(buf[i-1])) //NEW
+	{
+		buf[i++] = '/'; buf.push_back('\0');
+	}
+
 	if(i<=base.getURI_filenameCP()) //Not ? nor #?
 	{
 		//Trim the ../ directives?
@@ -517,7 +535,7 @@ static void daeURI_cpp_RFC3986_lower(daeStringCP *p, const daeStringCP *const pN
 		p++; *p = toupper(*p); p++; *p = toupper(*p);
 	}
 }
-daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
+daeOK daeURI_base::resolve_RFC3986(const daeArchive &DOM_or_ZAE, int ops)
 {	
 	//This is made quite complicated to allow for 
 	//document-less relative/compounded URIs that
@@ -525,7 +543,7 @@ daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
 	//that they are resolved.	
 	const_daeURIRef base;	
 	if(ops&RFC3986::rebase)
-	baseLookup(DOM,base);	
+	baseLookup(DOM_or_ZAE,base);	
 	daeStringCP *buf_str; 
 	daeArray<daeStringCP,520> buf;
 	if(base!=nullptr)
@@ -577,14 +595,30 @@ daeOK daeURI_base::resolve_RFC3986(const daeDOM &DOM, int ops)
 	//Note: _setURI will mark itself unresolved.
 	daeOK out = _setURI(pp,base); setIsResolved(); return out;
 }
-const_daeURIRef &daeURI_base::baseLookup(const daeDOM &DOM, const_daeURIRef &base)const
+const_daeURIRef &daeURI_base::baseLookup(const daeArchive &DOM_or_ZAE, const_daeURIRef &base)const
 {
 	//If these conditions are not met then the base will probably produce a bad URI.
 	if(!is_baseLookup_friendly()) return base;
 
+	const daeDOM &DOM = *DOM_or_ZAE->getDOM();
+
 	const_daeDocRef doc = getDoc();
-	base = &(doc==nullptr?DOM.getDefaultBaseURI():doc->getDocURI());
-	if(this==base) base = &(doc!=nullptr?DOM.getDefaultBaseURI():DOM.getEmptyURI());
+	//Factoring in archives for ZAE.
+	//base = &(doc==nullptr?DOM.getDefaultBaseURI():doc->getDocURI());
+	if(doc!=nullptr)
+	{
+		base = &doc->getDocURI();
+	}
+	else if(!DOM_or_ZAE.isArchive())
+	{	
+		assert(&DOM==&DOM_or_ZAE);
+		base = &DOM.getDefaultBaseURI();
+	}
+	else base = &DOM_or_ZAE.getBaseURI();
+	if(this==base) //Recursive?
+	{
+		base = &(doc!=nullptr?DOM.getDefaultBaseURI():DOM.getEmptyURI());
+	}
 	assert(base->getIsResolved()); return base;
 }	
 	  
@@ -595,40 +629,37 @@ typedef struct //C++98/03 (C2918)
 		return strcmp(a->getDocURI().data(),b)<0; 
 	}
 }daeURI_docHookup_less;	
+static const daeDocRef *_docHookup_reverse_lb
+(const daeDocRef *b, const daeDocRef *e, daeString URI)
+{
+	daeURI_docHookup_less less; //C++98/03 (C2918)	
+	//Could dp upper_bound-1 here, but it's a little 
+	//less clear and requires 2 comparator overloads.
+	typedef std::reverse_iterator<const daeDocRef*> r;
+	return &std::lower_bound(r(e),r(b),URI,less)[-1];
+}
 template<int doing_docLookup>
 //NOTE: THIS IS DOUBLING AS THE docLookup() PROCEDURE.
 void daeURI_base::_docHookup(daeArchive &a, daeDocRef &reinsert)const
 {
-	daeURI_docHookup_less less; //C++98/03 (C2918)	
-
 	daeString URI = data();		
 	const daeArray<daeDocRef> &docs = a.getDocs();
 	const daeDocRef *b = docs.begin(), *e = docs.end();	
-	const daeDocRef *lb = std::lower_bound(docs.begin(),e,URI,less);
-	
-	daeDoc *match = nullptr; 
-	
-	a._whatsupDoc = lb-b; //hint
-
-	if(lb!=b) //looking behind by one
+	const daeDocRef *lb = _docHookup_reverse_lb(b,e,URI);
+										  	
+	//This is much simpler with "reverse lower bound" behavior.
+	//That is get the item that is less-than-or-equal-to. But 
+	//STL doesn't have a proper way to do this without reverse.
+	daeDoc *match = nullptr; if(lb!=e)
 	{
-		const daeURI &behind = lb[-1]->getDocURI();
-
-		//First handle case where # thows off lower_bound.
-		if(behind._size==_fragment&&referencesURI(behind)) 
-		{
-			match = lb[-1]; a._whatsupDoc-=1; //hint
-		}
-		else if(lb[-1]->isArchive()&&transitsURI(behind)) //Recurse?
-		{
-			return _docHookup<doing_docLookup>(static_cast<daeArchive&>(*lb[-1]),reinsert);
-		}		
+		match = *lb; //Maybe?
+		if(!referencesURI(match->getDocURI()))
+		if(match->isArchive()&&transitsURI(match->getDocURI()))
+		return _docHookup<doing_docLookup>(*(daeArchive*)match,reinsert);							
+		else match = nullptr; //Not.
+		a._whatsupDoc = lb-b; //hint
 	}
-	//Still unmatched?
-	if(match==nullptr&&lb!=e&&referencesURI((*lb)->getDocURI()))
-	{
-		match = *lb;
-	}
+	else a._whatsupDoc = 0; //reverse_iterators are weird!
 	
 	if(doing_docLookup) //docLookup mode?
 	{
@@ -654,6 +685,99 @@ void daeURI_base::_docLookup(const daeArchive &a, daeDocRef &result)const
 {
 	_docHookup<1>(const_cast<daeArchive&>(a),result);
 }
+
+static daeRefView daeURI_neighbors(const daeURI *a, const daeURI *URI)
+{
+	daeRefView o; 
+	if(a==nullptr||a->getURI_authority()!=URI->getURI_authority()) 
+	{
+		o.view = nullptr; o.extent = 0;
+	}
+	else o = a->getURI_path(); return o;
+}
+void daeIORequest::narrow()
+{		
+	if(localURI==nullptr) return; 
+	
+	assert(scope!=nullptr);
+
+	daeArchive *a = nullptr; narrower_still:
+
+	const daeDocRef *b = scope->getDocs().begin();
+	const daeDocRef *c,*e = scope->getDocs().end();
+	const daeDocRef *lb = 
+	_docHookup_reverse_lb(b,e,localURI->data());
+	if(lb!=e)
+	{
+		if((*lb)->isArchive()&&localURI->transitsDoc(*lb))
+		{
+			scope = (daeArchive*)(daeDoc*)*lb; 
+			goto narrower_still;
+		}			
+		b = lb; c = e!=b+1?b+1:nullptr;
+	}
+	else if(b!=e)
+	{
+		c = b; b = nullptr; 
+	}
+	else b = c = nullptr;
+
+	//This is in case narrowURI results in narrow_still but 
+	//no actual narrowing occurs, and so it would just loop.
+	if(a==scope) return; a = scope;
+
+	//TODO? narrow() could not bother narrowURI if b/c show
+	//localURI can't possibly be inside an unopened archive.
+	daeRefView bp = daeURI_neighbors(b==nullptr?nullptr:&(*b)->getDocURI(),localURI);
+	daeRefView cp = daeURI_neighbors(c==nullptr?nullptr:&(*c)->getDocURI(),localURI);		
+	if(bp==localURI->getURI_path())
+	{
+		//Don't bother if URI is already open.
+		assert(localURI->getURI_query().empty()); return;
+	}
+
+	//NOTE: a was passed, but in order to pass in remoteURI
+	//*this is passed.
+	a->getDOM()->getPlatform().narrowURI(bp,*this,cp);
+	std::swap(a,this->scope);
+
+	if(a!=nullptr) if(a!=scope) 
+	{	
+		if(a->inArchive(scope))
+		{
+			scope = a; goto narrower_still;
+		}
+		else assert(0);
+	}
+	else goto narrower_still;
+}
+#ifndef COLLADA_DOM_OMIT_ZAE
+void daePlatform::_narrowURI_open_ZAE(daeIORequest &a)
+{
+	//URI was an argument in the beginning.
+	const daeURI &URI = *a.localURI;
+
+	bool zae = false;
+	daeString pp = URI.getURI_path().view;
+	daeString d = URI.getURI_filename().view;
+	for(daeString p=pp;p<d;p++) if(p[0]=='.'&&(p[1]=='z'||p[1]=='Z'))
+	if(tolower(p[2])=='a'&&tolower(p[3])=='e'&&p[4]=='/'
+	 ||tolower(p[2])=='i'&&tolower(p[3])=='p'&&p[4]=='/'&&zae)
+	{
+		//If the scope includes this extension, then nesting
+		//is involved, and ZIP is only followed inside a ZAE.
+		zae = true;
+		if(p+4-pp<=a.scope->getDocURI().getURI_path().extent)
+		continue;
+
+		//daeURI could use a span-based constructor.
+		daeURI zip = URI; zip.erase(p+4-URI.data());
+		if(a.scope->openDoc<void>(zip)) 
+		return;
+	}	
+	a.scope = nullptr;
+}
+#endif
 
 #ifdef NDEBUG //GCC doesn't like aprostrophes.
 #error "Don't neglect to test this. (The RAW resolver.)"

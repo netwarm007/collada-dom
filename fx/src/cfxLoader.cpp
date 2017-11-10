@@ -1007,8 +1007,7 @@ COLLADA_(public) //Previously FX::Technique
 			ColladaYY::const_include include = e->a<ColladaYY::include>();
 			if(include!=nullptr) 
 			{
-				xs::anyURI URI = include->url; URI.resolve();
-
+				xs::anyURI URI = include->url; 
 				const daeDOM &DOM = *URI.getDOM();
 				daeIORequest req(&DOM,nullptr,&URI,&URI);
 

@@ -415,6 +415,7 @@ static void COLLADA_viewer_main2(const char *dae, const void *default_dae)
 	//Unloading can introduce quite a lot of delay.
 	if(!RT::Main.DOM.getDocs().empty())
 	{
+		glDisable(GL_FRAMEBUFFER_SRGB);
 		daeEH::Verbose<<"Unloading: deleting memory, etc...";
 		RT::Main.Unload();
 	}
@@ -491,11 +492,11 @@ struct TestIO : daeIO //QUICK & DIRTY
 	typedef char Maxpath[260*4*(sizeof(char)==1)];
 	#endif
 		
-	virtual daeOK getError()
+	virtual daeError getError()
 	{
 		return OK;  
 	}
-	virtual size_t getLock()
+	virtual size_t getLock(Range *rngI, Range *rngO)
 	{
 		if(OK==DAE_OK&&lock==size_t(-1))
 		{	
@@ -506,20 +507,23 @@ struct TestIO : daeIO //QUICK & DIRTY
 				if(_file_protocol(maxpath,I.getRequest().remoteURI))
 				{
 					#ifdef _WIN32
-					r = CRT.r->fopen(maxpath,L"rb",_SH_DENYWR);
+					r = _wfsopen(maxpath,L"rb",_SH_DENYWR);
 					#else
-					r = CRT.r->fopen(maxpath,"rb");
+					r = fopen(maxpath,"rb");
 					#endif
 				}
 				else //HACK: It's already open to peek at <COLLADA xmlns>.
 				{
 					if(!TestIO_HTTP_agent.connected())
-					new(&TestIO_HTTP_agent) HTTP_agent(&I.getRequest());					
-					i = TestIO_HTTP_agent.ContentLength();
+					new(&TestIO_HTTP_agent) HTTP_agent(&I.getRequest(),rngI);
+					//i = TestIO_HTTP_agent.ContentLength();
+					i = TestIO_HTTP_agent.ContentRange()[2];
 				} 
 				if(r!=nullptr)
 				{
-					i = CRT.r->stat(r).size;
+					fseek(r,0,SEEK_END); 					
+					i = ftell(r); fseek(r,0,SEEK_SET);
+					setRange(rngI,nullptr);
 				}
 				if(i>0) lock = i; else OK = DAE_ERROR;
 			}
@@ -527,15 +531,49 @@ struct TestIO : daeIO //QUICK & DIRTY
 			{
 				if(_file_protocol(maxpath,O.getRequest().remoteURI))
 				{
+					//EXPERIMENTAL
+					//HACK? Assuming if range is specified, the file 
+					//is retained. r+b seems to be the way to do that.
+					//TODO? should probably truncate it to rngO->second.
+					bool r_b = rngO!=nullptr?1:0;
 					#ifdef _WIN32
-					w = CRT.w->fopen(maxpath,L"wb",_SH_DENYRW);
+					w = _wfsopen(maxpath,r_b?L"r+b":L"wb",_SH_DENYRW);
 					#else
-					w = CRT.w->fopen(maxpath,"wb");
+					w = fopen(maxpath,r_b?"r+b":"wb");
 					#endif
+					setRange(nullptr,rngO);
 				}
 				if(w==nullptr) OK = DAE_ERROR; 
-			}
+			}			
 		}
+		return lock;
+	}
+	virtual size_t setRange(Range *rngI, Range *rngO) 
+	{
+		if(lock==size_t(-1)) return getLock(rngI,rngO);
+
+		if(rngI!=nullptr) if(TestIO_HTTP_agent.connected()) 
+		{
+			#ifdef NDEBUG
+			#error Keep the resume_RFC1123 timestamp and provide a 
+			#error way for to set the daeIO's timestamp in advance.
+			#endif
+			TestIO_HTTP_agent.~HTTP_agent();
+			new(&TestIO_HTTP_agent) HTTP_agent(&I.getRequest(),rngI);
+		}
+		else if(r!=nullptr)
+		{
+			fseek(r,std::min(lock,rngI->first),SEEK_SET);
+			rngI->limit_to_size(lock);
+		}
+		if(rngO) if(w!=nullptr)
+		{
+			fseek(w,0,SEEK_END); 					
+			size_t i = ftell(w);
+			fseek(w,std::min(i,rngO->first),SEEK_SET);
+			rngO->limit_to_size(i);
+		}
+
 		return lock;
 	}
 	virtual daeOK readIn(void *in, size_t chars)
@@ -544,35 +582,23 @@ struct TestIO : daeIO //QUICK & DIRTY
 		{
 			if(!TestIO_HTTP_agent.readIn(in,chars)) OK = DAE_ERROR;
 		}
-		else if(1!=CRT.r->fread(in,chars,1,r)&&chars!=0) OK = DAE_ERROR; return OK;
+		else if(1!=fread(in,chars,1,r)&&chars!=0) OK = DAE_ERROR; return OK;
 	}
 	virtual daeOK writeOut(const void *out, size_t chars)
 	{
-		if(1!=CRT.w->fwrite(out,chars,1,w)&&chars!=0) OK = DAE_ERROR; return OK;
-	}
-	virtual FILE *getReadFILE(int=0)
-	{
-		if(r==nullptr) getLock(); return r; 
-	}
-	virtual FILE *getWriteFILE(int=0)
-	{
-		if(w==nullptr) getLock(); return w; 
+		if(1!=fwrite(out,chars,1,w)&&chars!=0) OK = DAE_ERROR; return OK;
 	}
 
 	//This is not the normal way to go about this.
-	//It's just easy to set up for basic file I/O.
-	struct{ const struct daeCRT::FILE *r,*w; }CRT;
+	//It's just easy to set up for basic file I/O.	
 	daeIOPlugin &I,&O; daeOK OK; FILE *r,*w; size_t lock;
 	TestIO(std::pair<daeIOPlugin*,daeIOPlugin*> IO)
 	:I(*IO.first),O(*IO.second),r(),w(),lock(-1)
-	{
-		CRT.r = &I.getCRT_default().FILE; 
-		CRT.w = &O.getCRT_default().FILE;
-	}
+	{}
 	~TestIO()
 	{
-		if(r!=nullptr) CRT.r->fclose(r); 
-		if(w!=nullptr) CRT.w->fclose(w); 
+		if(r!=nullptr) fclose(r); 
+		if(w!=nullptr) fclose(w); 
 	}
 	 		
 	static bool _file_protocol(Maxpath &maxpath, const daeURI *URI)
@@ -604,7 +630,7 @@ static struct TestPlatform : daePlatform //SINGLETON
 {
 	HTTP_agent *HTTP_downloading;
 
-	std::vector<TestIO> IO_stack;
+	daeIOController::Stack<TestIO> IO_stack;
 	
 	virtual const daeURI &getDefaultBaseURI(daeURI &URI)
 	{
@@ -626,7 +652,7 @@ static struct TestPlatform : daePlatform //SINGLETON
 		}
 		URI.setURI(UTF); return URI;
 	}
-	virtual daeOK resolveURI(daeURI &URI, const daeDOM &DOM)
+	virtual daeOK resolveURI(daeURI &URI, const daeArchive &DOM_or_ZAE)
 	{
 		//Getting this when running outside of Visual Studio?
 		if(URI.empty()) return DAE_ERROR;
@@ -678,34 +704,62 @@ static struct TestPlatform : daePlatform //SINGLETON
 			}
 		}
 		//daeEH::Verbose<<"Resolving URI: "<<URI.getURI();
-		daeOK OK = URI.resolve_RFC3986(DOM);
+		daeOK OK = URI.resolve_RFC3986(DOM_or_ZAE);
 		//daeEH::Verbose<<"Resolved URI: "<<URI.getURI();
 		assert(URI.getURI_protocol().size()>=4||URI.empty()); return OK;
 	}
 	virtual daeOK openURI(const daeIORequest &req, daeIOPlugin *I, daeURIRef &URI)
 	{
-		daeDocRoot<> doc; req.resolve();
-		if(!req.localURI->getURI_extensionIs("dae"))
+		daeDocRoot<> doc; req.resolve();		
+		if(!req.localURI->getURI_extensionIs("dae"))		
+		if(!req.localURI->getURI_extensionIs("zae"))
 		{
 			daeEH::Error<<"Unsupported file extension "<<req.localURI->getURI_extension();
 			req.unfulfillRequest(doc); return doc;
 		}
-		#ifdef NDEBUG
-		#error WORK IN PROGRESS
-		#endif
-		//TODO: Must scan for version="1.5.0" and switch to 8.
+		else //ZAE
+		{
+			req.fulfillRequestI(nullptr,I,doc);
+			daeArchive *zae = doc->a<daeArchive>();
+			if(zae==nullptr) return doc;
+
+			daeURI URI;
+			daeDocumentRef manifest_xml =
+			zae->openDoc<domAny>("manifest.xml")->getDocument();			
+			if(manifest_xml!=nullptr
+			&&!manifest_xml->getRoot().empty())
+			{
+				daeElementRef dae_root = manifest_xml->getRoot();
+				if("dae_root"!=dae_root->getNCName())
+				dae_root = dae_root->getDescendant("dae_root"); 
+				if(dae_root!=nullptr)				
+				URI = dae_root->getCharData();
+			}
+			if(!URI.empty())
+			{
+				daeDocumentRef index = zae->openDoc<void>(URI);
+				if(index!=nullptr)
+				{
+					zae->setDocument(index);
+					daeRefView fragment = req.localURI->getURI_fragment();
+					if(fragment.empty()) fragment = URI.getURI_fragment();
+					index->getFragment() = fragment;
+				}
+			}
+			goto zae;			
+		}
 		extern daeMeta *InitSchemas(int);
 		daeMeta *meta = InitSchemas(Peek_xmlns(req)=="http://www.collada.org/2005/11/COLLADASchema"?5:8);
-		req.fulfillRequestI(meta,I,doc);
-		if(doc==DAE_OK) URI = &doc->getDocURI(); return doc; 
+		req.fulfillRequestI(meta,I,doc); 
+zae:	if(doc==DAE_OK) URI = &doc->getDocURI(); return doc; 
 	}
 	virtual daeIO *openIO(daeIOPlugin &I, daeIOPlugin &O)
 	{
-		IO_stack.emplace_back(std::make_pair(&I,&O)); return &IO_stack.back();
+		return IO_stack.pop(std::make_pair(&I,&O));
 	}
 	virtual void closeIO(daeIO *IO)
 	{
-		assert(IO==&IO_stack.back()); IO_stack.pop_back();
+		IO_stack.push(IO);
 
 		if(TestIO_HTTP_agent.connected()) TestIO_HTTP_agent.~HTTP_agent();
 	}		
@@ -718,16 +772,27 @@ static struct TestPlatform : daePlatform //SINGLETON
 	daeName Peek_xmlns(const daeIORequest &req)
 	{
 		static std::string out; out.clear();
-
+			
 		char buf[4096] = {};
 		TestIO::Maxpath path; 
-		if(TestIO::_file_protocol(path,req.remoteURI)) 
+		if(req.scope->isArchive()) //ZAE?
+		{
+			//This downloads twice, but maybe it disconnects in short order.
+			daeEH::Warning << "(Peeking: will disconnect in short order...)";
+			daeIOSecond<> I(req); daeIOEmpty O; 
+			daeIO *peek = req.scope->getIOController().openIO(I,O);
+			daeIO::Range r = {0,sizeof(buf)};
+			if(0!=peek->getLock(&r))
+			if(!peek->readIn(buf,r.size())) assert(0);
+			req.scope->getIOController().closeIO(peek);		
+		}
+		else if(TestIO::_file_protocol(path,req.remoteURI)) 
 		{	
 			std::ifstream s(path); s.read(buf,sizeof(buf));
 		}
 		else //HACK: Testing
 		{
-			new(&TestIO_HTTP_agent) HTTP_agent(&req);
+			new(&TestIO_HTTP_agent) HTTP_agent(&req,nullptr);
 			if(TestIO_HTTP_agent.connected())
 			{
 				TestIO_HTTP_agent.peekIn(buf,sizeof(buf));
@@ -745,13 +810,15 @@ static struct TestPlatform : daePlatform //SINGLETON
 		//EXPERIMENTAL
 		//HACK: Looking for sRGB option so textures don't
 		//have to be reloaded. The sRGB status applies to
-		//to the entire DOM starting at an index document.
-		if(RT::Main.DOM.getDocs().empty())
+		//to the entire DOM starting at an index document.		
 		if(0==out.find("http://www.collada.org"))
-		if(out.npos!=out.find("sRGB"))
-		{			
-			daeEH::Verbose<<"Found sRGB keyword in COLLADA index document's first 4096 characters...";
-			ProcessInput('y');
+		{
+			if(!glIsEnabled(GL_FRAMEBUFFER_SRGB))
+			if(out.npos!=out.find("sRGB"))
+			{			
+				daeEH::Verbose<<"Found sRGB keyword in COLLADA index document's first 4096 characters...";
+				ProcessInput('y');
+			}
 		}
 
 		out.erase(std::min(out.find('"'),out.size()),-1); 	

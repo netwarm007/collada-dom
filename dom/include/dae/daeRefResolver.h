@@ -923,11 +923,11 @@ COLLADA_(public)
 		return _contained; 
 	};
 
-	typedef daeContainerObject<> Vanilla;
+	typedef daeContainerObject<> _Vanilla;
 	/**
 	 * Returns @c this as @c daeContainerObject<>.
 	 */
-	Vanilla *_plain_vanilla_this(){ return (Vanilla*)this; }
+	_Vanilla *_plain_vanilla_this(){ return (_Vanilla*)this; }
 	/**
 	 * Adds an object to the container, if it's not already
 	 * contained. If an other container contains the object,
@@ -936,7 +936,7 @@ COLLADA_(public)
 	inline void contain(T *o)
 	{
 		daeContainedObject *upcast = (T*)o; (void)upcast;
-		Vanilla *v = _plain_vanilla_this();
+		_Vanilla *v = _plain_vanilla_this();
 		if(o->_container==v) return;
 		if(o->_container!=nullptr) o->_self_remove();
 		_contained.push_back(o); o->_container = v; 
@@ -981,9 +981,15 @@ COLLADA_(public)
 	}
 
 	/**
+	 * Constructor
+	 */
+	daeContainedObject(const DAEP::Object *c):daeObject(c)
+	,_container(){}
+	/**
 	 * Default Constructor
 	 */
-	daeContainedObject():COLLADA_SUPPRESS_C(4355)daeObject(this){}
+	daeContainedObject():COLLADA_SUPPRESS_C(4355)daeObject(this)
+	,_container(){}	
 
 COLLADA_(protected) //Virtual method
 	/**PURE
@@ -1016,9 +1022,17 @@ COLLADA_(protected) //DATA-MEMBER
 	/**
 	 * The contained object is contained inside @c _container.
 	 * There's just too many issues that arise from assuming the
-	 * parent-object is the container. Sub-objects cannot be reparented
+	 * parent-object is the container. Sub-objects cannot be reparented.
+	 *
+	 * ZAE
+	 * In order to form a parental link from @c daeImage to @c daeAtlas
+	 * this member (@c _container) is made into a "weak" reference back
+	 * to the parent-like container. The trouble is @c daeAtlas doesn't
+	 * have implicit ownership semantics, and so can't be atomized, say
+	 * when a @c daeArchive is closed.
+	 * //mutable daeSmartRef<daeContainerObject<>> _container;
 	 */
-	mutable daeSmartRef<daeContainerObject<>> _container;
+	mutable daeContainerObject<> *_container;
 
 COLLADA_(public) //OPERATORS
 

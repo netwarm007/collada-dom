@@ -138,6 +138,7 @@ void RT::Frame::Unload()
 	Physics.Clear(); Scene.Clear(); 	
 	Stack.Select();
 	delete DB; _InitDB(); 
+	const_cast<const_daeDocRef&>(Index) = nullptr;
 	const_cast<daeDOM&>(DOM).clear_of_content();
 	FX.Reset();
 	UsePhysics = true;
@@ -176,6 +177,7 @@ bool RT::Frame::Load(const xs::anyURI &URI)
 
 	daeDocRoot<> res = 
 	const_cast<daeDOM&>(DOM).openDoc<void>(URI);
+	const_cast<const_daeDocRef&>(Index) = res;
 	if(res!=DAE_OK)
 	{
 		daeEH::Error<<

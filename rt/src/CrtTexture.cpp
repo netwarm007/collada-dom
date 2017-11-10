@@ -27,11 +27,19 @@ void RT::Image::DeleteTexture()
 //RT::Frame::Load swap-clears this afterward.
 COLLADA_(extern) std::vector<char> CrtTexture_buffer(0);
 
-//This had been a global API that received a local file name.
-//It was only used by this file, and it must be URI based, but
-//is request based to imply the URI is document-based & resolved.
-static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
+bool RT::Image::Load()
+{		
+	daeURI absURI; absURI.setURI(DocURI,URL); 
+
+	daeIORequest req(&RT::Main.DOM,nullptr,&absURI,&absURI);	
+
+	return RT::Texture::Load(req);
+}
+bool RT::Texture::Load(const daeIORequest &req)
 {
+	daeEH::Verbose<<"Reloading Texture...\n"
+	"Resource is "<<req.remoteURI->getURI();
+
 	#ifndef IL_VERSION //LEGACY: TGA-ONLY?
 	{
 		if(!req.localURI->getURI_extensionIs("tga"))
@@ -39,17 +47,11 @@ static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
 	}
 	#endif
 
-	#ifdef NDEBUG
-	#error Would rather use req.fulfillRequestI.
-	#endif
-	req.resolve();
 	//This is the system for mapping URIs to memory files.	 
 	daeIOSecond<daeIOPlugin::Demands::map> I(req);
-	daeIOEmpty O;
-	daePlatform &sys = RT::Main.DOM.getPlatform();
-	//req.resolve(); //Assuming so.
-	daeRAII::CloseIO _RAII(sys);
-	daeIO *IO = _RAII = sys.openIO(I,O);
+	daeIOEmpty O;	
+	daeRAII::CloseIO RAII(req.scope->getIOController());
+	daeIO *IO = RAII = RAII.p.openIO(I,O);
 	if(IO==nullptr)
 	return false;  
 	size_t size = IO->getLock();
@@ -67,7 +69,7 @@ static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
 
 	#ifndef IL_VERSION //LEGACY: TGA-ONLY?
 	{
-		return nullptr!=RT::LoadTargaFromMemory(buf,size,&texObj);
+		return nullptr!=RT::LoadTargaFromMemory(buf,size,this);
 	}
 	#else //...
 	
@@ -121,64 +123,71 @@ static bool CrtTexture_LoadImage(daeIORequest &req, RT::Texture &texObj)
 	{
 	case IL_LUMINANCE:
 
-		bpp = 1; texObj.Format = GL_LUMINANCE; break;
+		bpp = 1; Format = GL_LUMINANCE; break;
 
 	case IL_LUMINANCE_ALPHA: //TODO: Use 2
 
-		bpp = 2; texObj.Format = GL_LUMINANCE_ALPHA; break;
+		bpp = 2; Format = GL_LUMINANCE_ALPHA; break;
 
 	case IL_RGBA: case IL_BGRA: 
 	
-		bpp = 4; texObj.Format = GL_RGBA; break;
+		bpp = 4; Format = GL_RGBA; break;
 
-	default: bpp = 3; texObj.Format = GL_RGB; break;
+	default: bpp = 3; Format = GL_RGB; break;
 	}	
 	
-	texObj.Width = ilGetInteger(IL_IMAGE_WIDTH);
-	texObj.Height = ilGetInteger(IL_IMAGE_HEIGHT);	
+	Width = ilGetInteger(IL_IMAGE_WIDTH);
+	Height = ilGetInteger(IL_IMAGE_HEIGHT);	
 
 	//There was an error in the old code.
 	//ILint paddedwidth = (width+3)&(~3);
-	int gl_Width = texObj.Width*bpp/**(CHAR_BIT/8)*/;
+	int gl_Width = Width*bpp/**(CHAR_BIT/8)*/;
 	while(0!=(gl_Width&3)) gl_Width++;
 
 	//Reminder: RT::Image::Refresh() immediately deletes this data.
 	#ifdef NDEBUG
 	#error Must the data be backed by yet another buffer?
 	#endif
-	texObj.Data = COLLADA_RT_array_new(char,gl_Width*texObj.Height);
+	if(Data!=nullptr) COLLADA_RT_array_delete(Data);
+	Data = COLLADA_RT_array_new(char,gl_Width*Height);
 		
 	//NOTE: This works because devIL's enums match OpenGL's.
-	ilCopyPixels(0,0,0,texObj.Width,texObj.Height,1,texObj.Format,GL_UNSIGNED_BYTE,(int*)texObj.Data);
+	ilCopyPixels(0,0,0,Width,Height,1,Format,GL_UNSIGNED_BYTE,(int*)Data);
 
 	ilDeleteImage(image); return true;
 
 	#endif //IL_VERSION
+
+	return false;
 }
 
-bool RT::Image::Refresh()
+bool RT::Image::Refresh(bool reload)
 {
 	//Assuming <hex> or embedded image if so.
 	if(URL==nullptr) return true;
 
-	daeURI absURI; absURI.setURI_and_resolve(DocURI,URL); 
-
-	daeIORequest req(&RT::Main.DOM,nullptr,&absURI,&absURI);	
-
-	daeEH::Verbose<<"Refreshing Texture...\n"
-	"Resource is "<<absURI.getURI();
-
+	//This is for non OpenGL applications to
+	//use. Or just to not show textures.
+	if(!RT::Main.LoadImages&&reload==true)
+	{
+		//Allocate an OpenGL texture ID, even
+		//if it's not used for drawing things.
+		if(TexId==0) glGenTextures(1,&TexId);
+		return true;
+	}
+				  
 	//try to load the file from the path given. If it fails go to the backup		
-	if(!CrtTexture_LoadImage(req,*this))
+	if(reload&&!Load())
 	{
 		daeEH::Warning<<"Failed.";
 		return false;
 	}	
 
 	//RT::Main.Stack.CreateTexture(this);
+	if(Data!=nullptr)
 	{	
 		if(TexId==0) glGenTextures(1,&TexId);
-		
+				
 		//Textures are not working. Trying everything????
 		int mipmap = 0?GL_LINEAR:GL_LINEAR_MIPMAP_LINEAR;
 
@@ -227,18 +236,16 @@ bool RT::Image::Refresh()
 
 	//2017: There's no sense keeping a copy since glTexImage2D does.
 	//(The legacy code that refers to RT::Texture may use its Data.)
-	COLLADA_RT_array_delete(Data); return true;	
+	if(reload) COLLADA_RT_array_delete(Data); return true;	
 }
 
 //SCHEDULED FOR REMOVAL?
 RT::Texture * /*C4138*//*RT::*/LoadTargaFromURI(const daeURI &URI)
 {
-	URI.resolve();
 	daeIORequest req(RT::Main.DOM,nullptr,&URI,&URI);
 
 	RT::Texture tmp;
-	if(!CrtTexture_LoadImage(req,tmp))
-	return nullptr;
+	if(!tmp.Load(req)) return nullptr;
 
 	RT::Texture *out = COLLADA_RT_new(RT::Texture);
 
@@ -249,15 +256,12 @@ bool RT::Resource::Locate(const xs::anyURI &URI)
 {
 	Locate(); 
 	
-	URI.resolve();
 	daeIORequest req(URI.getDOM(),nullptr,&URI,&URI);
 
 	//This is the system for mapping URIs to memory files.	
 	daeIOSecond<> I(req); daeIOEmpty O; 
-	daePlatform &sys = RT::Main.DOM.getPlatform();
-	//req.resolve(); //Assuming so.
-	daeRAII::CloseIO _RAII(sys);
-	daeIO *IO = _RAII = sys.openIO(I,O);
+	daeRAII::CloseIO RAII(req.scope->getIOController());
+	daeIO *IO = RAII = RAII.p.openIO(I,O);
 	if(IO==nullptr)
 	return false;  
 	Size = IO->getLock();

@@ -24,7 +24,14 @@ daeOK daeDocument::setMeta(daeMeta &rm)
 		const_cast<XS::Element&>(_pseudo->jumpIntoTOC(1));
 		assert(&cm==&_pseudo->getCMEntree());
 		cm._element.name = rm.getName();
-		cm._element.child = &rm; 
+		cm._element.child = &rm; 	
+		//HACK: This is to silence a warning. Really
+		//the content-model should be modified to use
+		//an XS::Any entry-point.
+		//This changes the ordinal from 0 to the root.
+		if(_pseudo->getAllowsAny()!=rm.getAllowsAny())		
+		_pseudo->_DAEP_Schema^=
+		DAEP::Schema<>::__DAEP__Schema__g1__allows_any;
 	}
 	else return DAE_ERR_INVALID_CALL; return DAE_OK;
 }
@@ -37,7 +44,7 @@ namespace DAEP //GCC refuses to disable this (erroneous) warning
 	}
 }
 extern const daeStringCP _daePseudoElement_[] = ":daePseudoElement:";
-daeDocument::daeDocument(daeDOM *DOM):daeDoc(DOM,daeDocType::HARDLINK)
+daeDocument::daeDocument(daeDOM *DOM):daeDoc(DOM,daeDocType::HARDLINK),_fragment(*DOM)
 {	
 	memset(&_pseudo,0x00,sizeof(_pseudo));
 	daeModel &model = (daeModel&)_pseudo.model;

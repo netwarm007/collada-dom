@@ -179,11 +179,13 @@ COLLADA_(namespace)
 	class daeDoc;
 	class daeDocument;
 	class daeDOM;
+	class daeImage;
 	class daeAtlas;
 	class daeArchive;
 	template<class T=void> struct daeDocRoot;
 	class daeDatabase;	
 	class daePlatform;	
+	class daeIO;
 	class daeIOPlugin;
 	class daeIORequest;
 	class daeAtom{};
@@ -288,6 +290,8 @@ COLLADA_(namespace)
 	typedef daeSmartRef<daeElement> daeElementRef;
 	typedef daeSmartRef<daeDoc> daeDocRef;
 	typedef daeSmartRef<daeDOM> daeDOMRef;
+	typedef daeSmartRef<daeImage> daeImageRef;
+	typedef daeSmartRef<daeAtlas> daeAtlasRef;
 	typedef daeSmartRef<daeArchive> daeArchiveRef;
 	typedef daeSmartRef<daeDocument> daeDocumentRef;
 	typedef daeSmartRef<daeRef> daeRefRef;	

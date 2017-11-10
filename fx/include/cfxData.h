@@ -138,24 +138,41 @@ COLLADA_(public) //UTILITIES
 	{
 		return nullptr!=As<T>();
 	}
-	template<class T> inline FX::DataType<T> *As()
+
+	//MSVC2010 needs all of this, but it builds too
+	//slow. So probably this should just be removed.
+	#ifdef _WIN32
+	template<class T> struct _MSVC2010 //:(
+	{
+		typedef FX::DataType<T> type;
+	};
+	template<class T> inline typename _MSVC2010<T>::type*
+	#else 
+	template<class T> inline FX::DataType<T>*
+	#endif
+	/*template<class T> inline FX::DataType<T>*/As()
+	{
+		//GCC/C++ want specializations outside, MSVC2010
+		//wants inside.
+		return _As((T*)0); 
+	}
+	template<class T> FX::DataType<T> *_As(T*)
 	{
 		return dynamic_cast<FX::DataType<T>*>(this);
 	}
-	//template<> FX::DataType<FX::Sampler> *As(); //GCC/C++
-};
-template<> inline  FX::DataType<FX::Sampler> *FX::Data::As()
-{
-	switch(GetType())
+	FX::DataType<FX::Sampler> *_As(FX::Sampler*)
 	{
-	case CG_SAMPLER1D: case CG_SAMPLERCUBE:
-	case CG_SAMPLER2D: case CG_SAMPLERRECT:
-	case CG_SAMPLER3D: case CG_UNKNOWN_TYPE:
-	return (FX::DataType<FX::Sampler>*)this;
-	default:; //-Wswitch
+		switch(GetType())
+		{
+		case CG_SAMPLER1D: case CG_SAMPLERCUBE:
+		case CG_SAMPLER2D: case CG_SAMPLERRECT:
+		case CG_SAMPLER3D: case CG_UNKNOWN_TYPE:
+		return (FX::DataType<FX::Sampler>*)this;
+		default:; //-Wswitch
+		}
+		return nullptr;
 	}
-	return nullptr;
-}
+};
 template<> inline daeName FX::Data::To<daeName>()
 {
 	//THIS ASSUMES ALL STRINGS ARE STRING-REFS.

@@ -55,9 +55,9 @@ class daeIOPluginCommon : public daeIOPlugin
 {
 COLLADA_(protected) //daeIOPlugin methods
 	/**PURE-OVERRIDE */
-	virtual daeOK addDoc(daeDOM &DOM, daeDocRef &readDoc);
+	virtual daeOK addDoc(daeDocRef&,daeMeta*);
 	/**PURE-OVERRIDE */
-	virtual daeOK readContent(daeIO &IO, daeContents &content);
+	virtual daeOK readContent(daeIO&,daeContents&);
 
 COLLADA_(protected) //Visual Studio workaround
 
@@ -141,9 +141,6 @@ COLLADA_(protected)
 		 * Virtual Destructor
 		 */
 		virtual ~daeIOPluginCommon(){}
-
-		/**OVERRIDE */
-		virtual daeCRT *getCRT(){ return &daeCRT_default; }
 			
 		//STATEFUL
 		int _readFlags;	
@@ -224,7 +221,7 @@ COLLADA_(protected) //daeIOPlugin methods
 	/**PURE-OVERRIDE */
 	virtual void getDemands(int &I, int &O)
 	{
-		I = Demands::string|Demands::CRT; O = 0; 
+		I = Demands::string/*|Demands::CRT*/; O = 0; 
 	}
 	/**PURE-OVERRIDE */
 	virtual daeOK writeContent(daeIO &IO, const daeContents &content);
@@ -354,7 +351,8 @@ COLLADA_(protected) //daeIOPlugin methods
 	/**PURE-OVERRIDE */
 	virtual void getDemands(int &I, int &O)
 	{
-		I = O = Demands::unimplemented|Demands::CRT; 
+		I = /*Demands::unimplemented|Demands::CRT|*/Demands::string;
+		O = /*Demands::unimplemented|Demands::CRT*/0;
 	}
 	/**PURE-OVERRIDE */
 	virtual daeOK writeContent(daeIO &IO, const daeContents &content);	
@@ -415,6 +413,38 @@ struct daeLegacyIOPlugins : daeTinyXMLPlugin //INTERNAL
 #endif //BUILDING_IN_LIBXML
 #endif //BUILDING_COLLADA_DOM
 #endif //BUILDING_IN_TINYXML/////////////
+
+#ifndef COLLADA_DOM_OMIT_ZAE
+#define __COLLADA_DOM__ZAE
+/**ZAE
+ * ZAE files are ZIP archives including DAE files and their images.
+ * @c daeZAEPlugin creates a @c daeArchive with the index document
+ * already opened so it may be returned.
+ */
+class daeZAEPlugin : public daeIOPlugin
+{
+COLLADA_(public) 
+	/**
+	 * @param I is for reading the index document indicated by the 
+	 * document named manifest.xml containing a <dae_root> element.
+	 * @param O is for writing the entire archive.
+	 */
+	LINKAGE daeZAEPlugin(daeIOPlugin *I=nullptr, daeIOPlugin *O=nullptr)
+	SNIPPET( _I = I; _O = O; )
+
+COLLADA_(protected) //daeIOPlugin methods
+	/**PURE-OVERRIDE */
+	virtual daeOK addDoc(daeDocRef&,daeMeta*);
+	/**PURE-OVERRIDE */
+	virtual daeOK readContent(daeIO&,daeContents&);				
+	/**PURE-OVERRIDE */
+	virtual daeOK writeContent(daeIO&,const daeContents&);
+
+COLLADA_(private) 
+
+	daeIOPlugin *_I,*_O;
+};
+#endif //BUILDING_IN_MINIZIP
 
 #include "../LINKAGE.HPP" //#undef LINKAGE
 

@@ -120,9 +120,6 @@
     <ClInclude Include="..\..\include\dae\daeWin32Platform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\dae\daeZAEUncompressHandler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\dae\domAny.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -133,6 +130,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\WARNING.HPP">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\dae\daeAtlas.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

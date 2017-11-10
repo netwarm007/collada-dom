@@ -63,7 +63,7 @@
 #ifndef COLLADA_DOM_DOUBLE
 #define COLLADA_DOM_DOUBLE float
 #endif
-#ifndef BUILDING_COLLADA_DOM
+#if !defined(BUILDING_COLLADA_DOM) && !defined(IMPORTING_COLLADA_DOM)
 #define IMPORTING_COLLADA_DOM
 #endif
 

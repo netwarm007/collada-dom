@@ -891,7 +891,8 @@ COLLADA_(public)
 	 * 5/4 increases the size by 25% each time. Maybe it's
 	 * too aggressive, but it's a simple fraction.
 	 */
-	inline void _reserve(){ _reserve((_end-_maw)*5/4); }
+	inline void _reserve(){ _reserve(_reserveN()); }   
+	inline int _reserveN(){ return (_end-_maw)*5/4; }
 
 	/**UNUSED/ILLUSTRATIVE
 	 * This was carried over from @c daeSmallStringTable::reset().

@@ -11,9 +11,21 @@ COLLADA_(namespace)
 {//-.
 //<-'
 
+#ifdef EXPORTING_COLLADA_DOM
 //This is conceptually the first thing
 //that is initialized. The rest follow.
 COLLADA_(extern) daePShare DOM_process_share = 0;
+#else
+//Static linked modules own DOM_process_share.
+static daeOK _1st_things_1st = DOM_process_share.grant();
+#endif
+
+static struct daeStringRef_dummyAtlas : daeAtlas
+{
+virtual daeIO *openIO(daeIOPlugin&,daeIOPlugin&){ return nullptr; }
+virtual void closeIO(daeIO*){}
+}_daeStringRef_dummyAtlas;
+extern daeAtlas &daeStringRef_dummyAtlas = _daeStringRef_dummyAtlas;
 
 /**128-1-1
  * Arbitrary figure, divisible by 8, 

@@ -101,6 +101,16 @@ std::pair<RT::Geometry*,RT::Controller*>
 		return second==nullptr?AsGeometry()->Materials:AsController()->Materials;
 	}
 
+	/**COURTESY	Complements @c RT::Stack::Draw_Instances().
+	 */
+	inline RT::Material *FindMaterial(xs::string symbol)
+	{
+		std::vector<RT::Material_Instance> &mats = GetMaterials();
+
+		for(size_t i=0;i<mats.size();i++)
+		if(mats[i].Symbol==symbol) return mats[i].Material; return nullptr;
+	}
+
 	#ifdef NDEBUG
 	#error Is RT::Animator instance aware?
 	#endif
@@ -231,7 +241,7 @@ COLLADA_(public) //EXPERIMENTAL
 		}
 		
 	}VBuffer1,VBuffer2;
-
+	
 COLLADA_(public)
 
 	RT::Stack_Draw *CurrentDraw;
@@ -265,11 +275,42 @@ COLLADA_(public)
 	
 	void Draw_ShowHierarchy(); 
 	/**
-	 * @c Draw() calls @c Draw_Triangles() internally.
+	 * @c Draw() calls @c Draw_Instances() internally.
 	 * It first sets up lights and may do more passes.
 	 */
-	void Draw(),Draw_Triangles();
-	
+	void Draw();
+
+COLLADA_(public) //CUSTOM "DRAWING" FACILITIES
+
+	//WARNING: This is courtesy to applications which
+	//would like to use this code to render to a file.
+	//To be safe, don't mix with RT::Frame::Refresh().
+
+	template<class T>
+	/**COURTESY
+	 * @c Draw_Triangles() is implemented in terms of
+	 * this logic. Users can use it to draw to memory.
+	 * @c VBuffer2 MUST BE INITIALIZED if controllers
+	 * are present. @c VBuffer1 may be 0 capacity, as
+	 * OpenGL's draw arrays is probably not desirable.
+	 * @see @c Init_VBuffers().
+	 */
+	inline void Draw_Instances(void callback(T*), T *context=nullptr)
+	{
+		return _Draw_Instances((void(*)(void*))callback,(void*)context);
+	}
+	void _Draw_Instances(void(*)(void*),void*_=nullptr);
+
+	/**COURTESY, EXPERIMENTAL
+	 * @c Draw_Instances() requires @c VBuffer2 to be
+	 * able to fit the largest controller source data.
+	 * @a which can be 1 or 2 to restrict to vbuffers
+	 * 1 or 2.
+	 */
+	void Init_VBuffers(int which=0);
+
+COLLADA_(public) //UTILITIES
+
 	/** 
 	 * Sets up the camera instance to be rendered from.
 	 */
@@ -433,8 +474,7 @@ struct Frame_State : RT::Camera_State
 	bool ShowGeometry;	
 	bool ShowHierarchy;
 	bool ShowCOLLADA_FX;
-	int ShowTextures_Mask;
-	
+	int ShowTextures_Mask;	
 
 	//Animation Controls 
 	bool AnimationOn;
@@ -537,7 +577,12 @@ COLLADA_(public)
 	/**
 	 * This will be resolved, and it depends on the document.
 	 */
-	const RT::Name URL; const daeDOM DOM;
+	const RT::Name URL; const daeDOM DOM; 
+	
+	/**
+	 * This is the URL's document or "doc" object.
+	 */
+	const const_daeDocRef Index;
 
 	/**
 	 * This is a makeshift way of recording samples/ options.

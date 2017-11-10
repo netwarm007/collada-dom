@@ -7,8 +7,6 @@
  */
 #include <ColladaDOM.inl> //PCH
 
-//The user can choose whether or not to include TinyXML support in the DOM. Supporting TinyXML will
-//require linking against it. By default TinyXML support isn't included.
 #ifdef BUILDING_IN_TINYXML /////////////////////////////////////////////
 
 #include <tinyxml.h>
@@ -45,12 +43,22 @@ bool daeTinyXMLPlugin::_read(daeIO &IO, daeContents &content)
 {
 	TiXmlDocument doc; _err = &doc; 
 	const daeIORequest &req = getRequest();	
-	if(!req.string.empty())
+	daeHashString string = req.string;	
+	std::vector<daeStringCP> stringbuf; if(string.empty())
+	{
+		size_t size = IO.getLock(); if(size!=0)
+		{
+			stringbuf.resize(size+1); string = stringbuf;
+			IO.readIn(&stringbuf[0],size);			
+			stringbuf.back() = '\0'; string.extent--;
+		}
+	}
+	if(!string.empty())	
 	{
 		//doc.Parse expects a 0-terminator.
 		//doc.Parse(req.string);
 		int undefined[16] = {};
-		daeString q,p = req.string, d = p+req.string.extent;
+		daeString q,p = string, d = p+string.extent;
 		for(TiXmlNode*n;p+1<d;p=q) if(p[0]=='<')
 		{
 			switch(p[1])
@@ -81,7 +89,7 @@ bool daeTinyXMLPlugin::_read(daeIO &IO, daeContents &content)
 			daeEH::Error<<"In daeTinyXMLPlugin::readFromMemory...";
 			return false;
 		}
-	}
+	}/*Wanting to be rid of getReadFILE.
 	else if(nullptr!=req.remoteURI)
 	{
 		doc.LoadFile(IO.getReadFILE()); 
@@ -90,13 +98,13 @@ bool daeTinyXMLPlugin::_read(daeIO &IO, daeContents &content)
 			daeEH::Error<<"In daeTinyXMLPlugin::readFromFile...";
 			return false;
 		}
-	}
-	else //This is unexpected.
+	}*/else
 	{
-		daeEH::Error<<"daeTinyXMLPlugin I/O request is neither FILE, nor memory-string...";
+		//daeEH::Error<<"daeTinyXMLPlugin I/O request is neither FILE, nor memory-string...";
+		daeEH::Error<<"daeTinyXMLPlugin I/O request was empty...";
 		return false;
 	}
-
+	
 	TiXmlNode *p = doc.FirstChild();
 	if(p!=nullptr&&p->Type()==TiXmlNode::TINYXML_DECLARATION)
 	{
@@ -179,8 +187,9 @@ void daeTinyXMLPlugin::_readContent2(TiXmlNode *p, daePseudoElement &parent)
 
 daeOK daeTinyXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 {
-	FILE *f = IO.getWriteFILE(); 
-	if(f==nullptr) return DAE_ERR_BACKEND_IO;
+	//Wanting to be rid of getWriteFILE.
+	//FILE *f = IO.getWriteFILE(); 
+	//if(f==nullptr) return DAE_ERR_BACKEND_IO;
 
 	TiXmlDocument doc; _err = &doc;
 
@@ -190,7 +199,12 @@ daeOK daeTinyXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 
 	_writeContent2(&doc,content);
 
-	doc.SaveFile(f); return DAE_OK;
+	//Wanting to be rid of getWriteFILE.
+	//doc.SaveFile(f); 
+	TiXmlPrinter printer;
+	printer.SetIndent("\t");
+	doc.Accept(&printer);
+	return IO.writeOut(printer.CStr(),printer.Size());	
 }
 
 void daeTinyXMLPlugin::_writeElement(TiXmlNode *tinyXmlNode, const daeElement &element)

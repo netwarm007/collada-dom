@@ -132,9 +132,8 @@ builds in the libxml I/O plugin. (You need one. Unless you have one?)
 *BUILDING_IN_TINYXML
 builds in the TinyXML I/O plugin. (Histories suggest PS3 required this.)
 
-*BUILDING_IN_LIBXML (together with)
-*BUILDING_IN_MINIZIP
-builds in the MiniZip I/O plugin. (Historically, this is for ZAE files.)
+*COLLADA_DOM_OMIT_ZAE (formerly	BUILDING_IN_MINIZIP)
+disables built-in ZAE features.
 
 NOTE: These libraries will be replaced with equivalents once obsolete.
  

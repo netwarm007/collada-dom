@@ -220,7 +220,8 @@ daePlatform &daeArchive::_getPlatform(const daeDOM &DOM)
 	return *DOM._platform; //This is here because of a cicular-dependency.
 }
 
-static struct dae_cpp_dummyPlatform : daePlatform
+extern daeAtlas &daeStringRef_dummyAtlas;
+static struct dae_dummyPlatform : daePlatform
 {
 virtual daeOK resolveURI(daeURI&, const daeDOM&){ return DAE_ERR_CLIENT_FATAL; }
 virtual daeOK openURI(const daeIORequest&,daeIOPlugin*,daeURIRef&){ return DAE_ERR_CLIENT_FATAL; }
@@ -228,7 +229,7 @@ virtual daeOK closeURI(const daeURI&){ return DAE_ERR_CLIENT_FATAL; }
 virtual daeIO *openIO(daeIOPlugin&, daeIOPlugin&){ return nullptr; }
 virtual void closeIO(daeIO*){}
 virtual int getLegacyProfile(){ return 0; }
-}dae_cpp_dummyPlatform;
+}dae_dummyPlatform;
 
 //ORDER-OF-INITIALIZATION MATTERS 
 daeDoc::daeDoc(daeDOM *DOM, int dt):
@@ -237,6 +238,7 @@ daeObject(DOM),_link()
 ,_operation_thread_id() //STFU
 { 	
 	_uri.setIsAttached();
+	_uri.setIsResolved();
 	_uri.__DAEP__Object__embed_subobject(this);
 	//daeURI is not a system object.
 	//This is to ensure that only system objects are 0.
@@ -259,12 +261,16 @@ daeArchive::daeArchive(daeDOM &DOM)
 :daeDoc(DOM,daeDocType::ARCHIVE),_deleter()
 ,_whatsupDoc() //STFU
 {
-	//MUST ASSUME DOM IS UNITIALIZED HERE//
+	_uri.setIsDirectoryLike();
+
+	//MUST ASSUME DOM IS UNINITIALIZED HERE//
 }
 daeDOM::daeDOM(daeDatabase_base *DB, daePlatform *OS)
 COLLADA_SUPPRESS_C(4355)
 :daeArchive(*this),_closedDocs(*this)
 {
+	_atlas = &daeStringRef_dummyAtlas;
+
 	_closedDocs.__DAEP__Object__embed_subobject(this);
 	_refResolvers.__DAEP__Object__embed_subobject(this);
 
@@ -278,7 +284,7 @@ COLLADA_SUPPRESS_C(4355)
 	if(OS==nullptr) OS = _globalPlatform;
 	if(OS==nullptr)
 	{
-		OS = &dae_cpp_dummyPlatform;
+		OS = &dae_dummyPlatform;
 		//If a daeDOM is a global static object not initialized at startup it's
 		//likely to trigger this as the first console output.
 		//There's not an official way to change it but a savvy programmer might
@@ -395,33 +401,57 @@ daeElement *daeDOM::_addElement(daeMeta &meta)
 	meta._construct(obj,*this,*this); return obj;
 }
 
-daeDocRoot<> daeArchive::_read2(daeMeta *rootmeta, const daeIORequest &reqI, daeIOPlugin *I)
+daeError daeArchive::_read2(daeDocRef &out, daeMeta *rootmeta, const daeIORequest &reqI, daeIOPlugin *I)
 {
   //This method is "static" because a "this" pointer is 
   //normally redundant, as reqI.scope should contain it.
 
-	if(reqI.isEmptyRequest()) 
-	return DAE_ERR_INVALID_CALL; //meaningful?
-	daeDOMRef DOM = const_cast<daeDOM*>(reqI.scope->getDOM());
-	if(reqI.localURI!=nullptr) 
-	reqI.localURI->resolve(DOM);	
-	else if(I==nullptr)	
-	return DAE_ERR_INVALID_CALL;
-	if(reqI.remoteURI!=nullptr&&reqI.remoteURI!=reqI.localURI)
-	reqI.remoteURI->resolve(DOM);
-	if(DOM!=reqI.scope&&reqI.localURI!=nullptr	
-	&&!reqI.localURI->transitsDoc(*reqI.scope))
-	return DAE_ERR_QUERY_NO_MATCH; //or DAE_ERR_INVALID_CALL?
+	if(!reqI.isEmptyRequest()) reqI.resolve();
+	else return DAE_ERR_INVALID_CALL; //meaningful?
+
+	daeDOMRef DOM = const_cast<daeDOM*>(reqI.scope->getDOM());	
+		
+	if(reqI.scope!=DOM
+	 &&reqI.localURI!=nullptr
+	&&!reqI.localURI->transitsDoc(reqI.scope))
+	{
+		return DAE_ERR_QUERY_NO_MATCH; //or DAE_ERR_INVALID_CALL?
+	}
+	 
 	daeRAII::UnplugIO RAII(*DOM->_platform);	
-	if(I==nullptr) I = RAII = RAII.p.pluginIO(*reqI.localURI,'r'); 		
+	#ifdef NDEBUG
+	#error Is localURI sufficient below?
+	#endif
+	if(I==nullptr&&reqI.localURI!=nullptr)
+	{
+		I = RAII = RAII.p.pluginIO(*reqI.localURI,'r'); 		
+		
+		#ifdef __COLLADA_DOM__ZAE		
+		//Reminder: For some reason the 1.5.0 manual says
+		//ZAE can include "zip, rar, kmz, zae", etc. more
+		//archives internally.
+		if(I==nullptr)
+		if(reqI.localURI->getURI_extensionIs("zae")
+		 ||reqI.localURI->getURI_extensionIs("zip"))
+		{
+			static daeZAEPlugin zae; I = &zae;
+		}
+		#endif
+	}
 	daeRAII::InstantLegacyIO legacyIO; //emits error
-	if(I==nullptr) I = &legacyIO(RAII.p.getLegacyProfile(),*reqI.localURI);						
+	if(I==nullptr&&reqI.localURI!=nullptr)
+	I = &legacyIO(RAII.p.getLegacyProfile(),*reqI.localURI);	
 	daeRAII::Reset<const daeIORequest*> _I___request(I->_request);
 	I->_request = &reqI;
-	daeDocRef out; 
-	daeOK OK = I->addDoc(*DOM,out); 
-	assert(out==nullptr||out->getDocURI().empty());
-	if(!OK) return OK;	
+
+	//daeDocRef out; 
+	daeOK OK; //daeOK OK = I->addDoc(*DOM,out)
+	if(out==nullptr)
+	{
+		OK = I->addDoc(out,rootmeta); 
+		if(!OK) return OK;
+	}
+	if(out==nullptr) return OK;	 	
 	daeDocumentRef document = out->getDocument();
 	if(document==nullptr)
 	{
@@ -449,16 +479,23 @@ daeDocRoot<> daeArchive::_read2(daeMeta *rootmeta, const daeIORequest &reqI, dae
 		else
 		{
 			daeIOEmpty O;
-			daeRAII::CloseIO RAII2(RAII.p); //emits error	
-			daeIO *IO = RAII2 = RAII.p.openIO(*I,O);
+			daeRAII::CloseIO RAII2(reqI.scope->getIOController()); //emits error	
+			daeIO *IO = RAII2 = RAII2.p.openIO(*I,O);
 			if(IO==nullptr) 
 			return DAE_ERR_CLIENT_FATAL;	
 			OK = I->readContent(*IO,document->getContents());
 		}
 	}
-	if(!OK) return OK;
+		
 	if(out!=nullptr&&reqI.localURI!=nullptr)
-	out->_uri.setURI(reqI.localURI->data()); return out;
+	if(out->_uri.empty()||out->_uri!=*reqI.localURI)
+	out->_uri.setURI(reqI.localURI->data());
+
+	//HMMM? If !OK should out==nullptr also? This wasn't a problem 
+	//when they were fused with daeDocRoot.
+	//Reminder: This is a low-level API. 
+	//Close the document to curtail unexpected accidents for users?
+	if(!OK&&document!=nullptr) document->close(); return OK;
 }	 
 
 daeOK daeDOM::_write_this_DOM(const daeURI &URI, daeIOPlugin *O)const
@@ -547,13 +584,24 @@ daeDOM *daeArchive::_removeDoc(daeDoc *doc, daeDoc *uprooted_replacement=nullptr
 }
 void daeArchive::_closedDoc(daeDoc *doc, daeDoc *replacement)
 {
+	//HACK? ZAE archives come out of _removeDoc deleted...
+	daeDocRef safe; 
+	
 	if(!doc->isClosed())
 	{
+		safe = doc; //NEW
+
 		if(replacement!=nullptr) 
 		_uprootDoc(replacement,nullptr);
 		daeDOM *DOM = _removeDoc(doc,/*uprooted*/replacement);
 		(void)DOM;
 	}
+
+	//NEW: These are in addition to atomize so not to have to do
+	//this inside of every doc-type (maybe including user types.)
+	doc->_link = nullptr; 
+	if(doc==doc->_archive->_link) doc->_archive->_link = nullptr;
+
 	doc->__daeDoc__v1__atomize();	
 }
 

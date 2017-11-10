@@ -82,13 +82,13 @@ inline void MatrixInvertTranspose0(const RT::Matrix &m, RT::Matrix &it)
 void MatrixToQuat(const RT::Matrix &rotMat, RT::Quaternion &RotQuat);
 
 //MIXING double AND float MATH.
-inline FX::Float3 &MatrixTransform(const RT::Matrix &Matrix, const FX::Float3 &v, FX::Float3 &tv)
+inline FX::Float3 &MatrixTransform(const RT::Matrix &Matrix, const FX::Float3 /*&*/v, FX::Float3 &tv)
 {
 	tv.x = float(v.x*Matrix[M00]+v.y*Matrix[M10]+v.z*Matrix[M20]+Matrix[M30]);
 	tv.y = float(v.x*Matrix[M01]+v.y*Matrix[M11]+v.z*Matrix[M21]+Matrix[M31]);
 	tv.z = float(v.x*Matrix[M02]+v.y*Matrix[M12]+v.z*Matrix[M22]+Matrix[M32]); return tv;
 }
-inline FX::Float3 &MatrixRotate(const RT::Matrix &Matrix, const FX::Float3 &v, FX::Float3 &tv)
+inline FX::Float3 &MatrixRotate(const RT::Matrix &Matrix, const FX::Float3 /*&*/v, FX::Float3 &tv)
 {
 	tv.x = float(v.x*Matrix[M00]+v.y*Matrix[M10]+v.z*Matrix[M20]);
 	tv.y = float(v.x*Matrix[M01]+v.y*Matrix[M11]+v.z*Matrix[M21]);

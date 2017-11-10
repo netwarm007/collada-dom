@@ -1281,7 +1281,9 @@ RT::Geometry *RT::DBase::LoadGeometry(ColladaYY::const_geometry &in)
 
 RT::Image *RT::DBase::LoadImage(ColladaYY::const_image &in, bool sRGB)
 {	
-	if(in==nullptr||!RT::Main.LoadImages)
+	//LoadImages is being applied to the image data, so non OpenGL
+	//applications can access the image data.
+	if(in==nullptr) //||!RT::Main.LoadImages)
 	return nullptr;
 	RT::Image *out = GetImage(in);
 	if(out!=nullptr) //image was instanced
@@ -2380,7 +2382,10 @@ void RT::DBase::LoadCOLLADA(ColladaYY::const_COLLADA &COLLADA)
 
 	//SCHEDULED FOR REMOVAL
 	//HACK: This is setting up FX::Profile_COMMON.	
-	RT::Main.Stack.Draw();
+	//COURTESY: Don't initialize VBuffer1. (In case not rendering.)
+	//RT::Main.Stack.Draw();
+	FX::Profile_COMMON::Color_or_Texture::FinalizeBWTextureColors();
+	//
 	for(size_t i=0;i<Materials.size();i++)
 	{
 		RT::Material *m = Materials[i];

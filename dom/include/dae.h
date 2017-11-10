@@ -10,7 +10,7 @@
 #define __COLLADA_DOM__DAE_H__
 
 #include "dae/domAny.h"
-#include "dae/daeIOPlugin.h"
+#include "dae/daeAtlas.h"
 #include "dae/daeDocument.h"
 
 COLLADA_(namespace)
@@ -85,6 +85,11 @@ template<class T> struct daeDocRoot : daeDocRef, daeOK
 	}
 	template<class S> daeObject *_SFINAE(const daeElement*)const
 	{ 
+		//LEGACY: Since _read2 was changed it's possible to get an 
+		//error with a nonzero daeDocRef. If the result is converted
+		//into a high level element/document it becomes a nullptr value.
+		if(error!=DAE_OK) return nullptr;
+
 		//& is used to invoke the DAEP::Element conversion
 		//to a daeElement& in order to behave like xs::any.
 		S &upcast = *(TT*)nullptr; (void)upcast;
@@ -96,7 +101,7 @@ template<class T> struct daeDocRoot : daeDocRef, daeOK
 
 #include "./LINKAGE.HPP" //#define LINKAGE
 
-/**
+/**ZAE
  * Class @c daeDOM is based on @c daeArchive. COLLADA ZAE archives are @c daeArchives.
  */
 class daeArchive : public daeDoc
@@ -129,7 +134,7 @@ COLLADA_(public) //OPERATORS
 
 	COLLADA_DOM_OBJECT_OPERATORS(daeArchive)
 
-COLLADA_(private) //new/openDoc() implementation
+COLLADA_(public/*private*/) //new/openDoc() implementation
 	
 	//These had returned the doc-root via specializations,
 	//but GCC/C++ forbid in-class explicit specialization.
@@ -137,13 +142,7 @@ COLLADA_(private) //new/openDoc() implementation
 	/** Creates/recreates a @a ROOT rooted doc. */	
 	inline void _read(daeDocRoot<ROOT> &o, const daeIORequest &req, daeIOPlugin *I)
 	{
-		o = _read2(daeGetMeta<ROOT>(),req,I);
-	}
-	/**TEMPLATE-SPECIALIZATION
-	 * Creates/recreates a purely @c domAny doc. */	
-	inline void _read(daeDocRoot<domAny> &o, const daeIORequest &req, daeIOPlugin *I)
-	{
-		o = _read2(nullptr,req,I);
+		o.error = _read2(o,daeGetMeta<ROOT>(),req,I);
 	}
 	/**TEMPLATE-SPECIALIZATION
 	 * Delegates creation/recreation of a new doc to @c daePlatform::openURI().
@@ -177,8 +176,12 @@ COLLADA_(private) //new/openDoc() implementation
 	 * Creates/recreates a new document. 
 	 * @todo There needs to be a wildcard @c daeMetaElement to have any root element,
 	 * on a per namespace basis, as not all XML Schema are as restrictive as COLLADA.
+	 *
+	 * ZAE
+	 * @param o may be recycled in order to facilitate recursive operations, such as
+	 * how @c daeZAEPlugin will produce the index document given sufficient metadata.
 	 */
-	LINKAGE static daeDocRoot<> _read2(daeMeta*, const daeIORequest&, daeIOPlugin*);
+	LINKAGE static daeError _read2(daeDocRef &o, daeMeta*, const daeIORequest&, daeIOPlugin*);
 
 COLLADA_(public) //ACCESSORS & MUTATORS
 	/**
@@ -188,7 +191,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 */
 	inline daeDocRoot<> newDoc(const daeURI &URI, daeIOPlugin *I=nullptr)
 	{ 
-		return _read2(nullptr,daeIORequest(this,nullptr,&URI),I);
+		daeDocRoot<> o; o.error = _read2(o,nullptr,daeIORequest(this,nullptr,&URI),I); return o;
 	}	
 
 	template<class ROOT>
@@ -354,12 +357,70 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	{
 		return getDoc(i_or_URI);
 	}
-		
-	/**CONST-ONLY
+
+	/**WARNING, CONST-ONLY
 	 * Gets the base URI used for resolving relative URI references. 
 	 * @return Returns the same @c daeURI& as @c daeDoc::getDocURI().
+	 *
+	 * @warning Because archives are also files, this URI doesn't have
+	 * a slash (/) on the end, but @c true==daeURI::getIsDirectoryLike()
+	 * so that when used as a base, a slash will be inserted.
 	 */
 	inline const daeURI &getBaseURI()const{ return _uri; }
+
+COLLADA_(public) //ZAE	
+	/**
+	 * ZAE archives use this interface. 
+	 *
+	 * @c daeDOM get a dummy/common atlas. If @c daeImage objects 
+	 * are to be associated with the DOM (for some reason) a new
+	 * atlas should be assigned to @c _getAlas().
+	 */
+	inline daeAtlas &getAtlas()const
+	{
+		return *const_cast<daeArchive*>(this)->_getAtlas(); 
+	}
+	/**
+	 * Use this to assign a @c daeAtlas. The archives can share an
+	 * atlas.
+	 *
+	 * @note @c daeArchive is an internal structure, so the atlases
+	 * must be assigned after the factory creates the archive, even
+	 * though they're practically synonymous with one another.
+	 */
+	NOALIAS_LINKAGE daeAtlasRef &_getAtlas()
+	SNIPPET( return _atlas; )
+
+	/**
+	 * Convenience function. DOM objects don't have I/O controllers.
+	 */
+	inline daeIOController &getIOController()const
+	{
+		if(!_isDOM()) return getAtlas();
+		else return _getPlatform(*(daeDOM*)this);
+	}
+
+	/**WARNING
+	 * Sets the index document for this archive. For ZAE this can
+	 * be the document indicated by the <dae_root> element inside
+	 * the manifest.xml file. 
+	 * @see @c daeDoc::getDocument().
+	 *
+	 * @warning I/O plugins may set this under certain conditions.
+	 * Most of the time however, there's no way to know what this
+	 * should return; and so if user code relies on it, it should
+	 * first see to it that it is always set correctly. (Consider
+	 * that the library cannot constantly monitor ZAE archives to
+	 * see if dae_root has been opened, since manifest.xml itself
+	 * may not be opened either. Users must decide how to do it.)
+	 */
+	inline daeOK setDocument(const daeDocument *d)
+	{
+		//Maybe this should be unrestricted? but the DOM's must match!
+		//if(d!=nullptr&&d->getDOM()!=getDOM()) return DAE_ERR_INVALID_CALL;
+		if(d!=nullptr&&!d->inArchive(this)) return DAE_ERR_INVALID_CALL;
+		_link = const_cast<daeDocument*>(d); return DAE_OK;
+	}
 
 COLLADA_(protected) //INTERNAL	
 
@@ -378,13 +439,20 @@ COLLADA_(protected) //INVISIBLE
 		/**
 		 * Constructor & Virtual Destructor
 		 */
-		 daeArchive(daeDOM&); virtual ~daeArchive(){}
+		daeArchive(daeDOM&); virtual ~daeArchive(){}
 
 		/**PURE-OVERRIDE */
 		virtual void __daeDoc__v1__atomize();
 
 		/** Set with @c daeDOM::setDeleter(). */
 		_deleter_f _deleter;
+		
+		/**ZAE
+		 * @c daeZAEPlugin sets this to an internal
+		 * @c daeZAE atlas.
+		 * @see daeAtlas.h and daeZAEUncompressHandler.cpp.
+		 */
+		daeAtlasRef _atlas;
 
 		/**
 		 * Pre-2.5 docs belonged to @c daeDatabase.
@@ -613,14 +681,14 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	 * Gets the OS-like platform, bound to this DOM, for ever more. 
 	 */
 	inline daePlatform &getPlatform()const{ return _getPlatform(*this); }
-
-	#ifndef COLLADA_NODEPRECATED
-	COLLADA_DEPRECATED("Post-2.5: END-OF-SUPPORT\n\
-	Use getDefaultBaseURI() to get the pre-2.5 meaning of this API.\n\
-	WARNING: When #ifdef COLLADA_NODEPRECATED, daeArchive::getBaseURI() takes its place.")	
-	/**LEGACY Please change your code to getDefaultBaseURI(). */
-	inline void getBaseURI()const;
-	#endif //COLLADA_NODEPRECATED
+								  
+	/**OVERRIDE
+	 * This overrides @c daeArchive::getBaseURI() since a DOM does
+	 * not have a base--or it is always empty--or it is as long as
+	 * it represents the entire domain of an Internet like network.
+	 * @see getDefaultBaseURI().
+	 */
+	inline void getBaseURI()const{}
 
 	/**REPLACES @c daeURI &getBaseURI().
 	 * Gets the base URI used for resolving relative URI references. 
@@ -631,7 +699,7 @@ COLLADA_(public) //ACCESSORS & MUTATORS
 	/**CONST-PROPOGATING-FORM
 	 * REPLACES @c daeURI &getBaseURI().
 	 * Gets the base URI used for resolving relative URI references. 
-	 * @remarks This is the "current working directory" in URI form.
+	 * @remarks This is the "current working directory" in URI form. 
 	 */
 	inline const daeURI &getDefaultBaseURI()const
 	{
@@ -728,11 +796,13 @@ COLLADA_(public) //PUBLIC METHODS
 
 #else
 
-COLLADA_(private) //INVISIBLE
+COLLADA_(public) //INVISIBLE		
 		/**
 		 * Virtual Destructor 
 		 */
 		virtual ~daeDOM();
+
+COLLADA_(private) //INVISIBLE		
 		
 		/**PURE-OVERRIDE */
 		virtual DAEP::Model &__DAEP__Object__v1__model()const;

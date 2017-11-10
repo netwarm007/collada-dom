@@ -14,34 +14,11 @@ COLLADA_(namespace)
 	namespace RT
 	{//-.
 //<-----'
-
-template<int BITS, class T> T SameEndianness(T nop)
-{
-    daeCTC<BITS%CHAR_BIT==0&&BITS/CHAR_BIT==sizeof(T)>();
-	return nop;
-}
-template<int BITS, class T> T SwapEndianness(T u)
-{
-	daeCTC<BITS%CHAR_BIT==0&&BITS/CHAR_BIT==sizeof(T)>();
-    union
-    {
-        T u; unsigned char u8[sizeof(T)];
-    }source, dest;
-    source.u = u;
-    for(size_t k=0;k<sizeof(T);k++)
-    dest.u8[k] = source.u8[sizeof(T)-k-1]; return dest.u;
-}
-
-//Reminder: Presumably the PS3 is PowerPC, so Big Endian.
-#ifdef COLLADA_RT_BIG_ENDIAN
-template<int BITS, class T> T LittleEndian(T u){ return SwapEndianness<BITS>(u); }
-#else
-template<int BITS, class T> T LittleEndian(T u){ return SameEndianness<BITS>(u); }
-#endif
-  
+	
 RT::Texture * /*C4138*//*RT::*/LoadTargaFromMemory(const void *buf, size_t size, RT::Texture *out)
 {		
 	//2016: Getting these out of "CrtTypes.h"
+	daeCTC<CHAR_BIT==8>();
 	typedef unsigned char UInt8;
 	typedef int Int32;
 	typedef unsigned int UInt32;
@@ -64,10 +41,10 @@ RT::Texture * /*C4138*//*RT::*/LoadTargaFromMemory(const void *buf, size_t size,
 	return nullptr; //LEGACY
 		
 	memcpy(&h,buf,sizeof(h));
-	h.XOrigin = RT::LittleEndian<16>(h.XOrigin);
-	h.YOrigin = RT::LittleEndian<16>(h.YOrigin);
-	h.ImageWidth = RT::LittleEndian<16>(h.ImageWidth);
-	h.ImageHeight = RT::LittleEndian<16>(h.ImageHeight);
+	daeIOController::BigEndian<16>(h.XOrigin);
+	daeIOController::BigEndian<16>(h.YOrigin);
+	daeIOController::BigEndian<16>(h.ImageWidth);
+	daeIOController::BigEndian<16>(h.ImageHeight);
 	daeEH::Verbose<<"TGA texture loaded to memory "<<
 	h.ImageWidth<<" by "<<h.ImageHeight<<", pixeldepth is "<<h.PixelDepth;
 	#ifndef COLLADA_RT_BIG_ENDIAN 

@@ -267,6 +267,11 @@ COLLADA_(public) //RT query API.
 		}
 
 		inline void Apply(){ Color.Apply(); Texture.Apply(); }
+
+		//COURTESY, SCHEDULED FOR REMOVAL
+		//LoadCollada needs to do this. It had done a quick Draw
+		//pass (as a hack) but applications might be non drawing.
+		static void FinalizeBWTextureColors();
 	};	
 	Color_or_Texture Emission;
 	Color_or_Texture Ambient;

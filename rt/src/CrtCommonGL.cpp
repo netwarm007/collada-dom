@@ -175,6 +175,14 @@ void RT::Stack::_ResetCamera()
 	else glViewport(l+(RT::Main.Width-w)/2,t,w,RT::Main.Height);
 }
 
+//This is all that remains of RT::Stack::Draw_Triangles().
+static void CrtCommongGL_draw_triangles(RT::Stack *main)
+{
+	//SHOULD DO THIS HERE. See CrtGeometry.cpp.
+	RT::Stack_Draw &d = *main->CurrentDraw; assert(main==&RT::Main.Stack);	
+	d.first->Draw_VBuffer(RT::Main.Stack.VBuffer1.Memory,d.GetMaterials());
+}
+
 void RT::Stack::Draw()
 {
 	//The camera is always updated in case it's animated.
@@ -207,7 +215,14 @@ void RT::Stack::Draw()
 	{
 		ResetMaterial(); //In case client draws.
 
-		Draw_Triangles();
+		//Draw_Triangles();
+		{
+			if(0==VBuffer1.Capacity) Init_VBuffers();
+
+			glEnableClientState(GL_VERTEX_ARRAY);
+
+			Draw_Instances(CrtCommongGL_draw_triangles,this);
+		}
 
 		ResetMaterial(); //Reset the FX state.
 	}
@@ -218,38 +233,60 @@ void RT::Stack::Draw()
 		GL::LoadMatrix(FX.VIEW.Value); Draw_ShowHierarchy();
 	}
 }
-void RT::Stack::Draw_Triangles()
+ 
+void RT::Stack::Init_VBuffers(int which)
 {	
-	RT::Geometry *g = nullptr;
-
 	//HACK: There's not a separate procedure for
 	//initializing these vertex-buffers. VBuffer1
 	//is cleared when Select() is called.
-	if(0==VBuffer1.Capacity)
-	{		
-		if(DrawData.empty()) return;
-		 
-		//Vertex buffers.
-		VBuffer2.Clear();		
+
+	//Reminder: These can't get out of sync, since
+	//they are cleared if the selection is changed.
+	if(which!=2) VBuffer1.Clear();
+	if(which!=1) VBuffer2.Clear();
+
+	if(DrawData.empty()) return;
+		
+	size_t cap1 = 0, cap2 = 0;
+	
+	if(which!=2) //1?
+	{
+		RT::Geometry *g = nullptr;
 		for(size_t i=0;i<DrawData.size();i++)
 		{
 			if(g!=DrawData[i].first)
 			{	
 				g = DrawData[i].first;
-				VBuffer1.Capacity = std::max(VBuffer1.Capacity,g->Size_VBuffer());
-			}
-			if(DrawData[i].second!=nullptr) //3+3 is POSITION+NORMAL.
-			{					
-				VBuffer2.Capacity = std::max(VBuffer2.Capacity,g->Vertices*(3+3));
+				cap1 = std::max(cap1,g->Size_VBuffer());
 			}
 		}
-		assert(0!=VBuffer1.Capacity);
-		VBuffer1.new_Memory = new float[VBuffer1.Capacity];		
-		if(0!=VBuffer2.Capacity)
-		VBuffer2.new_Memory = new float[VBuffer2.Capacity];
+		assert(0!=cap1);
+		if(0!=cap1) VBuffer1.new_Memory = 
+		COLLADA_RT_array_new(float,VBuffer1.Capacity=cap1);		
 	}
-	
-	glEnableClientState(GL_VERTEX_ARRAY);
+
+	if(which!=1) //2?
+	{
+		RT::Geometry *g = nullptr;
+		for(size_t i=0;i<DrawData.size();i++)
+		{
+			if(DrawData[i].second==nullptr)
+			continue;
+
+			if(g!=DrawData[i].first) //3+3 is POSITION+NORMAL.
+			{	
+				g = DrawData[i].first;
+				cap2 = std::max(cap2,g->Vertices*(3+3));
+			}
+		}
+		if(0!=cap2) VBuffer2.new_Memory = 
+		COLLADA_RT_array_new(float,VBuffer2.Capacity=cap2);
+	}
+} 
+
+void RT::Stack::_Draw_Instances(void (*draw)(void*), void *drawer)
+{	
+	RT::Geometry *g = nullptr;
 
 	RT::Stack_Data **cd = nullptr, **cd_end = nullptr;
 	if(!ControllerData.empty()) //C++98/03 support
@@ -282,6 +319,7 @@ void RT::Stack::Draw_Triangles()
 		}
 		else truncated: 
 		{
+			if(0!=VBuffer1.Capacity) //COURTESY
 			g->Fill_VBuffer(VBuffer1.Memory);
 		}
 
@@ -294,6 +332,7 @@ void RT::Stack::Draw_Triangles()
 			{
 				ic = d.AsController();
 				if(ic->Advance_ControllerData(cd,cd_end))
+				if(0!=VBuffer1.Capacity) //COURTESY
 				g->OverrideWith_ControllerData(VBuffer2.new_Memory);	
 			}
 
@@ -319,7 +358,8 @@ void RT::Stack::Draw_Triangles()
 			CurrentDraw = &d;
 			
 			//SHOULD DO THIS HERE. See CrtGeometry.cpp.
-			g->Draw_VBuffer(VBuffer1.Memory,d.GetMaterials());
+			//g->Draw_VBuffer(VBuffer1.Memory,d.GetMaterials());
+			draw(drawer);
 
 		}while(++i<DrawData.size()&&g==DrawData[i].first);
 	}

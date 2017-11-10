@@ -24,46 +24,6 @@ COLLADA_(namespace)
 {//-.
 //<-'
 
-/*REFERENCE: NO LONGER RELEVANT
-#include <zip.h> //for saving compressed files
-#ifdef _WIN32
-#include <iowin32.h>
-#else
-#include <unistd.h>
-#endif
-//Some helper functions for working with libxml
-namespace
-{ 	
-	#ifdef _WIN32
-	static const char s_filesep = '\\';
-	#else
-	static const char s_filesep = '/';
-	#endif
-
-	//wrapper that automatically closes the zip file handle
-	struct zipFileHandler
-	{	 
-		zipFile zf;
-		zipFileHandler():zf(){}
-		~zipFileHandler()
-		{
-			if(zf!=nullptr)
-			{
-				int errclose = zipClose(zf,nullptr);
-				if(errclose!=ZIP_OK)
-				daeEH::Error<<"zipClose error"<<errclose;				
-			}
-		}		
-	};
-
-	struct xmlBufferHandler
-	{
-		xmlBufferPtr buf;
-		xmlBufferHandler():buf(){}
-		~xmlBufferHandler(){ if(buf!=nullptr) xmlBufferFree(buf); }
-	};
-}*/
-
 int daeLibXMLPlugin::_errorRow()
 {
 	#if LIBXML_VERSION >= 20620
@@ -163,88 +123,7 @@ struct daeLibXMLPlugin::Reader
 	#ifdef NDEBUG
 	#error Is the URL really required? If not, remove _fixUriForLibxml.
 	#endif
-	/*//BACKGROUND FROM domTest.cpp:
-	DefineTest(libxmlUriBugWorkaround)
-	{
-		if(cdom::getSystemType()==cdom::Posix)
-		{
-	//NOT MAINTAINING NON-URL LIKE :/ 
-			//libxml doesn't like file scheme uris that don't have an authority component
-			CheckResult(cdom::fixUriForLibxml("file:/folder/file.dae")=="file:///folder/file.dae");
-		}
-		else if(cdom::getSystemType()==cdom::Windows)
-		{
-	//NOT MAINTAINING NON-URL LIKE :/ 
-			//libxml doesn't like file scheme uris that don't have an authority component
-			CheckResult(cdom::fixUriForLibxml("file:/c:/folder/file.dae")=="file:///c:/folder/file.dae");
-			//libxml wants UNC paths that contain an empty authority followed by three slashes
-			CheckResult(cdom::fixUriForLibxml("file://otherComputer/file.dae")=="file://///otherComputer/file.dae");
-			//libxml wants absolute paths that don't contain a drive letter to have an
-			//empty authority followed by two slashes.
-			CheckResult(cdom::fixUriForLibxml("file:/folder/file.dae")=="file:////folder/file.dae");
-		}
-
-		return testResult(true);
-	}*/
-	//SCHEDULED FOR REMOVAL?
-	//The LIBXML library's code needs to be stepped-through to determine why
-	//the hell it wants a URL in the first place. If for no reason, this can
-	//safely be removed.	
-	/**WARNING, LEGACY-SUPPORT
-		* This tweaks the file: protocol URIs according to the old library's needs.
-		* @note It's not even clear what LIBXML does with the URI. Possibly nothing.
-		* Its documentation is a joke.
-		* @warning This plugin doesn't come recommended. It's for back compatability.	 
-		* @remarks THIS IS IN THE HEADER TO MAKE SURE IT DOESN'T GO UNNOTICED, AND TO
-		* BE TRANSPARENT ABOUT IT. #ifdef WIN32 IS A BIG PROBLEM SINCE THE LIBRARY IS
-		* SUPPOSED TO BE PLATFORM-AGNOSTIC; IT DEPENDS ON WHATEVER LIBXML IS ASSUMING.
-		*/
-	/*struct _fixUriForLibxml
-	{
-		daeRefView _vu;
-		daeArray<daeStringCP,260> _fixed;
-
-	public: operator daeString()const{ return _vu.view; }
-		
-		_fixUriForLibxml(const daeURI &URI)
-		{
-			_vu.view = URI.data();
-
-		//NOT MAINTAINING NON-URL LIKE :/ 
-		#ifdef _WIN32
-
-			//This is verbatim the algorithm the old library uses.
-			//It lived in #include "daeURI.h" cdom::assembleUri().
-			if("file"!=URI.getURI_protocol()) 
-			return;
-
-			int slashes = 2; 
-			if(!URI.getURI_authority().empty())
-			{
-				slashes+=3;	//file://///otherComputer/file.dae case.
-			}
-			else //Add extra slash if there's not a drive-letter?
-			{				
-				URI.getURI_path(_vu);
-				if(_vu.extent>3&&_vu.view[2]==':')
-				{
-					_vu.view = URI.data();
-					return; //file:///c:/folder/file.dae is legit.
-				}
-				else slashes++; //file:////folder/file.dae example.				
-			}			
-			//Assuming ? and # are not important.
-			//(REMINDER: IT'S NOT CLEAR LIBXML NEEDS THIS ARGUMENT IN THE FIRST PLACE.)
-			URI.getURI_protocol(_fixed);
-			for(_fixed.push_back(':');slashes-->0;_fixed.push_back('/'));
-			_fixed.append(URI.getURI_authority());
-			_fixed.append_and_0_terminate(URI.getURI_path());
-
-			_vu.view = _fixed.data();			
-
-		#endif //_WIN32
-		}		
-	};*/
+	
 	typedef std::pair<daeIO*,int> _xmlInputReadCallback_pair;
 	static int _xmlInputReadCallback(void *IO_read, daeStringCP *buffer, int len)
 	{
@@ -294,8 +173,10 @@ bool daeLibXMLPlugin::_read(daeIO &IO, daeContents &content)
 		if(0!=IO.getLock())
 		if(IO.readIn(&nonnull,0)!=DAE_ERR_NOT_IMPLEMENTED)
 		RAII.set_up_xmlReaderForIO(IO);
+		/*Want to remove the FILE based APIs from daeIO to simplify.
 		else
 		RAII.set_up_xmlReaderForFd(getCRT()->FILE.stat(IO.getReadFILE()).fd);
+		*/
 		if(RAII.reader==nullptr)
 		{
 			daeEH::Error<<"In daeLibXMLPlugin::readFromFile...";
@@ -465,7 +346,7 @@ daeOK daeLibXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 	daeURI rawURI; //Open secondary I/O channel?
 	daeIORequest rawReq(req.scope,nullptr,&rawURI);
 	daeIOEmpty rawI; 
-	daeIOSecond<Demands::CRT|Demands::unimplemented> rawO(rawReq); 
+	daeIOSecond<> rawO(rawReq); 
 	if(_saveRawFile)
 	{
 		const daeURI *l = req.remoteURI;
@@ -474,7 +355,7 @@ daeOK daeLibXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		rawURI.setURI(_raw);
 		rawURI.setParentObject(content.getElement());
 		_rawIO = rawReq.scope->getDOM()->getPlatform().openIO(rawI,rawO);
-		if(_rawIO==nullptr||nullptr==_rawIO->getWriteFILE())
+		if(_rawIO==nullptr)
 		{
 			daeEH::Error<<"RAW: Couldn't open secondary I/O channel for daeLibXMLPlugin::option_to_write_COLLADA_array_values_to_RAW_file_resource.";
 			if(_rawIO!=nullptr) goto RawFILE_is_0;
@@ -483,45 +364,16 @@ daeOK daeLibXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 		_rawByteCount = 0;
 	}
 
-	/*REFERENCE: NO LONGER RELEVANT
-	std::string fileName = cdom::uriToNativePath(name.str());
-	bool bcompress = fileName.size()>=4&&fileName[fileName.size()-4]=='.'
-	&&tolower(fileName[fileName.size()-3])=='z'
-	&&tolower(fileName[fileName.size()-2])=='a'
-	&&tolower(fileName[fileName.size()-1])=='e';
-
-	int err = 0;
-	xmlBufferHandler bufhandler;
-
-	if(bcompress)
+	struct _ //TODO? LIBXMLWriter
 	{
-		//taken from http://xmlsoft.org/examples/testWriter.c
-		//Create a new XML buffer, to which the XML document will be written
-		bufhandler.buf = xmlBufferCreate();
-		if(!bufhandler.buf)
+		static int _xmlOutputWriteCallback(void *IO, daeString buffer, int len)
 		{
-			daeEH::Error<<"daeLibXMLPlugin::write("<<name<<")\n"
-			"testXmlwriterMemory: Error creating the xml buffer.";			
-			return DAE_ERR_BACKEND_IO;
+			return DAE_OK==((daeIO*)IO)->writeOut(buffer,len)?len:-1;
 		}
-
-		//Create a new XmlWriter for memory, with no compression. 
-		//Remark: there is no compression for this kind of xmlTextWriter
-		_writer = xmlNewTextWriterMemory(bufhandler.buf,0);
-	}
-	else*/
-	{
-		struct _ //TODO? LIBXMLWriter
-		{
-			static int _xmlOutputWriteCallback(void *IO, daeString buffer, int len)
-			{
-				return DAE_OK==((daeIO*)IO)->writeOut(buffer,len)?len:-1;
-			}
-			static int _xmlOutputCloseCallback(void*){ return 0; }
-		};
-		_writer = xmlNewTextWriter(xmlOutputBufferCreateIO(_::_xmlOutputWriteCallback,_::_xmlOutputCloseCallback,&IO,nullptr));
-	}
-
+		static int _xmlOutputCloseCallback(void*){ return 0; }
+	};
+	_writer = xmlNewTextWriter(xmlOutputBufferCreateIO(_::_xmlOutputWriteCallback,_::_xmlOutputCloseCallback,&IO,nullptr));
+	
 	if(_writer==nullptr)
 	{
 		daeEH::Error<<
@@ -546,93 +398,10 @@ daeOK daeLibXMLPlugin::writeContent(daeIO &IO, const daeContents &content)
 	xmlTextWriterEndDocument(_writer);
 	xmlTextWriterFlush(_writer);
 	xmlFreeTextWriter(_writer);
-
-	/*REFERENCE: NO LONGER RELEVANT
-	if(bcompress)
-	{
-		std::string savefilenameinzip;
-		size_t namestart = fileName.find_last_of(s_filesep);
-		if(namestart==std::string::npos)
-		{
-			namestart = 0;
-		}
-		else
-		{
-			namestart += 1;
-		}
-		if(namestart+4>=fileName.size())
-		{
-			daeEH::Error<<"invalid fileName when removing ZAE extension";
-			return DAE_ERR_BACKEND_IO;
-		}
-		savefilenameinzip = fileName.substr(namestart,fileName.size()-namestart-4);
-		savefilenameinzip += ".dae";
-
-		zipFileHandler zfh;
-		#ifdef _WIN32
-		zlib_filefunc64_def ffunc;
-		fill_win32_filefunc64A(&ffunc);
-		zfh.zf = zipOpen2_64(fileName.c_str(),APPEND_STATUS_CREATE,nullptr,&ffunc);
-		#else
-		zfh.zf = zipOpen64(fileName.c_str(),APPEND_STATUS_CREATE);
-		#endif
-		if(!zfh.zf)
-		{
-			daeEH::Error<<
-			"daeLibXMLPlugin::write("<<name<<")\n"
-			"Error opening zip file for writing.";			
-			return DAE_ERR_BACKEND_IO;
-		}
-
-		time_t curtime = time(nullptr);
-		struct tm *timeofday = localtime(&curtime);
-		zip_fileinfo zi;
-		zi.tmz_date.tm_sec = timeofday->tm_sec;
-		zi.tmz_date.tm_min = timeofday->tm_min;
-		zi.tmz_date.tm_hour = timeofday->tm_hour;
-		zi.tmz_date.tm_mday = timeofday->tm_mday;
-		zi.tmz_date.tm_mon = timeofday->tm_mon;
-		zi.tmz_date.tm_year = timeofday->tm_year;
-		zi.dosDate = 0;
-		zi.internal_fa = 0;
-		zi.external_fa = 0;
-
-		int zip64 = bufhandler.buf->use>=0xffffffff;
-
-		char *password = nullptr;
-		unsigned long crcFile = 0;
-		int opt_compress_level = 9;
-		#define _(x,y) {\
-		daeEH::Error<<"daeLibXMLPlugin::write("<<name<<")\n"<<#y" "<<err;\
-		return DAE_ERR_BACKEND_IO; }
-		err = zipOpenNewFileInZip3_64(zfh.zf,savefilenameinzip.c_str(),&zi,nullptr,0,nullptr,0,"collada file generated by collada-dom",Z_DEFLATED,opt_compress_level,0,-MAX_WBITS,DEF_MEM_LEVEL,Z_DEFAULT_STRATEGY,password,crcFile,zip64);
-		if(err!=ZIP_OK)		
-		_(return,zipOpenNewFileInZip3_64 error)
-		err = zipWriteInFileInZip(zfh.zf,bufhandler.buf->content,bufhandler.buf->use);
-		if(err<0)
-		_(return,zipWriteInFileInZip error for dae file)
-		err = zipCloseFileInZip(zfh.zf);
-		if(err!=ZIP_OK)
-		_(return,zipCloseFileInZip error for dae file)
-		//add the manifest
-		string smanifest = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<dae_root>./";
-		smanifest += savefilenameinzip;
-		smanifest += "</dae_root>\n";
-		err = zipOpenNewFileInZip3_64(zfh.zf,"manifest.xml",&zi,nullptr,0,nullptr,0,nullptr,Z_DEFLATED,opt_compress_level,0,-MAX_WBITS,DEF_MEM_LEVEL,Z_DEFAULT_STRATEGY,password,crcFile,zip64);
-		if(err!=ZIP_OK)
-		_(return,zipOpenNewFileInZip3_64 error for manifest.xml file)
-		err = zipWriteInFileInZip(zfh.zf,&smanifest[0],smanifest.size());
-		if(err!=ZIP_OK)
-		_(return,zipWriteInFileInZip error for manifest.xml file)
-		err = zipCloseFileInZip(zfh.zf);
-		if(err!=ZIP_OK)
-		_(return,zipCloseFileInZip error for manifest.xml file)
-		#undef _
-	}*/
-
+		
 	if(_saveRawFile)
 	{
-		if(0!=ferror(_rawIO->getWriteFILE())) RawFILE_is_0: 
+		if(DAE_OK!=_rawIO->getError()) RawFILE_is_0: 
 		{	
 			_OK = DAE_ERR_BACKEND_IO; daeEH::Error<<"Raw FILE error: "<<_raw;			
 		}
@@ -823,12 +592,12 @@ const daeElement &unused_array, const daeElement &unused_technique_common)
 	_raw.erase(snip);	
 			 
 	//TODO: pay attention to precision for the array.
-	i = 0; FILE *f = _rawIO->getWriteFILE();	
+	i = 0;
 	#define _(x,y,z) if(atomic_type==daeAtomicType::z)\
 	{\
 		x tmp; _rawByteCount+=sizeof(x)*iN;\
 		for(const y&i0=valArray->getRaw();i<iN;i++)\
-		fwrite(&(tmp=(&i0)[i]),sizeof(x),1,f);\
+		_rawIO->writeOut(&(tmp=(&i0)[i]),sizeof(x));\
 	}else
 	daeCharData *arrayCD = array->getCharDataObject();
 	int atomic_type = arrayCD->getType()->where<daeAtom>().getAtomicType();	

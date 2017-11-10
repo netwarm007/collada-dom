@@ -34,6 +34,21 @@ struct Texture
 	Texture():Width(),Height(),Format(),Data(),sRGB(){}
 
 	~Texture(){ COLLADA_RT_array_delete(Data); }
+
+	/**
+	 * Set @c Data via @a URL. This is provided to nonvisual applications.
+	 * Normally @c RT::Texture::Refresh() deletes @c Data. @c Load() sets
+	 * it so it can be used to save a texture to a file.
+	 * @see @c RT::Image::Load()
+	 */
+	bool Load(const daeIORequest &URL);
+
+	/**COURTESY
+	 */
+	void Unload()
+	{
+		Width = Height = 0; COLLADA_RT_array_delete(Data);
+	}
 };
 
 RT::Texture *LoadTargaFromURI(const daeURI &file);
@@ -66,9 +81,23 @@ COLLADA_(public)
 	}
 
 	/**
-	 * This will load the image from DocURI+URL.
+	 * Calls @c RT::Texture::Load() with this image's URL.
 	 */
-	bool Refresh();
+	bool Load();
+
+	/**
+	 * This will load the image from DocURI+URL.
+	 * @note @c Refresh() generates an OpenGL texture ID and 
+	 * updates its server side memory, and then deletes @c Data.
+	 * Alternatively, @c Load() retains the Data and does not
+	 * change the OpenGL memory. Refresh allocates a texture ID
+	 * even if the OpenGL texture is not set up.
+	 * @see @c RT::Frame::LoadImages.
+	 *
+	 * @param reload if @c false allows use of @c Load() and
+	 * @c Refresh() together. If @c true @c Data is deleted.
+	 */
+	bool Refresh(bool reload=true);
 
 	/**
 	 * This called "CrtRender::DeleteTexture."
