@@ -21,7 +21,7 @@ COLLADA_(namespace)
 class daeGZ
 {		
 	char _32k_dictionary[32*1024]; 
-	char *_private_implementation[4096*4]; 	
+	char _private_implementation[4096*4]; 	
 	size_t _restart,_final_input;
 	size_t _size;
 	#ifdef NDEBUG
@@ -310,6 +310,7 @@ COLLADA_(public) //I/O
 			#ifdef NDEBUG
 			#error incomplete
 			#endif
+			assert(0);
 			OK = DAE_ERR_NOT_IMPLEMENTED; return 0;
 		}
 		virtual daeOK readIn(void *in, size_t chars)
@@ -367,6 +368,7 @@ COLLADA_(public) //I/O
 			#ifdef NDEBUG
 			#error incomplete
 			#endif
+			assert(0);
 			OK = DAE_ERR_NOT_IMPLEMENTED; return 0;
 		}
 
@@ -593,6 +595,7 @@ daeOK daeZAEPlugin::readContent(daeIO &IO, daeContents &content)
 				//Should daeAtlas hold onto the original remote URI?
 				daeURI_parser remoteURI_base(getRequest().remoteURI->data());
 				remoteURI_base.setIsDirectoryLike();
+				remoteURI_base.setIsResolved();
 				daeURI remoteURI(remoteURI_base,localURI.data());
 				OK = daeArchive::_read2(d2,d->getMeta(),
 			daeIORequest(&d->getArchive(),nullptr,&localURI,&remoteURI),_I);
@@ -625,6 +628,7 @@ daeOK daeZAEPlugin::writeContent(daeIO &IO, const daeContents &content)
 	#ifdef NDEBUG
 	#error incomplete
 	#endif
+	assert(0);
 	return DAE_ERR_BACKEND_IO; 
 }
 
@@ -1151,7 +1155,7 @@ const uint32_t decomp_flags)
 	}while(0==(r->m_final&1));
 
 	/* Ensure byte alignment and put back any bytes from the bitbuf if we've looked ahead too far on gzip, or other Deflate streams followed by arbitrary data. */
-    /* I'm being super conservative here. A number of simplifications can be made to the byte alignment part, and the Adler32 check shouldn't ever need to worry about reading from the bitbuf now. */
+	/* I'm being super conservative here. A number of simplifications can be made to the byte alignment part, and the Adler32 check shouldn't ever need to worry about reading from the bitbuf now. */
     TINFL_SKIP_BITS(32,num_bits&7);
     while(pIn_buf_cur>pIn_buf_next&&num_bits>=8)
     {
@@ -1257,7 +1261,7 @@ size_t daeGZ::inflate(const void *in, size_t in_chars)
 	{
 		//TODO? In theory buf can be discarded as soon as carried
 		//overflow is consumed. Whether it can perform any better 
-		//or not, it seems harder to conceptualize algorithm wise.
+		//or not, it seems easier to conceptualize this algorithm.
 		const size_t cp = std::min(sizeof(buf)-underflow,in_chars);
 		const size_t bufN = underflow+cp;		
 		memcpy(buf+underflow,in,cp);

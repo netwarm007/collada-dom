@@ -181,7 +181,7 @@ HTTP_agent::HTTP_agent(const daeIORequest *IO, daeIO::Range *rngI, bool cb(const
 	if(rngI!=nullptr&&0!=rngI->size())
 	{
 		content_range[0] = rngI->first;
-		content_range[1] = rngI->second;
+		content_range[1] = rngI->second-1;
 	}
 
 	//Resolving will replace the percent-encodings with friendly UTF8.

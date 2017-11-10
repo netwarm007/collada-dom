@@ -444,7 +444,7 @@ COLLADA_(private)
 
 	daeIOPlugin *_I,*_O;
 };
-#endif //BUILDING_IN_MINIZIP
+#endif //COLLADA_DOM_OMIT_ZAE
 
 #include "../LINKAGE.HPP" //#undef LINKAGE
 

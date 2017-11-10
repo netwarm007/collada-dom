@@ -409,7 +409,7 @@ daeError daeArchive::_read2(daeDocRef &out, daeMeta *rootmeta, const daeIOReques
 	if(!reqI.isEmptyRequest()) reqI.resolve();
 	else return DAE_ERR_INVALID_CALL; //meaningful?
 
-	daeDOMRef DOM = const_cast<daeDOM*>(reqI.scope->getDOM());	
+	daeDOMRef DOM = reqI.getDOM();	
 		
 	if(reqI.scope!=DOM
 	 &&reqI.localURI!=nullptr

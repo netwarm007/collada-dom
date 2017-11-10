@@ -292,7 +292,7 @@ COLLADA_(public) //subject to change
 	}
 
 COLLADA_(public)
-	/**wARNING
+	/**WARNING
 	 * Helps to implement @c daeIOPlugin::addDoc() without using
 	 * @c const_cast.
 	 * @warning Assuming @c false==isEmptyRequest().
@@ -303,7 +303,7 @@ COLLADA_(public)
 		return (daeDOM*)((daeObject*)scope)->getDOM(); 
 	}
 
-	/**LEGACY
+	/**LEGACY-SUPPORT
 	 * Such a request is assumed to be creating a new/blank doc. 
 	 * If requests need to avoid this, set @c string equal to "".
 	 * @note If @c daeIOPlugin::addDoc() returns @c nullptr, it's
@@ -333,12 +333,12 @@ COLLADA_(public) //daePlatform::openURI() support
 		if(remoteURI!=nullptr) remoteURI->resolve(scope);
 	}
 
-	/**WARNING
-	 * @warning @c narrow() cannot open archives.
-	 * Not sure what to do about that problem in
-	 * the case of data files (without openURI.)
-	 *
-	 * Narrows @c scope according to @c localURI.
+	/**ZAE
+	 * Narrows @c scope according to @c localURI. To narrow
+	 * means to recursively assign the request to its inner
+	 * most @c daeArchive. After this @c narro() calls upon
+	 * @c daePlatform::narrowURI().
+	 * 
 	 * @see daeURI.cpp
 	 */
 	COLLADA_DOM_LINKAGE void narrow();

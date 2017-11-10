@@ -732,8 +732,11 @@ void daeIORequest::narrow()
 	daeRefView cp = daeURI_neighbors(c==nullptr?nullptr:&(*c)->getDocURI(),localURI);		
 	if(bp==localURI->getURI_path())
 	{
-		//Don't bother if URI is already open.
-		assert(localURI->getURI_query().empty()); return;
+		//Even were this possible (Rewrite module?) it stands
+		//to reason that these URIs dwell in the same archive.
+		//assert(localURI->getURI_query().empty()); 
+		
+		return; //Don't bother if URI is already open.		
 	}
 
 	//NOTE: a was passed, but in order to pass in remoteURI
