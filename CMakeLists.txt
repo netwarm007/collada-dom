@@ -91,9 +91,9 @@ message(STATUS "installing to ${CMAKE_INSTALL_PREFIX}")
 ####CMake-GUI options##########################
 
 #These names need to stick out when building the external-libs projects.
-option(COLLADA_DOM__LEGACY_LIBXML2 "Try to build-in LibXML2 I/O plugin" ON)
+option(COLLADA_DOM__LEGACY_LIBXML2 "Try to build-in LibXML2 I/O plugin" OFF)
 option(COLLADA_DOM__LEGACY_TINYXML "Try to build-in TinyXML I/O plugin" OFF)
-option(COLLADA_DOM__COMPILE_VIEWER "Build colladadom3d reference/viewer" ON)
+option(COLLADA_DOM__COMPILE_VIEWER "Build colladadom3d reference/viewer" OFF)
 option(COLLADA_DOM__SINGLE_PRECISION "Use single-precision colladadom3d" ON)
 option(COLLADA_DOM__TARGET_PS3 "Use its ancient PlayStation3 entrypoint" OFF)
 option(COLLADA_DOM__ENABLE_LIBRARY_PCH "Use ColladaDOM.inl as PCH header" OFF)
